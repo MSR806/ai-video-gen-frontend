@@ -1,16 +1,10 @@
 /**
- * Repositories
+ * Repository Implementations
  *
- * Concrete implementations of Core Ports.
- * This is where fetch, axios, or GraphQL calls happen.
- *
- * Example:
- * export class ApiTaskRepository implements TaskRepository {
- *   async getAll(): Promise<Task[]> {
- *     const response = await fetch('/api/tasks');
- *     return response.json();
- *   }
- * }
+ * Re-exports all repository implementations for convenient importing
  */
 
-export {};
+export * from './project.repository.impl';
+export * from './character.repository.impl';
+export * from './location.repository.impl';
+export * from './scene.repository.impl';

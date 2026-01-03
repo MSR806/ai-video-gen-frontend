@@ -37,18 +37,35 @@ This project follows **Clean Architecture** principles to maintain strict separa
 
 ---
 
-## 📂 Core Layer Structure
+## 📂 Core Layer Structure (Feature-First)
+
+**We use Feature-First organization** - each feature is self-contained:
 
 ```
 src/core/
-├── domain/              # Entities (pure data models)
+├── project/
+│   ├── domain/              # project.entity.ts
+│   ├── ports/               # project.repository.port.ts
+│   ├── use-cases/           # get-all-projects.use-case.ts, etc.
+│   └── index.ts             # Barrel export for public API
+├── character/
+│   ├── domain/
+│   ├── ports/
+│   ├── use-cases/
 │   └── index.ts
-└── application/
-    ├── use-cases/       # Business logic (e.g., CreateTaskUseCase)
-    │   └── index.ts
-    └── ports/           # Repository interfaces (what, not how)
-        └── index.ts
+├── location/
+│   └── ... (same structure)
+├── scene/
+│   └── ... (same structure)
+└── index.ts                 # Unified export: export * from './project'
 ```
+
+**Benefits**:
+
+- Each feature is self-contained and easy to delete/modify
+- Clear boundaries between features
+- Scalable - add new features without cluttering shared folders
+- Clean imports: `import { Project, GetProjectByIdUseCase } from '@core/project'`
 
 ---
 
@@ -56,9 +73,19 @@ src/core/
 
 ```
 src/infrastructure/
-└── repositories/        # Implements Core Ports (fetch/axios calls)
-    └── index.ts
+└── repositories/
+    ├── project.repository.impl.ts      # ProjectRepositoryImpl
+    ├── character.repository.impl.ts    # CharacterRepositoryImpl
+    ├── location.repository.impl.ts     # LocationRepositoryImpl
+    ├── scene.repository.impl.ts        # SceneRepositoryImpl
+    └── index.ts                        # Barrel export
 ```
+
+**Naming Convention**:
+
+- Interface: `ProjectRepository` (in `@core/project/ports`)
+- Implementation: `ProjectRepositoryImpl` (in `@infra/repositories`)
+- File suffix: `.impl.ts` to distinguish from port files
 
 ---
 
@@ -71,9 +98,17 @@ src/presentation/
 │   ├── layout/          # Layout components (Header, Sidebar, PageContainer)
 │   └── feedback/        # Modals, Toasts, Loaders, Dialogs
 ├── features/            # Feature-specific components
-│   └── [feature-name]/  # e.g., tasks/, users/, settings/
-│       ├── components/  # Components only used by this feature
-│       └── hooks/       # Hooks only used by this feature
+│   └── [feature-name]/  # e.g., projects/, users/, settings/
+│       ├── ComponentA/  # Complex components get their own folder
+│       │   ├── ComponentA.tsx
+│       │   ├── ComponentA.module.css
+│       │   ├── types.ts (optional)
+│       │   └── components/  # Sub-components (if needed)
+│       │       ├── SubComponent.tsx
+│       │       └── details/
+│       │           └── DetailView.tsx
+│       ├── SimpleComponent.tsx  # Simple components: single file
+│       └── hooks/       # Feature-specific hooks
 ├── hooks/               # Shared hooks used across features
 └── styles/              # Global styles and design tokens
     ├── tokens/
@@ -81,18 +116,24 @@ src/presentation/
     └── globals.css      # CSS variables
 ```
 
+**IMPORTANT**:
+
+- **NO** `features/[feature]/components/` folder - components go directly in feature folder
+- Example: `features/projects/ProjectCard.tsx` (simple)
+- Example: `features/projects/ProjectDetailPage/` (complex with sub-components)
+
 ---
 
 ## 🧱 Component Rules
 
 ### When to Create a Component
 
-| Scenario                                 | Location                          |
-| ---------------------------------------- | --------------------------------- |
-| Used in **1-2 places** within a feature  | `features/[feature]/components/`  |
-| Used in **3+ places** OR across features | `components/ui/` or `components/` |
-| Pure layout with no logic                | `components/layout/`              |
-| Feedback/overlay (modal, toast)          | `components/feedback/`            |
+| Scenario                                 | Location                            |
+| ---------------------------------------- | ----------------------------------- |
+| Used in **1-2 places** within a feature  | `features/[feature]/ComponentName/` |
+| Used in **3+ places** OR across features | `components/ui/` or `components/`   |
+| Pure layout with no logic                | `components/layout/`                |
+| Feedback/overlay (modal, toast)          | `components/feedback/`              |
 
 ### Component File Structure
 
@@ -127,11 +168,12 @@ Button/
 - Can manage layout-specific state (sidebar open/closed)
 - Examples: `Header`, `Sidebar`, `PageContainer`, `Footer`
 
-#### Feature Components (`features/[name]/components/`)
+#### Feature Components (`features/[name]/`)
 
 - Tied to a specific domain/feature
-- Can import and execute Use Cases from `@core/`
+- Can import and execute Use Cases from `@core/[feature]`
 - **Must NOT** be imported by other features
+- Break down large components (>200 lines) into sub-components in a `components/` subfolder
 
 ---
 
@@ -244,8 +286,9 @@ Button/
 
 ## 📝 Workflow: Consuming a New API Endpoint
 
-1. **Define Model**: Create entity in `@core/domain`.
-2. **Define Interface**: Create repository interface in `@core/application/ports`.
-3. **Implement Use Case**: Create logic in `@core/application/use-cases`.
-4. **Implement API Call**: Create repository in `@infra/repositories` using `fetch`.
-5. **Connect UI**: Create page in `src/app`, instantiate the repo/use-case, and call it.
+1. **Define Model**: Create entity in `@core/[feature]/domain/[feature].entity.ts`.
+2. **Define Interface**: Create repository interface in `@core/[feature]/ports/[feature].repository.port.ts`.
+3. **Implement Use Case**: Create logic in `@core/[feature]/use-cases/[action].use-case.ts`.
+4. **Update Feature Export**: Add exports to `@core/[feature]/index.ts`.
+5. **Implement API Call**: Create repository in `@infra/repositories/[feature].repository.impl.ts` using `fetch`.
+6. **Connect UI**: Create page in `src/app`, instantiate the repo/use-case with dependency injection.

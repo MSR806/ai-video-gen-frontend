@@ -1,24 +1,32 @@
-import { CreateTaskUseCase } from '@core/application/use-cases/create-task.use-case';
-import { InMemoryTaskRepository } from '@infra/repositories/in-memory-task.repository';
+import { GetAllProjectsUseCase } from '@core/project';
+import { ProjectRepositoryImpl } from '@infra/repositories';
+import { ProjectsList } from '@presentation/features/projects/ProjectsList';
+import { Button } from '@presentation/components/ui/Button';
+import styles from './page.module.css';
 
-// Composition Root (Simplified for this example)
-// In a real app, you might use a DI container or a factory
-const taskRepository = new InMemoryTaskRepository();
-const createTaskUseCase = new CreateTaskUseCase(taskRepository);
+// Composition Root - Dependency Injection
+const projectRepository = new ProjectRepositoryImpl();
+const getAllProjectsUseCase = new GetAllProjectsUseCase(projectRepository);
 
 export default async function Home() {
-  // Demonstration of core logic execution
-  const task = await createTaskUseCase.execute('Learn Clean Architecture');
+  // Fetch projects using use case
+  const projects = await getAllProjectsUseCase.execute();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-24 font-mono">
-      <h1 className="text-4xl font-bold mb-8">Clean Architecture Demo</h1>
-      <div className="bg-white/5 p-8 rounded-lg border border-white/10">
-        <h2 className="text-2xl mb-4">Task Created via Use Case</h2>
-        <pre className="bg-black/50 p-4 rounded text-sm text-green-400">
-          {JSON.stringify(task, null, 2)}
-        </pre>
-      </div>
+    <div className={styles.container}>
+      <header className={styles.header}>
+        <div className={styles.headerContent}>
+          <div>
+            <h1 className={styles.title}>AI Video Content Projects</h1>
+            <p className={styles.subtitle}>Manage and create stunning video content with AI</p>
+          </div>
+          <Button variant="primary">+ New Project</Button>
+        </div>
+      </header>
+
+      <main className={styles.main}>
+        <ProjectsList projects={projects} />
+      </main>
     </div>
   );
 }
