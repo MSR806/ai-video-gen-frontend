@@ -1,4 +1,11 @@
-import type { Asset, AssetRepository } from '@core/asset';
+import type {
+  Asset,
+  AssetRepository,
+  AssetCreationPayload,
+  GenerationParams,
+  GeneratedAsset,
+  AspectRatio,
+} from '@core/asset';
 
 /**
  * Implementation of AssetRepository with in-memory mock data
@@ -172,5 +179,81 @@ export class AssetRepositoryImpl implements AssetRepository {
   async getById(id: string): Promise<Asset | null> {
     const asset = this.assets.find((a) => a.id === id);
     return Promise.resolve(asset || null);
+  }
+
+  async create(payload: AssetCreationPayload): Promise<Asset> {
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Generate new ID
+    const newId = `asset-${Date.now()}`;
+
+    const newAsset: Asset = {
+      id: newId,
+      ...payload,
+    };
+
+    // Add to in-memory storage
+    this.assets.push(newAsset);
+
+    return newAsset;
+  }
+
+  async generateWithAI(params: GenerationParams): Promise<GeneratedAsset> {
+    // Simulate AI generation delay (2-3 seconds)
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+
+    // Get dimensions based on resolution
+    const dimensions = this.getDimensionsForResolution(
+      params.aspectRatio,
+      params.mediaType,
+      params.resolution || '2k',
+    );
+
+    // Mock generated asset URLs (using picsum for variety)
+    const randomSeed = Date.now();
+    const mockImageUrl = `https://picsum.photos/seed/${randomSeed}/${dimensions.width}/${dimensions.height}`;
+    const mockThumbnailUrl = `https://picsum.photos/seed/${randomSeed}/300/300`;
+
+    const generatedAsset: GeneratedAsset = {
+      url: params.mediaType === 'image' ? mockImageUrl : mockThumbnailUrl,
+      thumbnailUrl: mockThumbnailUrl,
+      width: dimensions.width,
+      height: dimensions.height,
+      format: params.mediaType === 'image' ? 'jpg' : 'mp4',
+      ...(params.mediaType === 'video' && { duration: 10 }),
+    };
+
+    return generatedAsset;
+  }
+
+  private getDimensionsForResolution(
+    aspectRatio: AspectRatio,
+    mediaType: 'image' | 'video',
+    resolution: '2k' | '4k' | '8k' = '2k',
+  ): { width: number; height: number } {
+    // Base width by resolution (standard is landscape 16:9-ish)
+    const baseWidths = {
+      '2k': 2048,
+      '4k': 4096,
+      '8k': 8192,
+    };
+
+    const width = baseWidths[resolution];
+
+    // Calculate height based on aspect ratio
+    switch (aspectRatio) {
+      case 'square': {
+        return { width, height: width }; // 1:1
+      }
+      case 'portrait': {
+        const height = Math.round(width * 1.5); // 2:3
+        return { width, height };
+      }
+      case 'landscape': {
+        const height = Math.round(width / 1.9); // ~16:9
+        return { width, height };
+      }
+    }
   }
 }

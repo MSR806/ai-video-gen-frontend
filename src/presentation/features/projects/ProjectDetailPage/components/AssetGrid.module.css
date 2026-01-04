@@ -1,12 +1,29 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+.header {
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: flex-end;
+  display: none;
+  /* Hide original header as requested */
+}
+
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  grid-auto-rows: min-content;
-  align-items: start;
-  gap: 16px;
-  padding: 20px;
-  height: 100%;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-5);
+  padding-bottom: 80px;
+  /* Add extra padding for FAB */
   overflow-y: auto;
+  flex: 1;
 }
 
 .empty {
@@ -14,12 +31,38 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  padding: 40px;
+  flex: 1;
 }
 
 .emptyMessage {
   color: var(--text-muted);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   text-align: center;
   margin: 0;
+}
+
+.fab {
+  position: absolute;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-xl);
+  transition: all var(--transition-normal);
+  z-index: 100;
+}
+
+.fab:hover {
+  background: var(--accent-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
 }

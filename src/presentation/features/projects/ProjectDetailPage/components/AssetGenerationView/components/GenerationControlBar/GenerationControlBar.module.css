@@ -1,0 +1,164 @@
+.container {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-raised);
+  border-top: 1px solid var(--border-subtle);
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  z-index: 10;
+}
+
+.topRow {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.addButton {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  font-weight: 300;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.addButton:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-primary-muted);
+}
+
+.promptInput {
+  flex: 1;
+  min-height: 44px;
+  resize: none;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: inherit;
+  line-height: 1.5;
+  transition: border-color var(--transition-fast);
+}
+
+.promptInput:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.promptInput::placeholder {
+  color: var(--text-muted);
+}
+
+.referenceChips {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: 0;
+}
+
+.referenceChip {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+}
+
+.referenceThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.removeChip {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.referenceChip:hover .removeChip {
+  opacity: 1;
+}
+
+.removeChip:hover {
+  background: rgba(239, 68, 68, 0.9);
+}
+
+.controlsRow {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.generateButton {
+  margin-left: auto;
+  width: 48px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #00d4ff, #0099ff);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.generateButton:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0, 153, 255, 0.4);
+}
+
+.generateButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: var(--space-4);
+  }
+
+  .controlsRow {
+    flex-wrap: wrap;
+  }
+
+  .generateButton {
+    width: 100%;
+    margin-left: 0;
+  }
+}

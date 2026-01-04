@@ -1,0 +1,208 @@
+import { useState } from 'react';
+import { Modal } from '@presentation/components/ui';
+import {
+  CreateAssetUseCase,
+  type AssetCreationPayload,
+  type ImageMetadata,
+  type VideoMetadata,
+} from '@core/asset';
+import { AssetRepositoryImpl } from '@infra/repositories';
+import { DropZone } from './components/DropZone';
+import { FilePreview } from './components/FilePreview';
+import { Button } from '@presentation/components/ui';
+import styles from './AssetUploadModal.module.css';
+
+interface AssetUploadModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  entityId: string;
+  entityType: 'character' | 'location';
+  projectId: string;
+  onSuccess: () => void;
+}
+
+type UploadState = 'idle' | 'uploading' | 'success' | 'error';
+
+/**
+ * AssetUploadModal Component
+ * Modal for uploading asset files with metadata
+ */
+export function AssetUploadModal({
+  isOpen,
+  onClose,
+  entityId,
+  entityType,
+  projectId,
+  onSuccess,
+}: AssetUploadModalProps) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [uploadState, setUploadState] = useState<UploadState>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file);
+    // Auto-fill name from filename (without extension)
+    const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+    setName(nameWithoutExt);
+    setError(null);
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setName('');
+    setDescription('');
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedFile) return;
+
+    setUploadState('uploading');
+    setError(null);
+
+    try {
+      // In a real app, you would upload the file to a server here
+      // For now, we'll create a mock URL (in reality this would be the uploaded file URL)
+      const mockFileUrl = URL.createObjectURL(selectedFile);
+      const mockThumbnailUrl = mockFileUrl; // Same for thumbnail in this mock
+
+      // Determine media type
+      const mediaType = selectedFile.type.startsWith('image/') ? 'image' : 'video';
+
+      // Create metadata using FileReader to get image dimensions (simplified for mock)
+      const metadata = await getFileMetadata(selectedFile, mockThumbnailUrl);
+
+      // Create asset payload
+      const payload: AssetCreationPayload = {
+        projectId,
+        entityId,
+        entityType,
+        mediaType,
+        name: name || selectedFile.name,
+        description,
+        url: mockFileUrl,
+        metadata,
+      };
+
+      // Execute use case
+      const repository = new AssetRepositoryImpl();
+      const createAssetUseCase = new CreateAssetUseCase(repository);
+      await createAssetUseCase.execute(payload);
+
+      setUploadState('success');
+      // Call success callback and close modal
+      setTimeout(() => {
+        onSuccess();
+        handleClose();
+      }, 500);
+    } catch (err) {
+      setUploadState('error');
+      setError(err instanceof Error ? err.message : 'Failed to upload asset');
+    }
+  };
+
+  const getFileMetadata = async (
+    file: File,
+    thumbnailUrl: string,
+  ): Promise<ImageMetadata | VideoMetadata> => {
+    const isImage = file.type.startsWith('image/');
+    const format = file.type.split('/')[1] || 'unknown';
+
+    if (isImage) {
+      // Get image dimensions
+      const dimensions = await getImageDimensions(file);
+      return {
+        width: dimensions.width,
+        height: dimensions.height,
+        format,
+        thumbnailUrl,
+      };
+    } else {
+      // Video metadata (simplified - in reality you'd use a video element to get dimensions and duration)
+      return {
+        width: 1920,
+        height: 1080,
+        duration: 10, // Placeholder
+        format,
+        thumbnailUrl,
+      };
+    }
+  };
+
+  const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.width, height: img.height });
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleClose = () => {
+    setSelectedFile(null);
+    setName('');
+    setDescription('');
+    setUploadState('idle');
+    setError(null);
+    onClose();
+  };
+
+  const isSubmitDisabled = !selectedFile || !name || uploadState === 'uploading';
+
+  return (
+    <Modal isOpen={isOpen} onClose={handleClose} title="Upload Asset">
+      <div className={styles.content}>
+        {!selectedFile ? (
+          <DropZone onFileSelect={handleFileSelect} />
+        ) : (
+          <>
+            <FilePreview file={selectedFile} onRemove={handleRemoveFile} />
+
+            <div className={styles.form}>
+              <div className={styles.field}>
+                <label htmlFor="asset-name" className={styles.label}>
+                  Name *
+                </label>
+                <input
+                  id="asset-name"
+                  type="text"
+                  className={styles.input}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter asset name"
+                />
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="asset-description" className={styles.label}>
+                  Description
+                </label>
+                <textarea
+                  id="asset-description"
+                  className={styles.textarea}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Enter asset description"
+                  rows={3}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {error && <p className={styles.error}>{error}</p>}
+
+        <div className={styles.actions}>
+          <Button variant="secondary" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} variant="primary" type="button">
+            {uploadState === 'uploading' ? 'Uploading...' : 'Upload Asset'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

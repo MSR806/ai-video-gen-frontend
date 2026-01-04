@@ -11,9 +11,16 @@ interface ItemListProps {
   selectedId: string | null;
   activeTab: TabType;
   onItemSelect: (id: string) => void;
+  onAddClick?: () => void;
 }
 
-export function ItemList({ items, selectedId, activeTab, onItemSelect }: ItemListProps) {
+export function ItemList({
+  items,
+  selectedId,
+  activeTab,
+  onItemSelect,
+  onAddClick,
+}: ItemListProps) {
   return (
     <aside className={styles.listPanel}>
       <h2 className={styles.listTitle}>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
@@ -31,6 +38,11 @@ export function ItemList({ items, selectedId, activeTab, onItemSelect }: ItemLis
             </button>
           ))
         )}
+      </div>
+      <div className={styles.listFooter}>
+        <button className={styles.addButton} onClick={onAddClick}>
+          + New {activeTab.slice(0, -1)}
+        </button>
       </div>
     </aside>
   );
