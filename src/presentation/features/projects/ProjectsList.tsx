@@ -1,4 +1,4 @@
-import type { Project } from '@core/domain';
+import type { Project } from '@core/project';
 import { ProjectCard } from './ProjectCard';
 import styles from './ProjectsList.module.css';
 

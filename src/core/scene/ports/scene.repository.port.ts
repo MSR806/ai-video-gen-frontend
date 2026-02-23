@@ -6,4 +6,5 @@ import type { Scene } from '../domain/scene.entity';
 export interface SceneRepository {
   getAllByProjectId(projectId: string): Promise<Scene[]>;
   getById(id: string): Promise<Scene | null>;
+  bulkSave(scenes: Scene[]): Promise<void>;
 }

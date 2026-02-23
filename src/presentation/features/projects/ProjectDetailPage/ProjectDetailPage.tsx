@@ -7,11 +7,11 @@ import { TabNavigation } from './components/TabNavigation';
 import { ItemList } from './components/ItemList';
 import { CharacterDetails } from './components/details/CharacterDetails';
 import { LocationDetails } from './components/details/LocationDetails';
-import { SceneDetails } from './components/details/SceneDetails';
 import { AssetGrid } from './components/AssetGrid';
 import { AssetLightbox } from './components/AssetLightbox';
 import { AssetUploadModal } from './components/AssetUploadModal/AssetUploadModal';
 import { AssetGenerationView } from './components/AssetGenerationView/AssetGenerationView';
+import { ScreenplayEditor } from '../../screenplay/components/ScreenplayEditor';
 import { ToastContainer } from '@presentation/components/feedback';
 import styles from './ProjectDetailPage.module.css';
 
@@ -60,8 +60,10 @@ export function ProjectDetailPage({
         return characters;
       case 'locations':
         return locations;
-      case 'scenes':
-        return scenes;
+      case 'screenplay':
+      case 'shots':
+        // The new tabs use different layouts, we return empty list for the standard ItemList
+        return [];
     }
   };
 
@@ -72,8 +74,9 @@ export function ProjectDetailPage({
         return characters.find((c) => c.id === selectedId) || null;
       case 'locations':
         return locations.find((l) => l.id === selectedId) || null;
-      case 'scenes':
-        return scenes.find((s) => s.id === selectedId) || null;
+      case 'screenplay':
+      case 'shots':
+        return null; // Update later when we build shots selector
     }
   };
 
@@ -100,7 +103,7 @@ export function ProjectDetailPage({
       if (activeTab === 'locations') return 'Select a location to view assets';
       return '';
     }
-    if (activeTab === 'scenes') return 'Scenes do not have assets';
+    if (activeTab === 'screenplay' || activeTab === 'shots') return 'Not applicable for this view';
     return 'No assets available';
   };
 
@@ -141,12 +144,26 @@ export function ProjectDetailPage({
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const handleScreenplaySave = async (doc: Record<string, unknown>) => {
+    try {
+      const response = await fetch(`/api/projects/1/screenplay`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: doc }),
+      });
+      if (!response.ok) throw new Error('Failed to save screenplay');
+    } catch (error) {
+      console.error('Error saving screenplay:', error);
+      addToast('Failed to save screenplay. Please try again.', 'error');
+    }
+  };
+
   const items = getItems();
   const selectedItem = getSelectedItem();
   const entityAssets = getEntityAssets();
   const emptyMessage = getEmptyMessage();
 
-  const canCreateAssets = selectedId && activeTab !== 'scenes';
+  const canCreateAssets = !!selectedId && (activeTab === 'characters' || activeTab === 'locations');
   const entityType = activeTab === 'characters' ? 'character' : 'location';
 
   return (
@@ -155,54 +172,73 @@ export function ProjectDetailPage({
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
       {/* List Panel */}
-      <ItemList
-        items={items}
-        selectedId={selectedId}
-        activeTab={activeTab}
-        onItemSelect={setSelectedId}
-      />
+      {(activeTab === 'characters' || activeTab === 'locations') && (
+        <ItemList
+          items={items}
+          selectedId={selectedId}
+          activeTab={activeTab as 'characters' | 'locations'}
+          onItemSelect={setSelectedId}
+        />
+      )}
 
-      {/* Center Panel - Asset Grid OR Generation View */}
-      <div className={styles.centerArea}>
-        {centerViewMode === 'grid' ? (
-          <AssetGrid
-            key={assetRefreshKey}
-            assets={entityAssets}
-            onAssetClick={setLightboxAsset}
-            emptyMessage={emptyMessage}
-            onUploadClick={canCreateAssets ? handleUploadClick : undefined}
-            onGenerateClick={canCreateAssets ? handleGenerateClick : undefined}
-            showAddButton={canCreateAssets}
+      {/* Main Content Area */}
+      {activeTab === 'screenplay' ? (
+        <div className={styles.centerArea} style={{ gridColumn: '2 / 4' }}>
+          <ScreenplayEditor
+            projectId="1"
+            scenes={scenes}
+            characters={characters}
+            onSave={handleScreenplaySave}
           />
-        ) : (
-          selectedId && (
-            <AssetGenerationView
-              entityId={selectedId}
-              entityType={entityType}
-              projectId="1"
-              onBack={handleBackToGrid}
-              onAssetCreated={handleAssetCreated}
-            />
-          )
-        )}
-      </div>
+        </div>
+      ) : activeTab === 'shots' ? (
+        <div className={styles.centerArea} style={{ gridColumn: '2 / 4' }}>
+          <div>Shots Storyboard Placeholder</div>
+        </div>
+      ) : (
+        <>
+          {/* Center Panel - Asset Grid OR Generation View */}
+          <div className={styles.centerArea}>
+            {centerViewMode === 'grid' ? (
+              <AssetGrid
+                key={assetRefreshKey}
+                assets={entityAssets}
+                onAssetClick={setLightboxAsset}
+                emptyMessage={emptyMessage}
+                onUploadClick={canCreateAssets ? handleUploadClick : undefined}
+                onGenerateClick={canCreateAssets ? handleGenerateClick : undefined}
+                showAddButton={canCreateAssets}
+              />
+            ) : selectedId ? (
+              <AssetGenerationView
+                entityId={selectedId}
+                entityType={entityType}
+                projectId="1"
+                onBack={handleBackToGrid}
+                onAssetCreated={handleAssetCreated}
+              />
+            ) : null}
+          </div>
 
-      {/* Details Panel */}
-      <aside className={styles.detailsPanel}>
-        {!selectedItem ? (
-          <div className={styles.emptyDetails}>
-            <p>Select {activeTab.slice(0, -1)} to view details</p>
-          </div>
-        ) : (
-          <div className={styles.details}>
-            {activeTab === 'characters' && (
-              <CharacterDetails character={selectedItem as Character} />
+          {/* Details Panel */}
+          <aside className={styles.detailsPanel}>
+            {!selectedItem ? (
+              <div className={styles.emptyDetails}>
+                <p>Select {activeTab.slice(0, -1)} to view details</p>
+              </div>
+            ) : (
+              <div className={styles.details}>
+                {activeTab === 'characters' && (
+                  <CharacterDetails character={selectedItem as Character} />
+                )}
+                {activeTab === 'locations' && (
+                  <LocationDetails location={selectedItem as Location} />
+                )}
+              </div>
             )}
-            {activeTab === 'locations' && <LocationDetails location={selectedItem as Location} />}
-            {activeTab === 'scenes' && <SceneDetails scene={selectedItem as Scene} />}
-          </div>
-        )}
-      </aside>
+          </aside>
+        </>
+      )}
 
       {/* Asset Lightbox Modal */}
       <AssetLightbox asset={lightboxAsset} onClose={() => setLightboxAsset(null)} />

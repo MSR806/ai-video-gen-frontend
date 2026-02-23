@@ -24,9 +24,16 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
         📍
       </button>
       <button
-        className={`${styles.navButton} ${activeTab === 'scenes' ? styles.active : ''}`}
-        onClick={() => onTabChange('scenes')}
-        title="Scenes"
+        className={`${styles.navButton} ${activeTab === 'screenplay' ? styles.active : ''}`}
+        onClick={() => onTabChange('screenplay')}
+        title="Screenplay"
+      >
+        📝
+      </button>
+      <button
+        className={`${styles.navButton} ${activeTab === 'shots' ? styles.active : ''}`}
+        onClick={() => onTabChange('shots')}
+        title="Shots"
       >
         🎬
       </button>

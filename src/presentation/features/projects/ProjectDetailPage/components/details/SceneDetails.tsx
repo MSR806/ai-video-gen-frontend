@@ -6,26 +6,12 @@ interface SceneDetailsProps {
 }
 
 export function SceneDetails({ scene }: SceneDetailsProps) {
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
     <div className={styles.detailsContent}>
       <h2 className={styles.detailsTitle}>{scene.name}</h2>
       <div className={styles.detailsSection}>
-        <h3>Description</h3>
-        <p>{scene.description}</p>
-      </div>
-      <div className={styles.detailsSection}>
-        <h3>Duration</h3>
-        <p>{formatDuration(scene.duration)}</p>
-      </div>
-      <div className={styles.detailsSection}>
-        <h3>Objective</h3>
-        <p>{scene.objective}</p>
+        <h3>Content Prefix</h3>
+        <p>Edit in Screenplay view</p>
       </div>
       <div className={styles.detailsSection}>
         <h3>Characters</h3>

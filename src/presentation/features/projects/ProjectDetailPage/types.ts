@@ -1,1 +1,1 @@
-export type TabType = 'characters' | 'locations' | 'scenes';
+export type TabType = 'characters' | 'locations' | 'screenplay' | 'shots';
