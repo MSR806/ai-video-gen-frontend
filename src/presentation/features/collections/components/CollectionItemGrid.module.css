@@ -8,10 +8,12 @@
 
 .strip {
   display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   flex: 1;
   align-items: flex-start;
   scrollbar-width: thin;

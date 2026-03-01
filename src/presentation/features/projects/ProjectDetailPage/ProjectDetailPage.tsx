@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Collection, Scene, CollectionItem } from '@core';
 import { CreateCollectionUseCase, type CollectionCreationPayload } from '@core/collection';
-import { GetCollectionItemsUseCase } from '@core/collection-item';
+import { DeleteCollectionItemUseCase, GetCollectionItemsUseCase } from '@core/collection-item';
 import { GetProjectScenesUseCase, SyncScenesUseCase } from '@core/scene';
 import {
   CollectionItemRepositoryImpl,
@@ -24,6 +24,7 @@ import { CollectionItemUploadModal } from '../../collections/components/Collecti
 import { CollectionItemGenerationView } from '../../collections/components/CollectionItemGenerationView/CollectionItemGenerationView';
 import { ScenesEditor } from '../../scenes/components/ScenesEditor';
 import { ToastContainer } from '@presentation/components/feedback';
+import { Button, Modal } from '@presentation/components/ui';
 import styles from './ProjectDetailPage.module.css';
 
 type Item = Collection | null;
@@ -43,6 +44,19 @@ interface Toast {
   message: string;
   type: 'success' | 'error' | 'info';
 }
+
+const getCollectionItemDownloadName = (item: CollectionItem): string => {
+  const baseName = item.name.trim() || 'collection-item';
+  const extension = item.metadata.format.trim().replace(/^\./, '');
+
+  if (!extension) {
+    return baseName;
+  }
+
+  return baseName.toLowerCase().endsWith(`.${extension.toLowerCase()}`)
+    ? baseName
+    : `${baseName}.${extension}`;
+};
 
 /**
  * ProjectDetailPage
@@ -73,6 +87,8 @@ export function ProjectDetailPage({
   const [loadedScenes, setLoadedScenes] = useState<Scene[]>(scenes);
   const [loadedCollectionItems, setLoadedCollectionItems] =
     useState<CollectionItem[]>(collectionItems);
+  const [deletingItemIds, setDeletingItemIds] = useState<Set<string>>(new Set());
+  const [deleteCandidate, setDeleteCandidate] = useState<CollectionItem | null>(null);
   const [isScenesReady, setIsScenesReady] = useState(false);
 
   const getItems = () => {
@@ -169,6 +185,139 @@ export function ProjectDetailPage({
   const handleUploadSuccess = () => {
     setItemRefreshKey((prev) => prev + 1);
     addToast('Collection item uploaded successfully!', 'success');
+  };
+
+  const handleCopyCollectionItem = useCallback(
+    async (item: CollectionItem) => {
+      if (item.mediaType !== 'image') {
+        addToast('Only image items can be copied to clipboard.', 'error');
+        return;
+      }
+
+      if (
+        typeof navigator === 'undefined' ||
+        !navigator.clipboard?.write ||
+        typeof ClipboardItem === 'undefined'
+      ) {
+        addToast('Image copy is not available in this browser.', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(item.url);
+        if (!response.ok) {
+          throw new Error(`Copy request failed with status ${response.status}`);
+        }
+
+        const fetchedBlob = await response.blob();
+        const normalizedBlob =
+          fetchedBlob.type.startsWith('image/') && fetchedBlob.type.length > 0
+            ? fetchedBlob
+            : new Blob([fetchedBlob], {
+                type: `image/${item.metadata.format.trim().replace(/^\./, '').toLowerCase() || 'png'}`,
+              });
+
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            [normalizedBlob.type]: normalizedBlob,
+          }),
+        ]);
+
+        addToast('Image copied to clipboard.', 'success');
+      } catch (error) {
+        console.error('Error copying collection item image:', error);
+        addToast('Failed to copy image. Please try again.', 'error');
+      }
+    },
+    [addToast],
+  );
+
+  const handleDownloadCollectionItem = useCallback(
+    (item: CollectionItem) => {
+      if (typeof document === 'undefined' || typeof window === 'undefined') {
+        addToast('Download is not available right now.', 'error');
+        return;
+      }
+
+      void (async () => {
+        let objectUrl: string | null = null;
+
+        try {
+          const response = await fetch(item.url);
+          if (!response.ok) {
+            throw new Error(`Download request failed with status ${response.status}`);
+          }
+
+          const blob = await response.blob();
+          objectUrl = URL.createObjectURL(blob);
+
+          const anchor = document.createElement('a');
+          anchor.href = objectUrl;
+          anchor.download = getCollectionItemDownloadName(item);
+          anchor.rel = 'noopener noreferrer';
+          document.body.appendChild(anchor);
+          anchor.click();
+          document.body.removeChild(anchor);
+          addToast('Download started.', 'info');
+        } catch (error) {
+          console.error('Error downloading collection item:', error);
+          addToast('Failed to download item. Please try again.', 'error');
+        } finally {
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+          }
+        }
+      })();
+    },
+    [addToast],
+  );
+
+  const handleDeleteCollectionItem = async (item: CollectionItem) => {
+    if (deletingItemIds.has(item.id)) {
+      return;
+    }
+
+    setDeletingItemIds((prev) => {
+      const next = new Set(prev);
+      next.add(item.id);
+      return next;
+    });
+
+    try {
+      const repository = new CollectionItemRepositoryImpl();
+      const deleteCollectionItemUseCase = new DeleteCollectionItemUseCase(repository);
+      await deleteCollectionItemUseCase.execute(item.collectionId, item.id);
+
+      setLoadedCollectionItems((prev) => prev.filter((existing) => existing.id !== item.id));
+      setLightboxItem((prev) => (prev?.id === item.id ? null : prev));
+      addToast('Collection item deleted successfully!', 'success');
+    } catch (error) {
+      console.error('Error deleting collection item:', error);
+      addToast('Failed to delete collection item. Please try again.', 'error');
+    } finally {
+      setDeletingItemIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  };
+
+  const handleDeleteRequest = (item: CollectionItem) => {
+    if (deletingItemIds.has(item.id)) {
+      return;
+    }
+    setDeleteCandidate(item);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteCandidate) {
+      return;
+    }
+
+    const itemToDelete = deleteCandidate;
+    setDeleteCandidate(null);
+    await handleDeleteCollectionItem(itemToDelete);
   };
 
   const removeToast = (id: string) => {
@@ -324,6 +473,10 @@ export function ProjectDetailPage({
                 key={itemRefreshKey}
                 items={selectedCollectionItems}
                 onItemClick={setLightboxItem}
+                onItemCopy={handleCopyCollectionItem}
+                onItemDownload={handleDownloadCollectionItem}
+                onItemDelete={canCreateCollectionItems ? handleDeleteRequest : undefined}
+                deletingItemIds={deletingItemIds}
                 emptyMessage={emptyMessage}
                 onUploadClick={canCreateCollectionItems ? handleUploadClick : undefined}
                 onGenerateClick={canCreateCollectionItems ? handleGenerateClick : undefined}
@@ -377,6 +530,27 @@ export function ProjectDetailPage({
           onSuccess={handleUploadSuccess}
         />
       )}
+
+      <Modal
+        isOpen={deleteCandidate !== null}
+        onClose={() => setDeleteCandidate(null)}
+        title="Delete Collection Item"
+      >
+        <div className={styles.deleteConfirmBody}>
+          <p className={styles.deleteConfirmText}>
+            {`Delete "${deleteCandidate?.name || ''}" from this collection?`}
+          </p>
+          <p className={styles.deleteConfirmWarning}>This action cannot be undone.</p>
+          <div className={styles.deleteConfirmActions}>
+            <Button variant="secondary" onClick={() => setDeleteCandidate(null)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={() => void handleDeleteConfirm()}>
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>

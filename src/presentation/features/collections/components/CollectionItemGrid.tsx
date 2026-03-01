@@ -6,6 +6,10 @@ import styles from './CollectionItemGrid.module.css';
 interface CollectionItemGridProps {
   items: CollectionItem[];
   onItemClick: (item: CollectionItem) => void;
+  onItemCopy: (item: CollectionItem) => void | Promise<void>;
+  onItemDownload: (item: CollectionItem) => void;
+  onItemDelete?: (item: CollectionItem) => void;
+  deletingItemIds?: ReadonlySet<string>;
   emptyMessage: string;
   onUploadClick?: () => void;
   onGenerateClick?: () => void;
@@ -15,6 +19,10 @@ interface CollectionItemGridProps {
 export function CollectionItemGrid({
   items,
   onItemClick,
+  onItemCopy,
+  onItemDownload,
+  onItemDelete,
+  deletingItemIds,
   emptyMessage,
   onUploadClick,
   onGenerateClick,
@@ -29,7 +37,15 @@ export function CollectionItemGrid({
       ) : (
         <div className={styles.strip}>
           {items.map((item) => (
-            <CollectionItemCard key={item.id} item={item} onClick={onItemClick} />
+            <CollectionItemCard
+              key={item.id}
+              item={item}
+              onClick={onItemClick}
+              onCopy={onItemCopy}
+              onDownload={onItemDownload}
+              onDelete={onItemDelete}
+              isDeleting={deletingItemIds?.has(item.id) ?? false}
+            />
           ))}
         </div>
       )}

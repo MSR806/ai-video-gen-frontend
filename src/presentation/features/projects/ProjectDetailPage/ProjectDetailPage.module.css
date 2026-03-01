@@ -250,3 +250,28 @@
   font-style: italic;
   color: var(--text-secondary);
 }
+
+.deleteConfirmBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.deleteConfirmText {
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.deleteConfirmWarning {
+  margin: 0;
+  color: var(--status-error);
+  font-size: 0.875rem;
+}
+
+.deleteConfirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}

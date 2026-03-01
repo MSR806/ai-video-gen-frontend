@@ -1,3 +1,8 @@
+.cardShell {
+  position: relative;
+  flex: 0 0 auto;
+}
+
 .card {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
@@ -6,16 +11,27 @@
   transition: all var(--transition-normal);
   display: block;
   height: 400px;
-  width: 230px;
+  width: auto;
+  aspect-ratio: var(--card-aspect-ratio, 9 / 16);
   padding: 0;
   background: var(--bg-base);
   flex: 0 0 auto;
+}
+
+.card:disabled {
+  cursor: default;
 }
 
 .card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
   border-color: var(--border-default);
+}
+
+.card:disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border-subtle);
 }
 
 .thumbnailContainer {
@@ -29,7 +45,9 @@
 .thumbnail {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
+  background: var(--bg-base);
 }
 
 .thumbnailFallback {
@@ -56,10 +74,30 @@
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: 1fr auto;
   grid-template-rows: auto 1fr auto;
   padding: var(--space-2);
   pointer-events: none;
+  gap: var(--space-2);
+}
+
+.overlay::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 96px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-base) 0%, transparent) 0%,
+    color-mix(in srgb, var(--bg-base) 82%, transparent) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.cardShell:hover .overlay::after,
+.cardShell:focus-within .overlay::after {
+  opacity: 1;
 }
 
 .mediaTypeBadge {
@@ -75,6 +113,7 @@
   height: 30px;
   grid-column: 1;
   grid-row: 1;
+  justify-self: start;
 }
 
 .durationBadge {
@@ -85,14 +124,147 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-primary);
+  grid-column: 2;
+  grid-row: 3;
+  justify-self: end;
+  align-self: end;
+  font-family: monospace;
+  z-index: 1;
+}
+
+.durationSpacer {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.descriptionChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   grid-column: 1;
   grid-row: 3;
   justify-self: start;
   align-self: end;
-  font-family: monospace;
+  max-width: calc(100% - 40px);
+  padding: 0;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
+  z-index: 1;
 }
 
-.durationSpacer {
-  grid-column: 1;
-  grid-row: 3;
+.cardShell:hover .descriptionChip,
+.cardShell:focus-within .descriptionChip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.descriptionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  opacity: 0.95;
+}
+
+.descriptionText {
+  font-size: 0.9rem;
+  line-height: 1.2;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.menuContainer {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+
+.cardShell:hover .menuContainer,
+.cardShell:focus-within .menuContainer {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.menuButton {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: color-mix(in srgb, var(--text-primary) 84%, var(--bg-elevated) 16%);
+  color: var(--text-inverse);
+  border-radius: var(--radius-full);
+  padding: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+}
+
+.menuButton:hover {
+  background: color-mix(in srgb, var(--text-primary) 76%, var(--bg-elevated) 24%);
+}
+
+.menuButton:focus-visible {
+  background: color-mix(in srgb, var(--text-primary) 76%, var(--bg-elevated) 24%);
+  outline: none;
+}
+
+.menuButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.actionMenu {
+  min-width: 180px;
+  background: var(--bg-raised);
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-1);
+}
+
+.actionItem {
+  border-radius: var(--radius-lg);
+}
+
+.menuGlyph {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.menuDivider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: var(--space-1) var(--space-2);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .menuContainer {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .overlay::after {
+    opacity: 1;
+  }
+
+  .descriptionChip {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

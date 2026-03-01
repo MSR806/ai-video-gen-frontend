@@ -1,17 +1,24 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import {
+  useState,
+  useRef,
+  useEffect,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from 'react';
 import styles from './Dropdown.module.css';
 
 interface DropdownProps {
   trigger: ReactNode;
   children: ReactNode;
   direction?: 'up' | 'down';
+  menuClassName?: string;
 }
 
 /**
  * Dropdown Component
  * Reusable dropdown menu with click-outside-to-close functionality
  */
-export function Dropdown({ trigger, children, direction = 'down' }: DropdownProps) {
+export function Dropdown({ trigger, children, direction = 'down', menuClassName }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -53,11 +60,21 @@ export function Dropdown({ trigger, children, direction = 'down' }: DropdownProp
     setIsOpen(!isOpen);
   };
 
+  const handleMenuClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('[data-dropdown-item="true"]')) {
+      setIsOpen(false);
+    }
+  };
+
   return (
     <div className={styles.dropdown} ref={dropdownRef}>
       <div onClick={handleToggle}>{trigger}</div>
       {isOpen && (
-        <div className={`${styles.menu} ${direction === 'up' ? styles.menuUp : ''}`}>
+        <div
+          className={`${styles.menu} ${direction === 'up' ? styles.menuUp : ''} ${menuClassName || ''}`}
+          onClick={handleMenuClick}
+        >
           {children}
         </div>
       )}
@@ -69,19 +86,36 @@ interface DropdownItemProps {
   icon?: ReactNode;
   label: string;
   onClick: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+  className?: string;
 }
 
 /**
  * DropdownItem Component
  * Individual menu item within a dropdown
  */
-export function DropdownItem({ icon, label, onClick }: DropdownItemProps) {
+export function DropdownItem({
+  icon,
+  label,
+  onClick,
+  danger = false,
+  disabled = false,
+  className,
+}: DropdownItemProps) {
   const handleClick = () => {
+    if (disabled) return;
     onClick();
   };
 
   return (
-    <button className={styles.item} onClick={handleClick}>
+    <button
+      type="button"
+      className={`${styles.item} ${danger ? styles.itemDanger : ''} ${className || ''}`}
+      onClick={handleClick}
+      data-dropdown-item="true"
+      disabled={disabled}
+    >
       {icon && <span className={styles.icon}>{icon}</span>}
       <span className={styles.label}>{label}</span>
     </button>

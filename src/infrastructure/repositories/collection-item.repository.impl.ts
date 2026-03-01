@@ -48,6 +48,14 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
     return created;
   }
 
+  async delete(collectionId: string, itemId: string): Promise<void> {
+    await backendApiRequest<void>(`/api/v1/collections/${collectionId}/items/${itemId}`, {
+      method: 'DELETE',
+    });
+
+    this.cache.delete(itemId);
+  }
+
   async upload(payload: CollectionItemUploadPayload): Promise<CollectionItem> {
     const formData = new FormData();
     formData.set('projectId', payload.projectId);
