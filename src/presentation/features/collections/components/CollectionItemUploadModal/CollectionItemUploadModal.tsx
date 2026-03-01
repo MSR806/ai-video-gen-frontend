@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Modal } from '@presentation/components/ui';
 import {
-  CreateCollectionItemUseCase,
-  type CollectionItemCreationPayload,
   type ImageMetadata,
   type VideoMetadata,
+  UploadCollectionItemUseCase,
 } from '@core/collection-item';
 import { CollectionItemRepositoryImpl } from '@infra/repositories';
 import { DropZone } from './components/DropZone';
@@ -60,32 +59,18 @@ export function CollectionItemUploadModal({
     setError(null);
 
     try {
-      // In a real app, you would upload the file to a server here
-      // For now, we'll create a mock URL (in reality this would be the uploaded file URL)
-      const mockFileUrl = URL.createObjectURL(selectedFile);
-      const mockThumbnailUrl = mockFileUrl; // Same for thumbnail in this mock
+      const metadata = await getFileMetadata(selectedFile);
 
-      // Determine media type
-      const mediaType = selectedFile.type.startsWith('image/') ? 'image' : 'video';
-
-      // Create metadata using FileReader to get image dimensions (simplified for mock)
-      const metadata = await getFileMetadata(selectedFile, mockThumbnailUrl);
-
-      // Create collection item payload
-      const payload: CollectionItemCreationPayload = {
+      const repository = new CollectionItemRepositoryImpl();
+      const uploadCollectionItemUseCase = new UploadCollectionItemUseCase(repository);
+      await uploadCollectionItemUseCase.execute({
         projectId,
         collectionId,
-        mediaType,
-        name: name || selectedFile.name,
+        name: name || selectedFile.name.replace(/\.[^/.]+$/, ''),
         description,
-        url: mockFileUrl,
+        file: selectedFile,
         metadata,
-      };
-
-      // Execute use case
-      const repository = new CollectionItemRepositoryImpl();
-      const createCollectionItemUseCase = new CreateCollectionItemUseCase(repository);
-      await createCollectionItemUseCase.execute(payload);
+      });
 
       setUploadState('success');
       // Call success callback and close modal
@@ -99,10 +84,7 @@ export function CollectionItemUploadModal({
     }
   };
 
-  const getFileMetadata = async (
-    file: File,
-    thumbnailUrl: string,
-  ): Promise<ImageMetadata | VideoMetadata> => {
+  const getFileMetadata = async (file: File): Promise<ImageMetadata | VideoMetadata> => {
     const isImage = file.type.startsWith('image/');
     const format = file.type.split('/')[1] || 'unknown';
 
@@ -113,7 +95,7 @@ export function CollectionItemUploadModal({
         width: dimensions.width,
         height: dimensions.height,
         format,
-        thumbnailUrl,
+        thumbnailUrl: '',
       };
     } else {
       // Video metadata (simplified - in reality you'd use a video element to get dimensions and duration)
@@ -122,7 +104,7 @@ export function CollectionItemUploadModal({
         height: 1080,
         duration: 10, // Placeholder
         format,
-        thumbnailUrl,
+        thumbnailUrl: '',
       };
     }
   };

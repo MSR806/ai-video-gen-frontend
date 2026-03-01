@@ -2,6 +2,7 @@ import type {
   CollectionItem,
   CollectionItemCreationPayload,
   CollectionItemGenerationParams,
+  CollectionItemUploadPayload,
   CollectionItemRepository,
   GeneratedCollectionItem,
 } from '@core/collection-item';
@@ -40,6 +41,30 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
+      },
+    );
+
+    this.cache.set(created.id, created);
+    return created;
+  }
+
+  async upload(payload: CollectionItemUploadPayload): Promise<CollectionItem> {
+    const formData = new FormData();
+    formData.set('projectId', payload.projectId);
+    if (typeof payload.name === 'string' && payload.name.trim().length > 0) {
+      formData.set('name', payload.name);
+    }
+    formData.set('description', payload.description || '');
+    if (payload.metadata) {
+      formData.set('metadata', JSON.stringify(payload.metadata));
+    }
+    formData.set('file', payload.file);
+
+    const created = await backendApiRequest<CollectionItem>(
+      `/api/v1/collections/${payload.collectionId}/items/upload`,
+      {
+        method: 'POST',
+        body: formData,
       },
     );
 

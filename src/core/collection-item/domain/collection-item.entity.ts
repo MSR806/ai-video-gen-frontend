@@ -40,6 +40,18 @@ export interface CollectionItem {
 export type CollectionItemCreationPayload = Omit<CollectionItem, 'id'>;
 
 /**
+ * Multipart upload payload for collection item creation.
+ */
+export interface CollectionItemUploadPayload {
+  projectId: string;
+  collectionId: string;
+  name?: string;
+  description?: string;
+  file: File;
+  metadata?: ImageMetadata | VideoMetadata;
+}
+
+/**
  * Aspect ratio options for AI generation.
  */
 export type AspectRatio = 'square' | 'portrait' | 'landscape';

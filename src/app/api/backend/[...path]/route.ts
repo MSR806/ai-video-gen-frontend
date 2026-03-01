@@ -34,11 +34,12 @@ async function proxyToBackend(
   headers.delete('host');
 
   const method = request.method.toUpperCase();
+  const requestBody = BODYLESS_METHODS.has(method) ? undefined : await request.arrayBuffer();
 
   const upstreamResponse = await fetch(targetUrl.toString(), {
     method,
     headers,
-    body: BODYLESS_METHODS.has(method) ? undefined : await request.text(),
+    body: requestBody && requestBody.byteLength > 0 ? requestBody : undefined,
     cache: 'no-store',
     redirect: 'manual',
   });
