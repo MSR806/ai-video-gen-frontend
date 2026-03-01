@@ -17,10 +17,10 @@ This project follows **Clean Architecture** principles to maintain strict separa
 
 **Contains pure business logic and types. NO React code. NO Fetch calls.**
 
-- **Domain (`src/core/domain`)**: Application-wide data models (Entities).
-- **Application (`src/core/application`)**:
-  - **Use Cases**: Specific user actions (e.g., `CreateTaskUseCase`).
-  - **Ports**: Interfaces defining _what_ data is needed (e.g., `TaskRepository`), but not _how_ to get it.
+- Feature-first organization:
+  - `domain/`: Entities and feature data contracts.
+  - `ports/`: Repository interfaces.
+  - `use-cases/`: Application actions and orchestration logic.
 
 ### 2. Infrastructure (`src/infrastructure`) - The "Adapters"
 
@@ -48,16 +48,20 @@ src/core/
 │   ├── ports/               # project.repository.port.ts
 │   ├── use-cases/           # get-all-projects.use-case.ts, etc.
 │   └── index.ts             # Barrel export for public API
-├── character/
+├── collection/
 │   ├── domain/
 │   ├── ports/
 │   ├── use-cases/
 │   └── index.ts
-├── location/
-│   └── ... (same structure)
+├── collection-item/
+│   ├── data/                # camera-equipment.ts, etc.
+│   ├── domain/
+│   ├── ports/
+│   ├── use-cases/
+│   └── index.ts
 ├── scene/
 │   └── ... (same structure)
-└── index.ts                 # Unified export: export * from './project'
+└── index.ts                 # Unified export: project/collection/collection-item/scene
 ```
 
 **Benefits**:
@@ -75,8 +79,8 @@ src/core/
 src/infrastructure/
 └── repositories/
     ├── project.repository.impl.ts      # ProjectRepositoryImpl
-    ├── character.repository.impl.ts    # CharacterRepositoryImpl
-    ├── location.repository.impl.ts     # LocationRepositoryImpl
+    ├── collection.repository.impl.ts   # CollectionRepositoryImpl
+    ├── collection-item.repository.impl.ts # CollectionItemRepositoryImpl
     ├── scene.repository.impl.ts        # SceneRepositoryImpl
     └── index.ts                        # Barrel export
 ```
@@ -98,17 +102,9 @@ src/presentation/
 │   ├── layout/          # Layout components (Header, Sidebar, PageContainer)
 │   └── feedback/        # Modals, Toasts, Loaders, Dialogs
 ├── features/            # Feature-specific components
-│   └── [feature-name]/  # e.g., projects/, users/, settings/
-│       ├── ComponentA/  # Complex components get their own folder
-│       │   ├── ComponentA.tsx
-│       │   ├── ComponentA.module.css
-│       │   ├── types.ts (optional)
-│       │   └── components/  # Sub-components (if needed)
-│       │       ├── SubComponent.tsx
-│       │       └── details/
-│       │           └── DetailView.tsx
-│       ├── SimpleComponent.tsx  # Simple components: single file
-│       └── hooks/       # Feature-specific hooks
+│   ├── projects/        # Project workspace composition and page-level orchestration
+│   ├── collections/     # Collection list, details, and collection-item UI
+│   └── scenes/          # Plain-text scenes editor
 ├── hooks/               # Shared hooks used across features
 └── styles/              # Global styles and design tokens
     ├── tokens/
@@ -118,9 +114,9 @@ src/presentation/
 
 **IMPORTANT**:
 
-- **NO** `features/[feature]/components/` folder - components go directly in feature folder
-- Example: `features/projects/ProjectCard.tsx` (simple)
-- Example: `features/projects/ProjectDetailPage/` (complex with sub-components)
+- `features/[feature]/components/` is allowed and preferred for non-trivial features.
+- Keep shared generic UI in `presentation/components/`.
+- Keep project-level composition in `features/projects/` while reusable domain UI lives in its own feature folder.
 
 ---
 
@@ -172,21 +168,21 @@ Button/
 
 - Tied to a specific domain/feature
 - Can import and execute Use Cases from `@core/[feature]`
-- **Must NOT** be imported by other features
+- Can be imported by an orchestrator feature (for example `projects`) when composing the workspace UI
 - Break down large components (>200 lines) into sub-components in a `components/` subfolder
 
 ---
 
 ## 🔌 Import Rules
 
-| Layer                | Can Import From                          |
-| -------------------- | ---------------------------------------- |
-| `components/ui/`     | Only `@presentation/styles`              |
-| `components/layout/` | `components/ui/`, `@presentation/styles` |
-| `features/[x]/`      | `@core/*`, `components/*`, `hooks/*`     |
-| `app/` (pages)       | Everything (this is the wiring layer)    |
+| Layer                | Can Import From                                                                           |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| `components/ui/`     | Only `@presentation/styles`                                                               |
+| `components/layout/` | `components/ui/`, `@presentation/styles`                                                  |
+| `features/[x]/`      | `@core/*`, `components/*`, `hooks/*`, and feature-to-feature imports for page composition |
+| `app/` (pages)       | Everything (this is the wiring layer)                                                     |
 
-**Never import from one feature into another.** If two features need the same component, move it to `components/`.
+Prefer avoiding circular feature dependencies. If two features need the same generic component, move it to `components/`.
 
 ---
 

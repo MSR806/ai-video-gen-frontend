@@ -9,3 +9,13 @@ export interface Collection {
   tag: string;
   description: string;
 }
+
+/**
+ * Collection creation payload.
+ */
+export interface CollectionCreationPayload {
+  projectId: string;
+  name: string;
+  tag: string;
+  description: string;
+}

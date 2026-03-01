@@ -1,4 +1,4 @@
-import type { Project } from '../domain/project.entity';
+import type { Project, ProjectCreationPayload } from '../domain/project.entity';
 
 /**
  * Repository interface for Project persistence
@@ -7,4 +7,5 @@ import type { Project } from '../domain/project.entity';
 export interface ProjectRepository {
   getAllProjects(): Promise<Project[]>;
   getById(id: string): Promise<Project | null>;
+  create(payload: ProjectCreationPayload): Promise<Project>;
 }

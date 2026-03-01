@@ -1,77 +1,62 @@
-import type { Collection, CollectionRepository } from '@core/collection';
+import type { Collection, CollectionCreationPayload, CollectionRepository } from '@core/collection';
+import { BackendApiError, backendApiRequest } from '@infra/http/backend-api';
+
+interface CollectionDto {
+  id: string;
+  projectId: string;
+  name: string;
+  tag: string;
+  description: string;
+}
+
+function toCollection(dto: CollectionDto): Collection {
+  return {
+    id: dto.id,
+    projectId: dto.projectId,
+    name: dto.name,
+    tag: dto.tag,
+    description: dto.description,
+  };
+}
 
 /**
- * Implementation of CollectionRepository.
+ * API-backed implementation of CollectionRepository.
  */
 export class CollectionRepositoryImpl implements CollectionRepository {
-  private collections: Collection[] = [
-    {
-      id: 'coll-1',
-      projectId: '1',
-      name: 'Narration Shots',
-      tag: 'voiceover',
-      description:
-        'Primary narration-focused visuals for intro, transitions, and closing voice-over moments.',
-    },
-    {
-      id: 'coll-2',
-      projectId: '1',
-      name: 'Presenter Angles',
-      tag: 'presenter',
-      description: 'Presenter-led visuals that explain product capabilities and walkthrough steps.',
-    },
-    {
-      id: 'coll-3',
-      projectId: '1',
-      name: 'Customer Moments',
-      tag: 'customer',
-      description: 'Customer journey visuals focused on problem, discovery, and product adoption.',
-    },
-    {
-      id: 'coll-4',
-      projectId: '1',
-      name: 'Testimonial Clips',
-      tag: 'testimonial',
-      description: 'Short interview and testimonial moments with proof points and outcomes.',
-    },
-    {
-      id: 'coll-5',
-      projectId: '1',
-      name: 'Office Environments',
-      tag: 'workspace',
-      description:
-        'Clean workplace backgrounds for collaboration, demos, and product usage scenarios.',
-    },
-    {
-      id: 'coll-6',
-      projectId: '1',
-      name: 'Studio Setups',
-      tag: 'studio',
-      description: 'Controlled studio visuals with close-up framing and polished lighting.',
-    },
-    {
-      id: 'coll-7',
-      projectId: '1',
-      name: 'Coworking Spaces',
-      tag: 'environment',
-      description: 'Energetic collaborative spaces that support startup and growth visuals.',
-    },
-    {
-      id: 'coll-8',
-      projectId: '1',
-      name: 'Boardroom Scenes',
-      tag: 'meeting',
-      description: 'Formal meeting visuals for planning, alignment, and decision moments.',
-    },
-  ];
-
   async getAllByProjectId(projectId: string): Promise<Collection[]> {
-    const filtered = this.collections.filter((collection) => collection.projectId === projectId);
-    return Promise.resolve(filtered);
+    const response = await backendApiRequest<CollectionDto[]>(
+      `/api/v1/projects/${projectId}/collections`,
+    );
+    return response.map(toCollection);
   }
 
   async getById(id: string): Promise<Collection | null> {
-    const collection = this.collections.find((item) => item.id === id);
-    return Promise.resolve(collection || null);
+    try {
+      const response = await backendApiRequest<CollectionDto>(`/api/v1/collections/${id}`);
+      return toCollection(response);
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async create(payload: CollectionCreationPayload): Promise<Collection> {
+    const response = await backendApiRequest<CollectionDto>(
+      `/api/v1/projects/${payload.projectId}/collections`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: payload.name,
+          tag: payload.tag,
+          description: payload.description,
+        }),
+      },
+    );
+    return toCollection(response);
   }
 }

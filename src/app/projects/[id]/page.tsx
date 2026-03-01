@@ -58,6 +58,7 @@ export default async function ProjectPage({ params }: PageProps) {
     <div>
       <ProjectHeader projectName={project.name} />
       <ProjectDetailPage
+        projectId={id}
         collections={collections}
         scenes={scenes}
         collectionItems={collectionItems}

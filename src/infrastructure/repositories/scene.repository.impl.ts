@@ -1,47 +1,75 @@
-import type { Scene } from '@core/scene';
-import type { SceneRepository } from '@core/scene';
+import type { Scene, SceneRepository } from '@core/scene';
+import { BackendApiError, backendApiRequest } from '@infra/http/backend-api';
 
-/**
- * Implementation of SceneRepository
- */
-declare global {
-  var __mockScenes: Scene[] | undefined;
+interface SceneSyncResponse {
+  success: boolean;
+  scenes: Scene[];
 }
 
-export class SceneRepositoryImpl implements SceneRepository {
-  private get scenes(): Scene[] {
-    if (!global.__mockScenes) {
-      global.__mockScenes = [];
-    }
-    return global.__mockScenes;
-  }
+interface SceneSyncInput {
+  id?: string;
+  name?: string;
+  sceneNumber?: number;
+  content?: Record<string, unknown>;
+}
 
-  private set scenes(value: Scene[]) {
-    global.__mockScenes = value;
-  }
+/**
+ * API-backed implementation of SceneRepository.
+ */
+export class SceneRepositoryImpl implements SceneRepository {
+  private cache = new Map<string, Scene>();
 
   async getAllByProjectId(projectId: string): Promise<Scene[]> {
-    const filtered = this.scenes.filter((s) => s.projectId === projectId);
-    return Promise.resolve(filtered);
+    const scenes = await backendApiRequest<Scene[]>(`/api/v1/projects/${projectId}/scenes`);
+
+    scenes.forEach((scene) => {
+      this.cache.set(scene.id, scene);
+    });
+
+    return scenes;
   }
 
   async getById(id: string): Promise<Scene | null> {
-    const scene = this.scenes.find((s) => s.id === id);
-    return Promise.resolve(scene || null);
+    if (this.cache.has(id)) {
+      return this.cache.get(id) || null;
+    }
+
+    return null;
   }
 
   async bulkSave(scenes: Scene[]): Promise<void> {
-    // Replace all scenes for the project represented by this payload.
-    if (scenes.length === 0) return Promise.resolve();
+    if (scenes.length === 0) return;
 
     const projectId = scenes[0].projectId;
+    const payloadScenes: SceneSyncInput[] = scenes.map((scene) => ({
+      id: scene.id,
+      name: scene.name,
+      sceneNumber: scene.sceneNumber,
+      content: scene.content,
+    }));
 
-    // Remove all old scenes for this project
-    this.scenes = this.scenes.filter((s) => s.projectId !== projectId);
+    try {
+      const response = await backendApiRequest<SceneSyncResponse>(
+        `/api/v1/projects/${projectId}/scenes`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ scenes: payloadScenes }),
+        },
+      );
 
-    // Add new scenes
-    this.scenes.push(...scenes);
-
-    return Promise.resolve();
+      if (response.success) {
+        response.scenes.forEach((scene) => {
+          this.cache.set(scene.id, scene);
+        });
+      }
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        return;
+      }
+      throw error;
+    }
   }
 }

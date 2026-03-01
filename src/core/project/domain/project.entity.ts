@@ -15,3 +15,12 @@ export interface Project {
   createdAt: Date;
   updatedAt: Date;
 }
+
+/**
+ * Project creation payload.
+ */
+export interface ProjectCreationPayload {
+  name: string;
+  description: string;
+  status?: ProjectStatus;
+}

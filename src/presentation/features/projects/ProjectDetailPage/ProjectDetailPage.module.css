@@ -136,6 +136,12 @@
   background: var(--bg-base);
 }
 
+.scenesLoading {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  padding: var(--space-8) 0 0 var(--space-4);
+}
+
 /* Details Panel */
 .detailsPanel {
   background: var(--bg-raised);

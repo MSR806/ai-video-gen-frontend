@@ -1,18 +1,18 @@
 # AI Video Content Generator
 
-A next-generation platform for creating, managing, and organizing AI-generated video content. This application assists creators in structuring their video projects with characters, locations, and scenes.
+A platform for creating, managing, and organizing AI-generated video content. The current model is built around projects, collections, collection items, and scenes.
 
 ## 🚀 Features
 
 - **Project Management**: Create and track video projects with status workflows (Draft, In Progress, Completed).
-- **Character Hub**: Define detailed character profiles with roles, personality traits, and physical descriptions.
-- **Location Scout**: Manage virtual filming locations with type (Interior/Exterior), lighting, and mood settings.
-- **Scene Builder**: Organize narrative flows with detailed scene breakdowns, durations, and objectives.
-- **Interactive UI**: Modern, glassmorphism-inspired interface with responsive design.
+- **Collections**: Organize project context into flexible collections with free-form tags.
+- **Collection Items**: Upload or generate image/video items scoped to a selected collection.
+- **Scenes Editor**: Edit plain-text scene cards with continuous scroll and autosave.
+- **Interactive UI**: Desktop-focused project workspace for collections, scenes, and shots.
 
 ## 🛠 Tech Stack
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Styling**: CSS Modules with Design Tokens (no Tailwind)
 - **Architecture**: Clean Architecture (Feature-First Core)
@@ -22,7 +22,7 @@ A next-generation platform for creating, managing, and organizing AI-generated v
 
 The project follows a **Feature-First Clean Architecture**:
 
-- **Core** (`@core/*`): Pure business logic organized by feature (Project, Character, Location, Scene).
+- **Core** (`@core/*`): Pure business logic organized by feature (Project, Collection, CollectionItem, Scene).
 - **Infrastructure** (`@infra/*`): Implementation details (API calls, Repositories).
 - **Presentation** (`@presentation/*`): React components and UI logic.
 
@@ -34,14 +34,22 @@ The project follows a **Feature-First Clean Architecture**:
    bun install
    ```
 
-2. **Run Development Server**:
+2. **Configure Backend URL**:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+3. **Run Development Server**:
 
    ```bash
    bun run dev
    ```
 
-3. **Open Application**:
+4. **Open Application**:
    Visit [http://localhost:3000](http://localhost:3000) inside your browser.
+
+The frontend expects the backend API at `BACKEND_API_URL` (default `http://localhost:8000`).
 
 ## 📦 Project Structure
 
@@ -50,9 +58,9 @@ src/
 ├── app/                  # Next.js App Router pages
 ├── core/                 # Business logic (Entities, Use Cases, Ports)
 │   ├── project/
-│   ├── character/
-│   ├── location/
+│   ├── collection/
+│   ├── collection-item/
 │   └── scene/
-├── infrastructure/       # Data Access & External Services
-└── presentation/         # UI Components & Features
+├── infrastructure/       # Repository implementations
+└── presentation/         # UI components and features
 ```
