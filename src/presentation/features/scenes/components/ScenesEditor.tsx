@@ -1,26 +1,51 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Scene } from '@core/scene';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Scene, SceneCreatePayload, SceneUpdatePayload } from '@core/scene';
 import styles from './ScenesEditor.module.css';
 
 interface ScenesEditorProps {
   projectId: string;
   scenes: Scene[];
-  onSave: (scenes: Scene[]) => Promise<void> | void;
+  onSceneCreate: (payload: SceneCreatePayload) => Promise<Scene[]>;
+  onSceneUpdate: (sceneId: string, payload: SceneUpdatePayload) => Promise<Scene>;
+  onSceneDelete: (sceneId: string) => Promise<Scene[]>;
 }
 
 type SceneDraft = Scene;
 
-export function ScenesEditor({ projectId, scenes, onSave }: ScenesEditorProps) {
+type PendingScenePatch = SceneUpdatePayload;
+
+const SAVE_DEBOUNCE_MS = 800;
+
+export function ScenesEditor({
+  projectId,
+  scenes,
+  onSceneCreate,
+  onSceneUpdate,
+  onSceneDelete,
+}: ScenesEditorProps) {
   const initialScenes = useMemo(() => normalizeScenes(projectId, scenes), [projectId, scenes]);
   const [draftScenes, setDraftScenes] = useState<SceneDraft[]>(initialScenes);
   const [activeSceneId, setActiveSceneId] = useState<string>(() => {
     return initialScenes[0]?.id ?? '';
   });
+  const [isMutating, setIsMutating] = useState(false);
 
   const cardRefs = useRef<Record<string, HTMLElement | null>>({});
   const bodyRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasUserChangesRef = useRef(false);
+  const pendingPatchesRef = useRef<Map<string, PendingScenePatch>>(new Map());
+  const isFlushingRef = useRef(false);
+
+  useEffect(() => {
+    const normalized = normalizeScenes(projectId, scenes);
+    setDraftScenes(normalized);
+    setActiveSceneId((previous) => {
+      if (normalized.some((scene) => scene.id === previous)) {
+        return previous;
+      }
+      return normalized[0]?.id ?? '';
+    });
+  }, [projectId, scenes]);
 
   useEffect(() => {
     Object.values(bodyRefs.current).forEach((node) => {
@@ -29,33 +54,74 @@ export function ScenesEditor({ projectId, scenes, onSave }: ScenesEditorProps) {
   }, [draftScenes]);
 
   useEffect(() => {
-    if (!hasUserChangesRef.current) {
-      return;
-    }
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(() => {
-      const normalizedScenes = draftScenes.map((scene, index) => ({
-        ...scene,
-        sceneNumber: index + 1,
-        name: scene.name.trim() || `Untitled Scene ${index + 1}`,
-        content: normalizeSceneContent(scene.content),
-      }));
-
-      void Promise.resolve(onSave(normalizedScenes)).finally(() => {
-        hasUserChangesRef.current = false;
-      });
-    }, 1000);
-
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [draftScenes, onSave]);
+  }, []);
+
+  const flushPendingUpdates = useCallback(async () => {
+    if (isFlushingRef.current || pendingPatchesRef.current.size === 0) {
+      return;
+    }
+
+    isFlushingRef.current = true;
+    const queuedPatches = Array.from(pendingPatchesRef.current.entries());
+    pendingPatchesRef.current.clear();
+
+    try {
+      for (const [sceneId, patch] of queuedPatches) {
+        await onSceneUpdate(sceneId, patch);
+      }
+    } catch (error) {
+      queuedPatches.forEach(([sceneId, patch]) => {
+        const existingPatch = pendingPatchesRef.current.get(sceneId) ?? {};
+        pendingPatchesRef.current.set(sceneId, {
+          ...patch,
+          ...existingPatch,
+        });
+      });
+      throw error;
+    } finally {
+      isFlushingRef.current = false;
+      if (pendingPatchesRef.current.size > 0) {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+
+        saveTimeoutRef.current = setTimeout(() => {
+          void flushPendingUpdates().catch(() => {
+            // Error feedback is handled by the parent callback.
+          });
+        }, SAVE_DEBOUNCE_MS);
+      }
+    }
+  }, [onSceneUpdate]);
+
+  const scheduleFlush = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      void flushPendingUpdates().catch(() => {
+        // Error feedback is handled by the parent callback.
+      });
+    }, SAVE_DEBOUNCE_MS);
+  }, [flushPendingUpdates]);
+
+  const queueScenePatch = useCallback(
+    (sceneId: string, patch: PendingScenePatch) => {
+      const existingPatch = pendingPatchesRef.current.get(sceneId) ?? {};
+      pendingPatchesRef.current.set(sceneId, {
+        ...existingPatch,
+        ...patch,
+      });
+      scheduleFlush();
+    },
+    [scheduleFlush],
+  );
 
   const sceneLabels = useMemo(
     () =>
@@ -74,43 +140,106 @@ export function ScenesEditor({ projectId, scenes, onSave }: ScenesEditorProps) {
     });
   };
 
-  const insertSceneAt = (index: number) => {
-    hasUserChangesRef.current = true;
-    const newSceneId = crypto.randomUUID();
+  const updateScene = (sceneId: string, patch: PendingScenePatch) => {
+    if (isMutating) {
+      return;
+    }
+
     setDraftScenes((prev) => {
-      const next = [...prev];
-      next.splice(index, 0, {
-        id: newSceneId,
-        projectId,
-        name: `Untitled Scene ${index + 1}`,
-        sceneNumber: index + 1,
-        content: createTextContent(''),
+      const nextScenes = prev.map((scene) => {
+        if (scene.id !== sceneId) {
+          return scene;
+        }
+
+        return {
+          ...scene,
+          ...patch,
+          content:
+            patch.content !== undefined
+              ? normalizeSceneContent(patch.content)
+              : normalizeSceneContent(scene.content),
+        };
       });
-      return reindexScenes(next);
+      return reindexScenes(nextScenes);
     });
-    setActiveSceneId(newSceneId);
 
-    requestAnimationFrame(() => {
-      cardRefs.current[newSceneId]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+    queueScenePatch(sceneId, patch);
   };
 
-  const updateScene = (sceneId: string, patch: Partial<SceneDraft>) => {
-    hasUserChangesRef.current = true;
-    setDraftScenes((prev) =>
-      prev.map((scene) => (scene.id === sceneId ? { ...scene, ...patch } : scene)),
-    );
-  };
+  const normalizeTitleOnBlur = (sceneId: string, rawName: string, fallbackSceneNumber: number) => {
+    if (isMutating) {
+      return;
+    }
 
-  const normalizeTitleOnBlur = (sceneId: string) => {
-    hasUserChangesRef.current = true;
+    const normalizedName = rawName.trim() || `Untitled Scene ${fallbackSceneNumber}`;
     setDraftScenes((prev) =>
       prev.map((scene, index) => {
         if (scene.id !== sceneId) return scene;
-        const normalizedName = scene.name.trim() || `Untitled Scene ${index + 1}`;
-        return { ...scene, name: normalizedName };
+        const fallbackName = `Untitled Scene ${index + 1}`;
+        const nextName = normalizedName.trim() || fallbackName;
+        return { ...scene, name: nextName };
       }),
     );
+    queueScenePatch(sceneId, { name: normalizedName });
+  };
+
+  const applyCanonicalScenes = (nextScenes: Scene[], focusSceneId?: string) => {
+    const normalized = normalizeScenes(projectId, nextScenes);
+    setDraftScenes(normalized);
+    setActiveSceneId((previous) => {
+      if (focusSceneId && normalized.some((scene) => scene.id === focusSceneId)) {
+        return focusSceneId;
+      }
+      if (normalized.some((scene) => scene.id === previous)) {
+        return previous;
+      }
+      return normalized[0]?.id ?? '';
+    });
+  };
+
+  const insertSceneAt = async (index: number) => {
+    if (isMutating) {
+      return;
+    }
+
+    setIsMutating(true);
+    const newSceneId = crypto.randomUUID();
+    const sceneNumber = index + 1;
+
+    try {
+      await flushPendingUpdates();
+      const nextScenes = await onSceneCreate({
+        id: newSceneId,
+        position: sceneNumber,
+        name: `Untitled Scene ${sceneNumber}`,
+        content: createTextContent(''),
+      });
+
+      applyCanonicalScenes(nextScenes, newSceneId);
+
+      requestAnimationFrame(() => {
+        cardRefs.current[newSceneId]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const deleteSceneById = async (sceneId: string) => {
+    if (isMutating) {
+      return;
+    }
+
+    setIsMutating(true);
+
+    try {
+      await flushPendingUpdates();
+      pendingPatchesRef.current.delete(sceneId);
+      const nextScenes = await onSceneDelete(sceneId);
+      applyCanonicalScenes(nextScenes);
+    } finally {
+      setIsMutating(false);
+    }
   };
 
   return (
@@ -131,7 +260,7 @@ export function ScenesEditor({ projectId, scenes, onSave }: ScenesEditorProps) {
       </aside>
 
       <section className={styles.scenesColumn}>
-        <InsertRow onAdd={() => insertSceneAt(0)} />
+        <InsertRow onAdd={() => void insertSceneAt(0)} disabled={isMutating} />
 
         {draftScenes.map((scene, index) => (
           <div key={scene.id} className={styles.sceneBlock}>
@@ -149,9 +278,24 @@ export function ScenesEditor({ projectId, scenes, onSave }: ScenesEditorProps) {
                   value={scene.name}
                   onFocus={() => setActiveSceneId(scene.id)}
                   onChange={(event) => updateScene(scene.id, { name: event.target.value })}
-                  onBlur={() => normalizeTitleOnBlur(scene.id)}
+                  onBlur={(event) =>
+                    normalizeTitleOnBlur(scene.id, event.currentTarget.value, index + 1)
+                  }
                   placeholder={`Untitled Scene ${index + 1}`}
+                  disabled={isMutating}
                 />
+                <button
+                  type="button"
+                  className={styles.deleteSceneButton}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void deleteSceneById(scene.id);
+                  }}
+                  aria-label={`Delete scene ${scene.sceneNumber}`}
+                  disabled={isMutating}
+                >
+                  Delete
+                </button>
               </div>
 
               <textarea
@@ -168,10 +312,11 @@ export function ScenesEditor({ projectId, scenes, onSave }: ScenesEditorProps) {
                 onInput={(event) => resizeBodyTextarea(event.currentTarget)}
                 placeholder="Write scene text..."
                 rows={1}
+                disabled={isMutating}
               />
             </article>
 
-            <InsertRow onAdd={() => insertSceneAt(index + 1)} />
+            <InsertRow onAdd={() => void insertSceneAt(index + 1)} disabled={isMutating} />
           </div>
         ))}
       </section>
@@ -179,11 +324,16 @@ export function ScenesEditor({ projectId, scenes, onSave }: ScenesEditorProps) {
   );
 }
 
-function InsertRow({ onAdd }: { onAdd: () => void }) {
+function InsertRow({ onAdd, disabled }: { onAdd: () => void; disabled: boolean }) {
   return (
     <div className={styles.insertRow}>
       <div className={styles.insertLine}></div>
-      <button className={styles.insertButton} onClick={onAdd} aria-label="Insert scene">
+      <button
+        className={styles.insertButton}
+        onClick={onAdd}
+        aria-label="Insert scene"
+        disabled={disabled}
+      >
         +
       </button>
       <div className={styles.insertLine}></div>

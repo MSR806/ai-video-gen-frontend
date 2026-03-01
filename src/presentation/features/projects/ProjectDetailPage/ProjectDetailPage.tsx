@@ -5,7 +5,14 @@ import { useRouter } from 'next/navigation';
 import type { Collection, Scene, CollectionItem } from '@core';
 import { CreateCollectionUseCase, type CollectionCreationPayload } from '@core/collection';
 import { DeleteCollectionItemUseCase, GetCollectionItemsUseCase } from '@core/collection-item';
-import { GetProjectScenesUseCase, SyncScenesUseCase } from '@core/scene';
+import {
+  CreateSceneUseCase,
+  DeleteSceneUseCase,
+  GetProjectScenesUseCase,
+  type SceneCreatePayload,
+  type SceneUpdatePayload,
+  UpdateSceneUseCase,
+} from '@core/scene';
 import {
   CollectionItemRepositoryImpl,
   CollectionRepositoryImpl,
@@ -324,16 +331,50 @@ export function ProjectDetailPage({
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  const handleScenesSave = useCallback(
-    async (nextScenes: Scene[]) => {
+  const handleSceneCreate = useCallback(
+    async (payload: SceneCreatePayload): Promise<Scene[]> => {
       try {
         const sceneRepository = new SceneRepositoryImpl();
-        const syncScenesUseCase = new SyncScenesUseCase(sceneRepository);
-        await syncScenesUseCase.execute(projectId, nextScenes);
+        const createSceneUseCase = new CreateSceneUseCase(sceneRepository);
+        const nextScenes = await createSceneUseCase.execute(projectId, payload);
         setLoadedScenes(nextScenes);
+        return nextScenes;
       } catch (error) {
-        console.error('Error saving scenes:', error);
-        addToast('Failed to save scenes. Please try again.', 'error');
+        console.error('Error creating scene:', error);
+        addToast('Failed to create scene. Please try again.', 'error');
+        throw error;
+      }
+    },
+    [addToast, projectId],
+  );
+
+  const handleSceneUpdate = useCallback(
+    async (sceneId: string, payload: SceneUpdatePayload): Promise<Scene> => {
+      try {
+        const sceneRepository = new SceneRepositoryImpl();
+        const updateSceneUseCase = new UpdateSceneUseCase(sceneRepository);
+        return await updateSceneUseCase.execute(projectId, sceneId, payload);
+      } catch (error) {
+        console.error('Error updating scene:', error);
+        addToast('Failed to save scene. Please try again.', 'error');
+        throw error;
+      }
+    },
+    [addToast, projectId],
+  );
+
+  const handleSceneDelete = useCallback(
+    async (sceneId: string): Promise<Scene[]> => {
+      try {
+        const sceneRepository = new SceneRepositoryImpl();
+        const deleteSceneUseCase = new DeleteSceneUseCase(sceneRepository);
+        const nextScenes = await deleteSceneUseCase.execute(projectId, sceneId);
+        setLoadedScenes(nextScenes);
+        return nextScenes;
+      } catch (error) {
+        console.error('Error deleting scene:', error);
+        addToast('Failed to delete scene. Please try again.', 'error');
+        throw error;
       }
     },
     [addToast, projectId],
@@ -448,7 +489,13 @@ export function ProjectDetailPage({
         <div className={styles.scenesArea}>
           <div className={styles.scenesContent}>
             {isScenesReady ? (
-              <ScenesEditor projectId={projectId} scenes={loadedScenes} onSave={handleScenesSave} />
+              <ScenesEditor
+                projectId={projectId}
+                scenes={loadedScenes}
+                onSceneCreate={handleSceneCreate}
+                onSceneUpdate={handleSceneUpdate}
+                onSceneDelete={handleSceneDelete}
+              />
             ) : (
               <div className={styles.scenesLoading}>Loading scenes...</div>
             )}

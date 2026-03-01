@@ -1,16 +1,9 @@
-import type { Scene, SceneRepository } from '@core/scene';
-import { BackendApiError, backendApiRequest } from '@infra/http/backend-api';
+import type { Scene, SceneCreatePayload, SceneRepository, SceneUpdatePayload } from '@core/scene';
+import { backendApiRequest } from '@infra/http/backend-api';
 
-interface SceneSyncResponse {
+interface SceneMutationResponse {
   success: boolean;
   scenes: Scene[];
-}
-
-interface SceneSyncInput {
-  id?: string;
-  name?: string;
-  sceneNumber?: number;
-  content?: Record<string, unknown>;
 }
 
 /**
@@ -37,39 +30,69 @@ export class SceneRepositoryImpl implements SceneRepository {
     return null;
   }
 
-  async bulkSave(scenes: Scene[]): Promise<void> {
-    if (scenes.length === 0) return;
-
-    const projectId = scenes[0].projectId;
-    const payloadScenes: SceneSyncInput[] = scenes.map((scene) => ({
-      id: scene.id,
-      name: scene.name,
-      sceneNumber: scene.sceneNumber,
-      content: scene.content,
-    }));
-
-    try {
-      const response = await backendApiRequest<SceneSyncResponse>(
-        `/api/v1/projects/${projectId}/scenes`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ scenes: payloadScenes }),
+  async create(projectId: string, payload: SceneCreatePayload): Promise<Scene[]> {
+    const response = await backendApiRequest<SceneMutationResponse>(
+      `/api/v1/projects/${projectId}/scenes`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify(payload),
+      },
+    );
 
-      if (response.success) {
-        response.scenes.forEach((scene) => {
-          this.cache.set(scene.id, scene);
-        });
-      }
-    } catch (error) {
-      if (error instanceof BackendApiError && error.status === 404) {
-        return;
-      }
-      throw error;
+    if (!response.success) {
+      return [];
     }
+
+    this.replaceProjectCache(projectId, response.scenes);
+    return response.scenes;
+  }
+
+  async update(projectId: string, sceneId: string, payload: SceneUpdatePayload): Promise<Scene> {
+    const scene = await backendApiRequest<Scene>(
+      `/api/v1/projects/${projectId}/scenes/${sceneId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      },
+    );
+
+    this.cache.set(scene.id, scene);
+    return scene;
+  }
+
+  async delete(projectId: string, sceneId: string): Promise<Scene[]> {
+    const response = await backendApiRequest<SceneMutationResponse>(
+      `/api/v1/projects/${projectId}/scenes/${sceneId}`,
+      {
+        method: 'DELETE',
+      },
+    );
+
+    if (!response.success) {
+      return [];
+    }
+
+    this.replaceProjectCache(projectId, response.scenes);
+    return response.scenes;
+  }
+
+  private replaceProjectCache(projectId: string, scenes: Scene[]): void {
+    const nextSceneIds = new Set(scenes.map((scene) => scene.id));
+
+    this.cache.forEach((scene, sceneId) => {
+      if (scene.projectId === projectId && !nextSceneIds.has(sceneId)) {
+        this.cache.delete(sceneId);
+      }
+    });
+
+    scenes.forEach((scene) => {
+      this.cache.set(scene.id, scene);
+    });
   }
 }
