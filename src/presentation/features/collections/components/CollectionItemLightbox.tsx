@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { CollectionItem } from '@core/collection-item';
 import styles from './CollectionItemLightbox.module.css';
 
@@ -8,6 +8,8 @@ interface CollectionItemLightboxProps {
 }
 
 export function CollectionItemLightbox({ item, onClose }: CollectionItemLightboxProps) {
+  const [failedSelectionPreviewKey, setFailedSelectionPreviewKey] = useState<string | null>(null);
+
   useEffect(() => {
     if (!item) return;
 
@@ -39,7 +41,12 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
   };
 
   const previewText = item.description?.trim() || item.name;
-  const thumbnailUrl = item.metadata.thumbnailUrl || item.url;
+  const thumbnailUrl = item.metadata.thumbnailUrl?.trim() ?? '';
+  const previewKey = `${item.id}:${thumbnailUrl}:${item.url}`;
+  const selectionPreviewFailed = failedSelectionPreviewKey === previewKey;
+  const hasUsableVideoThumbnail =
+    item.mediaType === 'video' && thumbnailUrl.length > 0 && thumbnailUrl !== item.url;
+  const imageSelectionSrc = thumbnailUrl.length > 0 ? thumbnailUrl : item.url;
 
   return (
     <div className={styles.backdrop} onClick={handleBackdropClick}>
@@ -61,8 +68,32 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
 
         <aside className={styles.selectionDock}>
           <div className={styles.selectionThumbFrame}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={thumbnailUrl} alt={item.name} className={styles.selectionThumb} />
+            {item.mediaType === 'video' ? (
+              hasUsableVideoThumbnail ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={thumbnailUrl} alt={item.name} className={styles.selectionThumb} />
+                </>
+              ) : selectionPreviewFailed ? (
+                <div className={styles.selectionThumbFallback}>{item.name}</div>
+              ) : (
+                <video
+                  src={item.url}
+                  className={styles.selectionThumb}
+                  muted
+                  loop
+                  autoPlay
+                  playsInline
+                  preload="metadata"
+                  onError={() => setFailedSelectionPreviewKey(previewKey)}
+                />
+              )
+            ) : (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageSelectionSrc} alt={item.name} className={styles.selectionThumb} />
+              </>
+            )}
           </div>
           <p className={styles.selectionText}>{previewText}</p>
         </aside>

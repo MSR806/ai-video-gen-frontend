@@ -19,47 +19,68 @@ export function CollectionItemCard({ item, onClick }: CollectionItemCardProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const thumbnailUrl = item.metadata.thumbnailUrl?.trim();
-  const hasThumbnail = Boolean(thumbnailUrl);
-  const mediaKey = `${item.id}:${thumbnailUrl ?? ''}:${item.url}`;
-  const [failedMediaKey, setFailedMediaKey] = useState<string | null>(null);
-  const mediaUnavailable = failedMediaKey === mediaKey;
+  const thumbnailUrl = item.metadata.thumbnailUrl?.trim() ?? '';
+  const mediaKey = `${item.id}:${thumbnailUrl}:${item.url}`;
+  const hasUsableVideoThumbnail =
+    item.mediaType === 'video' && thumbnailUrl.length > 0 && thumbnailUrl !== item.url;
+
+  const [failedThumbnailKey, setFailedThumbnailKey] = useState<string | null>(null);
+  const [failedVideoPreviewKey, setFailedVideoPreviewKey] = useState<string | null>(null);
 
   const renderMedia = () => {
-    if (mediaUnavailable) {
-      return (
-        <div className={styles.thumbnailFallback}>
-          <p className={styles.fallbackLabel}>{item.name}</p>
-        </div>
-      );
-    }
+    const thumbnailFailed = failedThumbnailKey === mediaKey;
+    const videoPreviewFailed = failedVideoPreviewKey === mediaKey;
 
-    if (item.mediaType === 'video' && !hasThumbnail) {
+    if (item.mediaType === 'video') {
+      if (hasUsableVideoThumbnail && !thumbnailFailed) {
+        return (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={thumbnailUrl}
+              alt={item.name}
+              className={styles.thumbnail}
+              loading="lazy"
+              onError={() => setFailedThumbnailKey(mediaKey)}
+            />
+          </>
+        );
+      }
+
+      if (!videoPreviewFailed) {
+        return (
+          <video
+            src={item.url}
+            className={styles.thumbnail}
+            muted
+            loop
+            autoPlay
+            playsInline
+            preload="metadata"
+            onError={() => setFailedVideoPreviewKey(mediaKey)}
+          />
+        );
+      }
+    } else if (!thumbnailFailed) {
+      const imageSource = thumbnailUrl.length > 0 ? thumbnailUrl : item.url;
       return (
-        <video
-          src={item.url}
-          className={styles.thumbnail}
-          muted
-          loop
-          autoPlay
-          playsInline
-          preload="metadata"
-          onError={() => setFailedMediaKey(mediaKey)}
-        />
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageSource}
+            alt={item.name}
+            className={styles.thumbnail}
+            loading="lazy"
+            onError={() => setFailedThumbnailKey(mediaKey)}
+          />
+        </>
       );
     }
 
     return (
-      <>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={hasThumbnail ? thumbnailUrl : item.url}
-          alt={item.name}
-          className={styles.thumbnail}
-          loading="lazy"
-          onError={() => setFailedMediaKey(mediaKey)}
-        />
-      </>
+      <div className={styles.thumbnailFallback}>
+        <p className={styles.fallbackLabel}>{item.name}</p>
+      </div>
     );
   };
 
