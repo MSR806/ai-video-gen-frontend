@@ -1,35 +1,41 @@
 import type { TabType } from '../types';
+import Link from 'next/link';
+import {
+  getProjectCollectionsPath,
+  getProjectScenesPath,
+  getProjectShotsPath,
+} from '@presentation/features/projects/routes';
 import styles from '../ProjectDetailPage.module.css';
 
 interface TabNavigationProps {
+  projectId: string;
   activeTab: TabType;
-  onTabChange: (tab: TabType) => void;
 }
 
-export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
+export function TabNavigation({ projectId, activeTab }: TabNavigationProps) {
   return (
     <nav className={styles.nav}>
-      <button
+      <Link
+        href={getProjectCollectionsPath(projectId)}
         className={`${styles.navButton} ${activeTab === 'collections' ? styles.active : ''}`}
-        onClick={() => onTabChange('collections')}
         title="Collections"
       >
         🗂️
-      </button>
-      <button
+      </Link>
+      <Link
+        href={getProjectScenesPath(projectId)}
         className={`${styles.navButton} ${activeTab === 'scenes' ? styles.active : ''}`}
-        onClick={() => onTabChange('scenes')}
         title="Scenes"
       >
         📝
-      </button>
-      <button
+      </Link>
+      <Link
+        href={getProjectShotsPath(projectId)}
         className={`${styles.navButton} ${activeTab === 'shots' ? styles.active : ''}`}
-        onClick={() => onTabChange('shots')}
         title="Shots"
       >
         🎬
-      </button>
+      </Link>
     </nav>
   );
 }

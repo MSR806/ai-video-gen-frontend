@@ -2,6 +2,7 @@ import type { Project } from '@core/project';
 import Link from 'next/link';
 import { Card } from '@presentation/components/ui/Card';
 import { Badge } from '@presentation/components/ui/Badge';
+import { getProjectOverviewPath } from './routes';
 import styles from './ProjectCard.module.css';
 
 interface ProjectCardProps {
@@ -33,7 +34,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
   };
 
   return (
-    <Link href={`/projects/${project.id}`} className={styles.link}>
+    <Link href={getProjectOverviewPath(project.id)} className={styles.link}>
       <Card className={styles.projectCard}>
         <div className={styles.content}>
           <h3 className={styles.title}>{project.name}</h3>

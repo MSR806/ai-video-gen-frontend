@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { CollectionItem } from '@core/collection-item';
 import styles from './CollectionItemCard.module.css';
 
@@ -18,34 +19,57 @@ export function CollectionItemCard({ item, onClick }: CollectionItemCardProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  return (
-    <div className={styles.card} onClick={handleClick}>
-      <div className={styles.thumbnailContainer}>
+  const thumbnailUrl = item.metadata.thumbnailUrl?.trim();
+  const hasThumbnail = Boolean(thumbnailUrl);
+  const mediaKey = `${item.id}:${thumbnailUrl ?? ''}:${item.url}`;
+  const [failedMediaKey, setFailedMediaKey] = useState<string | null>(null);
+  const mediaUnavailable = failedMediaKey === mediaKey;
+
+  const renderMedia = () => {
+    if (mediaUnavailable) {
+      return (
+        <div className={styles.thumbnailFallback}>
+          <p className={styles.fallbackLabel}>{item.name}</p>
+        </div>
+      );
+    }
+
+    if (item.mediaType === 'video' && !hasThumbnail) {
+      return (
+        <video
+          src={item.url}
+          className={styles.thumbnail}
+          muted
+          loop
+          autoPlay
+          playsInline
+          preload="metadata"
+          onError={() => setFailedMediaKey(mediaKey)}
+        />
+      );
+    }
+
+    return (
+      <>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={item.metadata.thumbnailUrl}
+          src={hasThumbnail ? thumbnailUrl : item.url}
           alt={item.name}
           className={styles.thumbnail}
           loading="lazy"
+          onError={() => setFailedMediaKey(mediaKey)}
         />
+      </>
+    );
+  };
+
+  return (
+    <button type="button" className={styles.card} onClick={handleClick} aria-label={item.name}>
+      <div className={styles.thumbnailContainer}>
+        {renderMedia()}
         <div className={styles.overlay}>
-          <div className={styles.mediaTypeBadge}>
-            {item.mediaType === 'image' ? (
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-            ) : (
+          {item.mediaType === 'video' && (
+            <div className={styles.mediaTypeBadge}>
               <svg
                 width="20"
                 height="20"
@@ -59,16 +83,16 @@ export function CollectionItemCard({ item, onClick }: CollectionItemCardProps) {
                 <polygon points="23 7 16 12 23 17 23 7" />
                 <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
               </svg>
-            )}
-          </div>
-          {item.mediaType === 'video' && 'duration' in item.metadata && (
+            </div>
+          )}
+
+          {item.mediaType === 'video' && 'duration' in item.metadata ? (
             <div className={styles.durationBadge}>{formatDuration(item.metadata.duration)}</div>
+          ) : (
+            <div className={styles.durationSpacer} />
           )}
         </div>
       </div>
-      <div className={styles.info}>
-        <h4 className={styles.name}>{item.name}</h4>
-      </div>
-    </div>
+    </button>
   );
 }

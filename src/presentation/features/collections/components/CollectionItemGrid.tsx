@@ -27,7 +27,7 @@ export function CollectionItemGrid({
           <p className={styles.emptyMessage}>{emptyMessage}</p>
         </div>
       ) : (
-        <div className={styles.grid}>
+        <div className={styles.strip}>
           {items.map((item) => (
             <CollectionItemCard key={item.id} item={item} onClick={onItemClick} />
           ))}
@@ -35,14 +35,7 @@ export function CollectionItemGrid({
       )}
 
       {showAddButton && (onUploadClick || onGenerateClick) && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 'var(--space-6)',
-            right: 'var(--space-6)',
-            zIndex: 100,
-          }}
-        >
+        <div className={styles.fabContainer}>
           <Dropdown
             direction="up"
             trigger={

@@ -26,14 +26,18 @@
   cursor: pointer;
   transition: all var(--transition-fast);
   position: relative;
+  text-decoration: none;
+  color: var(--text-secondary);
 }
 
 .navButton:hover {
   background: var(--bg-elevated);
+  color: var(--text-primary);
 }
 
 .navButton.active {
   background: var(--accent-primary-muted);
+  color: var(--text-primary);
 }
 
 .navButton.active::before {
@@ -134,6 +138,28 @@
 /* Center Area */
 .centerArea {
   background: var(--bg-base);
+}
+
+.collectionsWorkspaceArea {
+  grid-column: 3 / 4;
+  background: var(--bg-base);
+}
+
+.scenesArea {
+  grid-column: 2 / 5;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg-base);
+}
+
+.scenesContent {
+  padding: 2rem 2rem 3rem 0;
+}
+
+.shotsArea {
+  grid-column: 2 / 4;
+  background: var(--bg-base);
+  padding: var(--space-6);
 }
 
 .scenesLoading {

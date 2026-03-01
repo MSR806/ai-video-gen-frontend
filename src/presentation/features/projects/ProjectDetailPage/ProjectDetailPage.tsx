@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Collection, Scene, CollectionItem } from '@core';
 import { CreateCollectionUseCase, type CollectionCreationPayload } from '@core/collection';
 import { GetCollectionItemsUseCase } from '@core/collection-item';
@@ -10,8 +11,10 @@ import {
   CollectionRepositoryImpl,
   SceneRepositoryImpl,
 } from '@infra/repositories';
+import { getProjectCollectionPath } from '@presentation/features/projects/routes';
 import type { TabType } from './types';
 import { TabNavigation } from './components/TabNavigation';
+import { CollectionsCardList } from './components/CollectionsCardList';
 import { ItemList } from '../../collections/components/ItemList';
 import { CollectionCreateModal } from '../../collections/components/CollectionCreateModal';
 import { CollectionDetails } from '../../collections/components/details/CollectionDetails';
@@ -23,11 +26,13 @@ import { ScenesEditor } from '../../scenes/components/ScenesEditor';
 import { ToastContainer } from '@presentation/components/feedback';
 import styles from './ProjectDetailPage.module.css';
 
-type Item = Collection | Scene | null;
+type Item = Collection | null;
 type CenterViewMode = 'grid' | 'generation';
 
 interface ProjectDetailPageProps {
   projectId: string;
+  activeTab: TabType;
+  selectedCollectionId: string | null;
   collections: Collection[];
   scenes: Scene[];
   collectionItems: CollectionItem[];
@@ -50,12 +55,13 @@ interface Toast {
  */
 export function ProjectDetailPage({
   projectId,
+  activeTab,
+  selectedCollectionId,
   collections,
   scenes,
   collectionItems,
 }: ProjectDetailPageProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('collections');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const router = useRouter();
   const [lightboxItem, setLightboxItem] = useState<CollectionItem | null>(null);
   const [centerViewMode, setCenterViewMode] = useState<CenterViewMode>('grid');
   const [collectionCreateModalOpen, setCollectionCreateModalOpen] = useState(false);
@@ -79,30 +85,21 @@ export function ProjectDetailPage({
     }
   };
 
-  const getSelectedItem = (): Item => {
-    if (!selectedId) return null;
-    switch (activeTab) {
-      case 'collections':
-        return loadedCollections.find((collection) => collection.id === selectedId) || null;
-      case 'scenes':
-      case 'shots':
-        return null;
-    }
-  };
-
-  const handleTabChange = (tab: TabType) => {
-    setActiveTab(tab);
-    setSelectedId(null);
-    setCenterViewMode('grid');
-  };
-
   const getCollectionItems = (): CollectionItem[] => {
-    if (!selectedId || activeTab !== 'collections') return [];
-    return loadedCollectionItems.filter((item) => item.collectionId === selectedId);
+    if (!selectedCollectionId || activeTab !== 'collections') return [];
+    return loadedCollectionItems.filter((item) => item.collectionId === selectedCollectionId);
+  };
+
+  const getSelectedItem = (): Item => {
+    if (!selectedCollectionId || activeTab !== 'collections') {
+      return null;
+    }
+
+    return loadedCollections.find((collection) => collection.id === selectedCollectionId) || null;
   };
 
   const getEmptyMessage = (): string => {
-    if (!selectedId) {
+    if (!selectedCollectionId) {
       if (activeTab === 'collections') return 'Select a collection to view items';
       return '';
     }
@@ -110,6 +107,15 @@ export function ProjectDetailPage({
     if (activeTab === 'scenes' || activeTab === 'shots') return 'Not applicable for this view';
 
     return 'No collection items available';
+  };
+
+  const handleCollectionSelect = (collectionId: string) => {
+    if (collectionId === selectedCollectionId) {
+      return;
+    }
+
+    setCenterViewMode('grid');
+    router.push(getProjectCollectionPath(projectId, collectionId));
   };
 
   const handleUploadClick = () => {
@@ -129,7 +135,8 @@ export function ProjectDetailPage({
       const created = await createCollectionUseCase.execute(payload);
 
       setLoadedCollections((prev) => [...prev, created]);
-      setSelectedId(created.id);
+      setCenterViewMode('grid');
+      router.push(getProjectCollectionPath(projectId, created.id));
       addToast('Collection created successfully!', 'success');
     } catch (error) {
       console.error('Error creating collection:', error);
@@ -196,6 +203,10 @@ export function ProjectDetailPage({
   }, [scenes]);
 
   useEffect(() => {
+    setCenterViewMode('grid');
+  }, [activeTab, selectedCollectionId]);
+
+  useEffect(() => {
     if (activeTab !== 'scenes') return;
     setIsScenesReady(false);
 
@@ -229,7 +240,7 @@ export function ProjectDetailPage({
   }, [activeTab, addToast, projectId]);
 
   useEffect(() => {
-    if (!selectedId || activeTab !== 'collections') return;
+    if (!selectedCollectionId || activeTab !== 'collections') return;
 
     let isCancelled = false;
 
@@ -237,12 +248,12 @@ export function ProjectDetailPage({
       try {
         const repository = new CollectionItemRepositoryImpl();
         const getCollectionItemsUseCase = new GetCollectionItemsUseCase(repository);
-        const items = await getCollectionItemsUseCase.execute(selectedId);
+        const items = await getCollectionItemsUseCase.execute(selectedCollectionId);
 
         if (isCancelled) return;
 
         setLoadedCollectionItems((prev) => [
-          ...prev.filter((item) => item.collectionId !== selectedId),
+          ...prev.filter((item) => item.collectionId !== selectedCollectionId),
           ...items,
         ]);
       } catch (error) {
@@ -265,34 +276,28 @@ export function ProjectDetailPage({
     return () => {
       isCancelled = true;
     };
-  }, [selectedId, activeTab, itemRefreshKey]);
+  }, [selectedCollectionId, activeTab, itemRefreshKey]);
 
   const items = getItems();
   const selectedItem = getSelectedItem();
   const selectedCollectionItems = getCollectionItems();
   const emptyMessage = getEmptyMessage();
 
-  const canCreateCollectionItems = !!selectedId && activeTab === 'collections';
+  const canCreateCollectionItems = !!selectedCollectionId && activeTab === 'collections';
 
   return (
     <div className={styles.container}>
-      <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+      <TabNavigation projectId={projectId} activeTab={activeTab} />
 
-      {activeTab === 'collections' && (
-        <ItemList
-          items={items}
-          selectedId={selectedId}
-          onItemSelect={setSelectedId}
+      {activeTab === 'collections' && !selectedCollectionId ? (
+        <CollectionsCardList
+          collections={loadedCollections}
+          onCollectionSelect={handleCollectionSelect}
           onAddClick={handleCreateCollectionClick}
         />
-      )}
-
-      {activeTab === 'scenes' ? (
-        <div
-          className={styles.centerArea}
-          style={{ gridColumn: '2 / 5', height: '100%', overflowY: 'auto' }}
-        >
-          <div style={{ padding: '2rem 2rem 3rem 0' }}>
+      ) : activeTab === 'scenes' ? (
+        <div className={styles.scenesArea}>
+          <div className={styles.scenesContent}>
             {isScenesReady ? (
               <ScenesEditor projectId={projectId} scenes={loadedScenes} onSave={handleScenesSave} />
             ) : (
@@ -301,12 +306,19 @@ export function ProjectDetailPage({
           </div>
         </div>
       ) : activeTab === 'shots' ? (
-        <div className={styles.centerArea} style={{ gridColumn: '2 / 4' }}>
+        <div className={styles.shotsArea}>
           <div>Shots Storyboard Placeholder</div>
         </div>
       ) : (
         <>
-          <div className={styles.centerArea}>
+          <ItemList
+            items={items}
+            selectedId={selectedCollectionId}
+            onItemSelect={handleCollectionSelect}
+            onAddClick={handleCreateCollectionClick}
+          />
+
+          <div className={styles.collectionsWorkspaceArea}>
             {centerViewMode === 'grid' ? (
               <CollectionItemGrid
                 key={itemRefreshKey}
@@ -317,9 +329,9 @@ export function ProjectDetailPage({
                 onGenerateClick={canCreateCollectionItems ? handleGenerateClick : undefined}
                 showAddButton={canCreateCollectionItems}
               />
-            ) : selectedId ? (
+            ) : selectedCollectionId ? (
               <CollectionItemGenerationView
-                collectionId={selectedId}
+                collectionId={selectedCollectionId}
                 projectId={projectId}
                 onBack={handleBackToGrid}
                 onItemCreated={handleCollectionItemCreated}
@@ -336,7 +348,7 @@ export function ProjectDetailPage({
               <div className={styles.details}>
                 {activeTab === 'collections' && (
                   <CollectionDetails
-                    collection={selectedItem as Collection}
+                    collection={selectedItem}
                     itemCount={selectedCollectionItems.length}
                   />
                 )}
@@ -356,11 +368,11 @@ export function ProjectDetailPage({
         onSubmit={handleCreateCollection}
       />
 
-      {selectedId && canCreateCollectionItems && (
+      {selectedCollectionId && canCreateCollectionItems && (
         <CollectionItemUploadModal
           isOpen={uploadModalOpen}
           onClose={() => setUploadModalOpen(false)}
-          collectionId={selectedId}
+          collectionId={selectedCollectionId}
           projectId={projectId}
           onSuccess={handleUploadSuccess}
         />

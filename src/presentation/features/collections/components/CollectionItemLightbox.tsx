@@ -38,14 +38,17 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
     e.stopPropagation(); // Prevent backdrop click when clicking content
   };
 
+  const previewText = item.description?.trim() || item.name;
+  const thumbnailUrl = item.metadata.thumbnailUrl || item.url;
+
   return (
     <div className={styles.backdrop} onClick={handleBackdropClick}>
       <button className={styles.closeButton} onClick={onClose} aria-label="Close">
         ×
       </button>
 
-      <div className={styles.contentCard} onClick={handleContentClick}>
-        <div className={styles.mediaContainer}>
+      <div className={styles.viewer} onClick={handleContentClick}>
+        <div className={styles.mediaStage}>
           {item.mediaType === 'image' ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={item.url} alt={item.name} className={styles.media} />
@@ -56,21 +59,13 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
           )}
         </div>
 
-        <div className={styles.details}>
-          <h3 className={styles.title}>{item.name}</h3>
-          <p className={styles.description}>{item.description}</p>
-          <div className={styles.metadata}>
-            <span className={styles.metadataItem}>
-              {item.metadata.width} x {item.metadata.height}px
-            </span>
-            {item.mediaType === 'video' && 'duration' in item.metadata && (
-              <span className={styles.metadataItem}>Duration: {item.metadata.duration}s</span>
-            )}
-            <span className={styles.metadataItem}>
-              Format: {item.metadata.format.toUpperCase()}
-            </span>
+        <aside className={styles.selectionDock}>
+          <div className={styles.selectionThumbFrame}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={thumbnailUrl} alt={item.name} className={styles.selectionThumb} />
           </div>
-        </div>
+          <p className={styles.selectionText}>{previewText}</p>
+        </aside>
       </div>
     </div>
   );

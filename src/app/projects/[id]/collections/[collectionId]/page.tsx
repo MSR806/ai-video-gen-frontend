@@ -1,0 +1,33 @@
+import { notFound } from 'next/navigation';
+import { ProjectHeader } from '@presentation/components/layout/ProjectHeader';
+import { ProjectDetailPage } from '@presentation/features/projects/ProjectDetailPage/ProjectDetailPage';
+import { getCollectionsWorkspaceData } from '../../_lib/project-route-data';
+
+interface PageProps {
+  params: Promise<{ id: string; collectionId: string }>;
+}
+
+export default async function ProjectCollectionDetailPage({ params }: PageProps) {
+  const { id, collectionId } = await params;
+  const { project, collections, collectionItems } = await getCollectionsWorkspaceData(id);
+
+  const selectedCollection = collections.find((collection) => collection.id === collectionId);
+
+  if (!selectedCollection) {
+    notFound();
+  }
+
+  return (
+    <div>
+      <ProjectHeader projectName={project.name} />
+      <ProjectDetailPage
+        projectId={id}
+        activeTab="collections"
+        selectedCollectionId={collectionId}
+        collections={collections}
+        scenes={[]}
+        collectionItems={collectionItems}
+      />
+    </div>
+  );
+}
