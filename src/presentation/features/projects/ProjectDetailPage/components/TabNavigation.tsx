@@ -10,23 +10,16 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
   return (
     <nav className={styles.nav}>
       <button
-        className={`${styles.navButton} ${activeTab === 'characters' ? styles.active : ''}`}
-        onClick={() => onTabChange('characters')}
-        title="Characters"
+        className={`${styles.navButton} ${activeTab === 'collections' ? styles.active : ''}`}
+        onClick={() => onTabChange('collections')}
+        title="Collections"
       >
-        👤
+        🗂️
       </button>
       <button
-        className={`${styles.navButton} ${activeTab === 'locations' ? styles.active : ''}`}
-        onClick={() => onTabChange('locations')}
-        title="Locations"
-      >
-        📍
-      </button>
-      <button
-        className={`${styles.navButton} ${activeTab === 'screenplay' ? styles.active : ''}`}
-        onClick={() => onTabChange('screenplay')}
-        title="Screenplay"
+        className={`${styles.navButton} ${activeTab === 'scenes' ? styles.active : ''}`}
+        onClick={() => onTabChange('scenes')}
+        title="Scenes"
       >
         📝
       </button>

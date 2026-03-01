@@ -1,0 +1,9 @@
+import type { Collection } from '../domain/collection.entity';
+
+/**
+ * Repository interface for Collection persistence.
+ */
+export interface CollectionRepository {
+  getAllByProjectId(projectId: string): Promise<Collection[]>;
+  getById(id: string): Promise<Collection | null>;
+}

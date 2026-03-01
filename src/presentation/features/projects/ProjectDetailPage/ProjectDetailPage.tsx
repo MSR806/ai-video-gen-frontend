@@ -1,28 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import type { Character, Location, Scene, Asset } from '@core';
+import type { Collection, Scene, CollectionItem } from '@core';
 import type { TabType } from './types';
 import { TabNavigation } from './components/TabNavigation';
-import { ItemList } from './components/ItemList';
-import { CharacterDetails } from './components/details/CharacterDetails';
-import { LocationDetails } from './components/details/LocationDetails';
-import { AssetGrid } from './components/AssetGrid';
-import { AssetLightbox } from './components/AssetLightbox';
-import { AssetUploadModal } from './components/AssetUploadModal/AssetUploadModal';
-import { AssetGenerationView } from './components/AssetGenerationView/AssetGenerationView';
-import { ScreenplayEditor } from '../../screenplay/components/ScreenplayEditor';
+import { ItemList } from '../../collections/components/ItemList';
+import { CollectionDetails } from '../../collections/components/details/CollectionDetails';
+import { CollectionItemGrid } from '../../collections/components/CollectionItemGrid';
+import { CollectionItemLightbox } from '../../collections/components/CollectionItemLightbox';
+import { CollectionItemUploadModal } from '../../collections/components/CollectionItemUploadModal/CollectionItemUploadModal';
+import { CollectionItemGenerationView } from '../../collections/components/CollectionItemGenerationView/CollectionItemGenerationView';
+import { ScenesEditor } from '../../scenes/components/ScenesEditor';
 import { ToastContainer } from '@presentation/components/feedback';
 import styles from './ProjectDetailPage.module.css';
 
-type Item = Character | Location | Scene | null;
+type Item = Collection | Scene | null;
 type CenterViewMode = 'grid' | 'generation';
 
 interface ProjectDetailPageProps {
-  characters: Character[];
-  locations: Location[];
+  collections: Collection[];
   scenes: Scene[];
-  assets: Asset[];
+  collectionItems: CollectionItem[];
 }
 
 interface Toast {
@@ -35,34 +33,30 @@ interface Toast {
  * ProjectDetailPage
  *
  * Orchestrates the four-panel layout for viewing project details:
- * - Tab navigation (Characters/Locations/Scenes)
- * - List of items based on active tab
- * - Asset grid OR generation view showing media for selected character/location
- * - Details panel showing selected item
+ * - Tab navigation (Collections/Scenes/Shots)
+ * - List of collections
+ * - Collection item grid OR generation view showing media for selected collection
+ * - Details panel showing selected collection
  */
 export function ProjectDetailPage({
-  characters,
-  locations,
+  collections,
   scenes,
-  assets,
+  collectionItems,
 }: ProjectDetailPageProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('characters');
+  const [activeTab, setActiveTab] = useState<TabType>('collections');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [lightboxAsset, setLightboxAsset] = useState<Asset | null>(null);
+  const [lightboxItem, setLightboxItem] = useState<CollectionItem | null>(null);
   const [centerViewMode, setCenterViewMode] = useState<CenterViewMode>('grid');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [assetRefreshKey, setAssetRefreshKey] = useState(0);
+  const [itemRefreshKey, setItemRefreshKey] = useState(0);
 
   const getItems = () => {
     switch (activeTab) {
-      case 'characters':
-        return characters;
-      case 'locations':
-        return locations;
-      case 'screenplay':
+      case 'collections':
+        return collections;
+      case 'scenes':
       case 'shots':
-        // The new tabs use different layouts, we return empty list for the standard ItemList
         return [];
     }
   };
@@ -70,41 +64,34 @@ export function ProjectDetailPage({
   const getSelectedItem = (): Item => {
     if (!selectedId) return null;
     switch (activeTab) {
-      case 'characters':
-        return characters.find((c) => c.id === selectedId) || null;
-      case 'locations':
-        return locations.find((l) => l.id === selectedId) || null;
-      case 'screenplay':
+      case 'collections':
+        return collections.find((collection) => collection.id === selectedId) || null;
+      case 'scenes':
       case 'shots':
-        return null; // Update later when we build shots selector
+        return null;
     }
   };
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
-    setSelectedId(null); // Clear selection when switching tabs
-    setCenterViewMode('grid'); // Reset to grid view
+    setSelectedId(null);
+    setCenterViewMode('grid');
   };
 
-  const getEntityAssets = (): Asset[] => {
-    if (!selectedId) return [];
-    if (activeTab === 'characters') {
-      return assets.filter((a) => a.entityId === selectedId && a.entityType === 'character');
-    }
-    if (activeTab === 'locations') {
-      return assets.filter((a) => a.entityId === selectedId && a.entityType === 'location');
-    }
-    return [];
+  const getCollectionItems = (): CollectionItem[] => {
+    if (!selectedId || activeTab !== 'collections') return [];
+    return collectionItems.filter((item) => item.collectionId === selectedId);
   };
 
   const getEmptyMessage = (): string => {
     if (!selectedId) {
-      if (activeTab === 'characters') return 'Select a character to view assets';
-      if (activeTab === 'locations') return 'Select a location to view assets';
+      if (activeTab === 'collections') return 'Select a collection to view items';
       return '';
     }
-    if (activeTab === 'screenplay' || activeTab === 'shots') return 'Not applicable for this view';
-    return 'No assets available';
+
+    if (activeTab === 'scenes' || activeTab === 'shots') return 'Not applicable for this view';
+
+    return 'No collection items available';
   };
 
   const handleUploadClick = () => {
@@ -119,20 +106,15 @@ export function ProjectDetailPage({
     setCenterViewMode('grid');
   };
 
-  const handleAssetCreated = () => {
-    // Refresh assets
-    setAssetRefreshKey((prev) => prev + 1);
-    // Show success toast
-    addToast('Asset created successfully!', 'success');
-    // Return to grid view
+  const handleCollectionItemCreated = () => {
+    setItemRefreshKey((prev) => prev + 1);
+    addToast('Collection item created successfully!', 'success');
     setCenterViewMode('grid');
   };
 
   const handleUploadSuccess = () => {
-    // Refresh assets
-    setAssetRefreshKey((prev) => prev + 1);
-    // Show success toast
-    addToast('Asset uploaded successfully!', 'success');
+    setItemRefreshKey((prev) => prev + 1);
+    addToast('Collection item uploaded successfully!', 'success');
   };
 
   const addToast = (message: string, type: 'success' | 'error' | 'info') => {
@@ -141,55 +123,46 @@ export function ProjectDetailPage({
   };
 
   const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  const handleScreenplaySave = async (doc: Record<string, unknown>) => {
+  const handleScenesSave = async (nextScenes: Scene[]) => {
     try {
-      const response = await fetch(`/api/projects/1/screenplay`, {
+      const response = await fetch(`/api/projects/1/scenes`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: doc }),
+        body: JSON.stringify({ scenes: nextScenes }),
       });
-      if (!response.ok) throw new Error('Failed to save screenplay');
+      if (!response.ok) throw new Error('Failed to save scenes');
     } catch (error) {
-      console.error('Error saving screenplay:', error);
-      addToast('Failed to save screenplay. Please try again.', 'error');
+      console.error('Error saving scenes:', error);
+      addToast('Failed to save scenes. Please try again.', 'error');
     }
   };
 
   const items = getItems();
   const selectedItem = getSelectedItem();
-  const entityAssets = getEntityAssets();
+  const selectedCollectionItems = getCollectionItems();
   const emptyMessage = getEmptyMessage();
 
-  const canCreateAssets = !!selectedId && (activeTab === 'characters' || activeTab === 'locations');
-  const entityType = activeTab === 'characters' ? 'character' : 'location';
+  const canCreateCollectionItems = !!selectedId && activeTab === 'collections';
 
   return (
     <div className={styles.container}>
-      {/* Navigation */}
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
-      {/* List Panel */}
-      {(activeTab === 'characters' || activeTab === 'locations') && (
-        <ItemList
-          items={items}
-          selectedId={selectedId}
-          activeTab={activeTab as 'characters' | 'locations'}
-          onItemSelect={setSelectedId}
-        />
+      {activeTab === 'collections' && (
+        <ItemList items={items} selectedId={selectedId} onItemSelect={setSelectedId} />
       )}
 
-      {/* Main Content Area */}
-      {activeTab === 'screenplay' ? (
-        <div className={styles.centerArea} style={{ gridColumn: '2 / 4' }}>
-          <ScreenplayEditor
-            projectId="1"
-            scenes={scenes}
-            characters={characters}
-            onSave={handleScreenplaySave}
-          />
+      {activeTab === 'scenes' ? (
+        <div
+          className={styles.centerArea}
+          style={{ gridColumn: '2 / 5', height: '100%', overflowY: 'auto' }}
+        >
+          <div style={{ padding: '2rem 2rem 3rem 0' }}>
+            <ScenesEditor projectId="1" scenes={scenes} onSave={handleScenesSave} />
+          </div>
         </div>
       ) : activeTab === 'shots' ? (
         <div className={styles.centerArea} style={{ gridColumn: '2 / 4' }}>
@@ -197,42 +170,39 @@ export function ProjectDetailPage({
         </div>
       ) : (
         <>
-          {/* Center Panel - Asset Grid OR Generation View */}
           <div className={styles.centerArea}>
             {centerViewMode === 'grid' ? (
-              <AssetGrid
-                key={assetRefreshKey}
-                assets={entityAssets}
-                onAssetClick={setLightboxAsset}
+              <CollectionItemGrid
+                key={itemRefreshKey}
+                items={selectedCollectionItems}
+                onItemClick={setLightboxItem}
                 emptyMessage={emptyMessage}
-                onUploadClick={canCreateAssets ? handleUploadClick : undefined}
-                onGenerateClick={canCreateAssets ? handleGenerateClick : undefined}
-                showAddButton={canCreateAssets}
+                onUploadClick={canCreateCollectionItems ? handleUploadClick : undefined}
+                onGenerateClick={canCreateCollectionItems ? handleGenerateClick : undefined}
+                showAddButton={canCreateCollectionItems}
               />
             ) : selectedId ? (
-              <AssetGenerationView
-                entityId={selectedId}
-                entityType={entityType}
+              <CollectionItemGenerationView
+                collectionId={selectedId}
                 projectId="1"
                 onBack={handleBackToGrid}
-                onAssetCreated={handleAssetCreated}
+                onItemCreated={handleCollectionItemCreated}
               />
             ) : null}
           </div>
 
-          {/* Details Panel */}
           <aside className={styles.detailsPanel}>
             {!selectedItem ? (
               <div className={styles.emptyDetails}>
-                <p>Select {activeTab.slice(0, -1)} to view details</p>
+                <p>Select collection to view details</p>
               </div>
             ) : (
               <div className={styles.details}>
-                {activeTab === 'characters' && (
-                  <CharacterDetails character={selectedItem as Character} />
-                )}
-                {activeTab === 'locations' && (
-                  <LocationDetails location={selectedItem as Location} />
+                {activeTab === 'collections' && (
+                  <CollectionDetails
+                    collection={selectedItem as Collection}
+                    itemCount={selectedCollectionItems.length}
+                  />
                 )}
               </div>
             )}
@@ -240,22 +210,18 @@ export function ProjectDetailPage({
         </>
       )}
 
-      {/* Asset Lightbox Modal */}
-      <AssetLightbox asset={lightboxAsset} onClose={() => setLightboxAsset(null)} />
+      <CollectionItemLightbox item={lightboxItem} onClose={() => setLightboxItem(null)} />
 
-      {/* Upload Modal */}
-      {selectedId && canCreateAssets && (
-        <AssetUploadModal
+      {selectedId && canCreateCollectionItems && (
+        <CollectionItemUploadModal
           isOpen={uploadModalOpen}
           onClose={() => setUploadModalOpen(false)}
-          entityId={selectedId}
-          entityType={entityType}
+          collectionId={selectedId}
           projectId="1"
           onSuccess={handleUploadSuccess}
         />
       )}
 
-      {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

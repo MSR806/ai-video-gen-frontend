@@ -31,12 +31,7 @@ export class SceneRepositoryImpl implements SceneRepository {
   }
 
   async bulkSave(scenes: Scene[]): Promise<void> {
-    // For a mock repository, we can replace the scenes or update them based on ID
-    // Let's just update perfectly.
-
-    // Replace old scenes that have the same ID, keep others, add new ones
-    // But since `bulkSave` in this context completely syncs the screenplay scenes for a project,
-    // it's better to isolate by project ID. We assume the scenes passed belong to a single project.
+    // Replace all scenes for the project represented by this payload.
     if (scenes.length === 0) return Promise.resolve();
 
     const projectId = scenes[0].projectId;

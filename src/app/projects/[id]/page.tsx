@@ -1,15 +1,13 @@
 import { ProjectHeader } from '@presentation/components/layout/ProjectHeader';
 import { GetProjectByIdUseCase } from '@core/project';
-import { GetProjectCharactersUseCase } from '@core/character';
-import { GetProjectLocationsUseCase } from '@core/location';
+import { GetProjectCollectionsUseCase } from '@core/collection';
 import { GetProjectScenesUseCase } from '@core/scene';
-import { GetEntityAssetsUseCase } from '@core/asset';
+import { GetCollectionItemsUseCase } from '@core/collection-item';
 import {
   ProjectRepositoryImpl,
-  CharacterRepositoryImpl,
-  LocationRepositoryImpl,
+  CollectionRepositoryImpl,
   SceneRepositoryImpl,
-  AssetRepositoryImpl,
+  CollectionItemRepositoryImpl,
 } from '@infra/repositories';
 import { ProjectDetailPage } from '@presentation/features/projects/ProjectDetailPage/ProjectDetailPage';
 import { notFound } from 'next/navigation';
@@ -21,17 +19,15 @@ import { notFound } from 'next/navigation';
 
 // Repositories
 const projectRepo = new ProjectRepositoryImpl();
-const characterRepo = new CharacterRepositoryImpl();
-const locationRepo = new LocationRepositoryImpl();
+const collectionRepo = new CollectionRepositoryImpl();
 const sceneRepo = new SceneRepositoryImpl();
-const assetRepo = new AssetRepositoryImpl();
+const collectionItemRepo = new CollectionItemRepositoryImpl();
 
 // Use Cases
 const getProjectByIdUseCase = new GetProjectByIdUseCase(projectRepo);
-const getProjectCharactersUseCase = new GetProjectCharactersUseCase(characterRepo);
-const getProjectLocationsUseCase = new GetProjectLocationsUseCase(locationRepo);
+const getProjectCollectionsUseCase = new GetProjectCollectionsUseCase(collectionRepo);
 const getProjectScenesUseCase = new GetProjectScenesUseCase(sceneRepo);
-const getEntityAssetsUseCase = new GetEntityAssetsUseCase(assetRepo);
+const getCollectionItemsUseCase = new GetCollectionItemsUseCase(collectionItemRepo);
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -47,29 +43,24 @@ export default async function ProjectPage({ params }: PageProps) {
     notFound();
   }
 
-  const [characters, locations, scenes] = await Promise.all([
-    getProjectCharactersUseCase.execute(id),
-    getProjectLocationsUseCase.execute(id),
+  const [collections, scenes] = await Promise.all([
+    getProjectCollectionsUseCase.execute(id),
     getProjectScenesUseCase.execute(id),
   ]);
 
-  // Fetch all assets for characters and locations in this project
-  const characterAssets = await Promise.all(
-    characters.map((c) => getEntityAssetsUseCase.execute(c.id, 'character')),
+  // Fetch all items for collections in this project
+  const itemsByCollection = await Promise.all(
+    collections.map((collection) => getCollectionItemsUseCase.execute(collection.id)),
   );
-  const locationAssets = await Promise.all(
-    locations.map((l) => getEntityAssetsUseCase.execute(l.id, 'location')),
-  );
-  const assets = [...characterAssets.flat(), ...locationAssets.flat()];
+  const collectionItems = itemsByCollection.flat();
 
   return (
     <div>
       <ProjectHeader projectName={project.name} />
       <ProjectDetailPage
-        characters={characters}
-        locations={locations}
+        collections={collections}
         scenes={scenes}
-        assets={assets}
+        collectionItems={collectionItems}
       />
     </div>
   );

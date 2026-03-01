@@ -5,7 +5,6 @@
  */
 
 export * from './project.repository.impl';
-export * from './character.repository.impl';
-export * from './location.repository.impl';
+export * from './collection.repository.impl';
 export * from './scene.repository.impl';
-export * from './asset.repository.impl';
+export * from './collection-item.repository.impl';

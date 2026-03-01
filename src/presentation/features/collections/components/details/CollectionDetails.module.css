@@ -1,0 +1,39 @@
+.detailsContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.detailsTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.detailsSection h3 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 var(--space-2) 0;
+}
+
+.detailsSection p {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  background: var(--accent-primary-muted);
+  color: var(--accent-primary);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
