@@ -19,6 +19,9 @@ export interface VideoMetadata {
   thumbnailUrl: string;
 }
 
+export type CollectionItemStatus = 'GENERATING' | 'READY' | 'FAILED';
+export type GenerationAspectRatio = 'SQUARE' | 'PORTRAIT' | 'LANDSCAPE';
+
 /**
  * CollectionItem Entity
  * Represents media items (images/videos) within a collection.
@@ -28,16 +31,27 @@ export interface CollectionItem {
   projectId: string;
   collectionId: string;
   mediaType: 'image' | 'video';
+  status: CollectionItemStatus;
   name: string;
   description: string;
-  url: string;
+  url: string | null;
   metadata: ImageMetadata | VideoMetadata;
+  generationErrorMessage?: string | null;
 }
 
 /**
  * Collection item creation payload.
  */
-export type CollectionItemCreationPayload = Omit<CollectionItem, 'id'>;
+export interface CollectionItemCreationPayload {
+  projectId: string;
+  collectionId: string;
+  mediaType: 'image' | 'video';
+  name: string;
+  description: string;
+  url: string;
+  metadata: ImageMetadata | VideoMetadata;
+  generationSource?: string;
+}
 
 /**
  * Multipart upload payload for collection item creation.
@@ -52,76 +66,59 @@ export interface CollectionItemUploadPayload {
 }
 
 /**
- * Aspect ratio options for AI generation.
- */
-export type AspectRatio = 'square' | 'portrait' | 'landscape';
-
-/**
- * Resolution quality for generation.
- */
-export type Resolution = '2k' | '4k' | '8k';
-
-/**
- * Batch size for generating multiple variations.
- */
-export type BatchSize = 1 | 2 | 3 | 4;
-
-/**
- * Camera body for photography setup.
- */
-export interface CameraBody {
-  id: string;
-  name: string;
-  type: 'cinema' | 'dslr' | 'mirrorless';
-}
-
-/**
- * Camera lens.
- */
-export interface Lens {
-  id: string;
-  name: string;
-  brand: string;
-  type: 'prime' | 'zoom';
-}
-
-/**
- * Focal length option.
- */
-export interface FocalLength {
-  value: number;
-  label: string;
-  category: 'ultra-wide' | 'wide' | 'standard' | 'portrait' | 'telephoto';
-}
-
-/**
- * Complete camera setup configuration.
- */
-export interface CameraSetup {
-  camera: CameraBody;
-  lens: Lens;
-  focalLength: FocalLength;
-}
-
-/**
  * Parameters for AI collection item generation.
  */
 export interface CollectionItemGenerationParams {
   prompt: string;
-  aspectRatio: AspectRatio;
-  mediaType: 'image' | 'video';
   referenceImages?: string[];
+  aspectRatio: GenerationAspectRatio;
   projectId: string;
   collectionId: string;
-  cameraSetup?: CameraSetup;
-  resolution?: Resolution;
-  batchSize?: BatchSize;
+}
+
+export type GenerationSubmissionStatus = 'QUEUED' | 'IN_PROGRESS';
+
+export interface GenerationSubmission {
+  jobId: string;
+  itemId: string;
+  status: GenerationSubmissionStatus;
+}
+
+export type GenerationJobStatus = 'QUEUED' | 'IN_PROGRESS' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+
+export interface GenerationJobError {
+  code?: string | null;
+  message?: string | null;
+}
+
+export interface GenerationJob {
+  id: string;
+  status: GenerationJobStatus;
+  operation: 'TEXT_TO_IMAGE' | 'IMAGE_TO_IMAGE';
+  provider: string;
+  modelKey: string;
+  projectId: string;
+  collectionId: string;
+  itemId: string | null;
+  error?: GenerationJobError | null;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt?: string | null;
+  completedAt?: string | null;
+}
+
+export interface ListGenerationJobsParams {
+  collectionId?: string;
+  projectId?: string;
+  statuses?: GenerationJobStatus[];
+  limit?: number;
 }
 
 /**
  * Response from AI generation API.
  */
 export interface GeneratedCollectionItem {
+  itemId?: string;
   url: string;
   thumbnailUrl: string;
   width: number;

@@ -49,9 +49,23 @@ export function CollectionItemCard({
   };
 
   const thumbnailUrl = item.metadata.thumbnailUrl?.trim() ?? '';
+  const mediaUrl = item.url?.trim() ?? '';
   const mediaKey = `${item.id}:${thumbnailUrl}`;
   const descriptionLabel = item.description.trim() || item.name;
-  const canCopyImage = item.mediaType === 'image';
+  const canCopyImage = item.mediaType === 'image' && item.status === 'READY' && mediaUrl.length > 0;
+  const canDownload = item.status === 'READY' && mediaUrl.length > 0;
+  const canDragAsReference =
+    item.mediaType === 'image' && item.status === 'READY' && mediaUrl.length > 0;
+
+  const handleDragStart = (event: React.DragEvent<HTMLButtonElement>) => {
+    if (!canDragAsReference) {
+      return;
+    }
+    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.setData('text/plain', mediaUrl);
+    event.dataTransfer.setData('text/uri-list', mediaUrl);
+    event.dataTransfer.setData('application/x-ai-video-gen-item-url', mediaUrl);
+  };
 
   const [failedThumbnailKey, setFailedThumbnailKey] = useState<string | null>(null);
 
@@ -59,7 +73,7 @@ export function CollectionItemCard({
     const thumbnailFailed = failedThumbnailKey === mediaKey;
     if (!thumbnailFailed) {
       const imageSource =
-        thumbnailUrl.length > 0 ? thumbnailUrl : item.mediaType === 'image' ? item.url : '';
+        thumbnailUrl.length > 0 ? thumbnailUrl : item.mediaType === 'image' ? mediaUrl : '';
       if (imageSource.length === 0) {
         return (
           <div className={styles.thumbnailFallback}>
@@ -96,8 +110,10 @@ export function CollectionItemCard({
     <div className={styles.cardShell}>
       <button
         type="button"
-        className={styles.card}
+        className={`${styles.card} ${canDragAsReference ? styles.draggable : ''}`}
         onClick={handleClick}
+        onDragStart={handleDragStart}
+        draggable={canDragAsReference && !isDeleting}
         aria-label={item.name}
         style={cardStyle}
         disabled={isDeleting}
@@ -182,8 +198,13 @@ export function CollectionItemCard({
             icon={<span className={styles.menuGlyph}>↓</span>}
             label="Download"
             className={styles.actionItem}
-            onClick={() => onDownload(item)}
-            disabled={isDeleting}
+            onClick={() => {
+              if (!canDownload) {
+                return;
+              }
+              onDownload(item);
+            }}
+            disabled={isDeleting || !canDownload}
           />
           {onDelete && (
             <>

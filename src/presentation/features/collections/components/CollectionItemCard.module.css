@@ -22,6 +22,14 @@
   cursor: default;
 }
 
+.draggable {
+  cursor: grab;
+}
+
+.draggable:active {
+  cursor: grabbing;
+}
+
 .card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-lg);

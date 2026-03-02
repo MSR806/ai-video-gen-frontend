@@ -41,12 +41,14 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
   };
 
   const previewText = item.description?.trim() || item.name;
+  const mediaUrl = item.url?.trim() ?? '';
   const thumbnailUrl = item.metadata.thumbnailUrl?.trim() ?? '';
-  const previewKey = `${item.id}:${thumbnailUrl}:${item.url}`;
+  const previewKey = `${item.id}:${thumbnailUrl}:${mediaUrl}`;
   const selectionPreviewFailed = failedSelectionPreviewKey === previewKey;
   const hasUsableVideoThumbnail =
-    item.mediaType === 'video' && thumbnailUrl.length > 0 && thumbnailUrl !== item.url;
-  const imageSelectionSrc = thumbnailUrl.length > 0 ? thumbnailUrl : item.url;
+    item.mediaType === 'video' && thumbnailUrl.length > 0 && thumbnailUrl !== mediaUrl;
+  const imageSelectionSrc = thumbnailUrl.length > 0 ? thumbnailUrl : mediaUrl;
+  const canRenderMedia = mediaUrl.length > 0 && item.status === 'READY';
 
   return (
     <div className={styles.backdrop} onClick={handleBackdropClick}>
@@ -56,11 +58,13 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
 
       <div className={styles.viewer} onClick={handleContentClick}>
         <div className={styles.mediaStage}>
-          {item.mediaType === 'image' ? (
+          {!canRenderMedia ? (
+            <div className={styles.selectionThumbFallback}>Media is still processing...</div>
+          ) : item.mediaType === 'image' ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={item.url} alt={item.name} className={styles.media} />
+            <img src={mediaUrl} alt={item.name} className={styles.media} />
           ) : (
-            <video src={item.url} controls autoPlay className={styles.media}>
+            <video src={mediaUrl} controls autoPlay className={styles.media}>
               Your browser does not support video playback.
             </video>
           )}
@@ -74,11 +78,11 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={thumbnailUrl} alt={item.name} className={styles.selectionThumb} />
                 </>
-              ) : selectionPreviewFailed ? (
+              ) : !canRenderMedia || selectionPreviewFailed ? (
                 <div className={styles.selectionThumbFallback}>{item.name}</div>
               ) : (
                 <video
-                  src={item.url}
+                  src={mediaUrl}
                   className={styles.selectionThumb}
                   muted
                   loop
@@ -88,11 +92,13 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
                   onError={() => setFailedSelectionPreviewKey(previewKey)}
                 />
               )
-            ) : (
+            ) : imageSelectionSrc.length > 0 ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={imageSelectionSrc} alt={item.name} className={styles.selectionThumb} />
               </>
+            ) : (
+              <div className={styles.selectionThumbFallback}>{item.name}</div>
             )}
           </div>
           <p className={styles.selectionText}>{previewText}</p>

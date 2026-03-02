@@ -2,11 +2,78 @@ import type {
   CollectionItem,
   CollectionItemCreationPayload,
   CollectionItemGenerationParams,
+  CollectionItemStatus,
   CollectionItemUploadPayload,
   CollectionItemRepository,
-  GeneratedCollectionItem,
+  GenerationJob,
+  GenerationSubmission,
+  ListGenerationJobsParams,
+  ImageMetadata,
+  VideoMetadata,
 } from '@core/collection-item';
 import { backendApiRequest } from '@infra/http/backend-api';
+
+interface ApiCollectionItem {
+  id: string;
+  projectId: string;
+  collectionId: string;
+  mediaType: 'image' | 'video';
+  status?: CollectionItemStatus;
+  name: string;
+  description: string;
+  url: string | null;
+  metadata?: unknown;
+  generationErrorMessage?: string | null;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const asString = (value: unknown, fallback = ''): string =>
+  typeof value === 'string' ? value : fallback;
+
+const asNumber = (value: unknown, fallback = 0): number =>
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+const normalizeMetadata = (
+  mediaType: 'image' | 'video',
+  metadata: unknown,
+): ImageMetadata | VideoMetadata => {
+  const source = isRecord(metadata) ? metadata : {};
+  const normalizedBase = {
+    width: asNumber(source.width),
+    height: asNumber(source.height),
+    format: asString(source.format, 'png'),
+    thumbnailUrl: asString(source.thumbnailUrl),
+  };
+
+  if (mediaType === 'video') {
+    return {
+      ...normalizedBase,
+      duration: asNumber(source.duration),
+    };
+  }
+
+  return normalizedBase;
+};
+
+const mapApiCollectionItem = (item: ApiCollectionItem): CollectionItem => {
+  const normalizedUrl =
+    typeof item.url === 'string' && item.url.trim().length > 0 ? item.url : null;
+
+  return {
+    id: item.id,
+    projectId: item.projectId,
+    collectionId: item.collectionId,
+    mediaType: item.mediaType,
+    status: item.status ?? (normalizedUrl ? 'READY' : 'GENERATING'),
+    name: item.name,
+    description: item.description,
+    url: normalizedUrl,
+    metadata: normalizeMetadata(item.mediaType, item.metadata),
+    generationErrorMessage: item.generationErrorMessage ?? null,
+  };
+};
 
 /**
  * API-backed implementation of CollectionItemRepository.
@@ -15,15 +82,16 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
   private cache = new Map<string, CollectionItem>();
 
   async getByCollectionId(collectionId: string): Promise<CollectionItem[]> {
-    const items = await backendApiRequest<CollectionItem[]>(
+    const items = await backendApiRequest<ApiCollectionItem[]>(
       `/api/v1/collections/${collectionId}/items`,
     );
+    const mappedItems = items.map(mapApiCollectionItem);
 
-    items.forEach((item) => {
+    mappedItems.forEach((item) => {
       this.cache.set(item.id, item);
     });
 
-    return items;
+    return mappedItems;
   }
 
   async getById(id: string): Promise<CollectionItem | null> {
@@ -33,7 +101,7 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
   async create(payload: CollectionItemCreationPayload): Promise<CollectionItem> {
     const { collectionId, ...requestBody } = payload;
 
-    const created = await backendApiRequest<CollectionItem>(
+    const created = await backendApiRequest<ApiCollectionItem>(
       `/api/v1/collections/${collectionId}/items`,
       {
         method: 'POST',
@@ -44,8 +112,9 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
       },
     );
 
-    this.cache.set(created.id, created);
-    return created;
+    const mappedCreated = mapApiCollectionItem(created);
+    this.cache.set(mappedCreated.id, mappedCreated);
+    return mappedCreated;
   }
 
   async delete(collectionId: string, itemId: string): Promise<void> {
@@ -68,7 +137,7 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
     }
     formData.set('file', payload.file);
 
-    const created = await backendApiRequest<CollectionItem>(
+    const created = await backendApiRequest<ApiCollectionItem>(
       `/api/v1/collections/${payload.collectionId}/items/upload`,
       {
         method: 'POST',
@@ -76,15 +145,30 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
       },
     );
 
-    this.cache.set(created.id, created);
-    return created;
+    const mappedCreated = mapApiCollectionItem(created);
+    this.cache.set(mappedCreated.id, mappedCreated);
+    return mappedCreated;
   }
 
-  async generateWithAI(params: CollectionItemGenerationParams): Promise<GeneratedCollectionItem> {
-    const { collectionId, ...requestBody } = params;
+  async generateWithAI(params: CollectionItemGenerationParams): Promise<GenerationSubmission> {
+    const referenceUrls = (params.referenceImages ?? [])
+      .map((url) => url.trim())
+      .filter((url) => /^https?:\/\//i.test(url));
+    const isImageToImage = referenceUrls.length > 0;
 
-    return backendApiRequest<GeneratedCollectionItem>(
-      `/api/v1/collections/${collectionId}/items/generate`,
+    const requestBody: Record<string, unknown> = {
+      projectId: params.projectId,
+      operation: isImageToImage ? 'IMAGE_TO_IMAGE' : 'TEXT_TO_IMAGE',
+      prompt: params.prompt,
+      aspectRatio: params.aspectRatio,
+    };
+
+    if (isImageToImage) {
+      requestBody.sourceImageUrls = [referenceUrls[0]];
+    }
+
+    return backendApiRequest<GenerationSubmission>(
+      `/api/v1/collections/${params.collectionId}/items/generate`,
       {
         method: 'POST',
         headers: {
@@ -93,5 +177,37 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
         body: JSON.stringify(requestBody),
       },
     );
+  }
+
+  async getGenerationJob(jobId: string): Promise<GenerationJob> {
+    return backendApiRequest<GenerationJob>(`/api/v1/generation-jobs/${jobId}`);
+  }
+
+  async listGenerationJobs(params: ListGenerationJobsParams): Promise<GenerationJob[]> {
+    const searchParams = new URLSearchParams();
+
+    const normalizedCollectionId = params.collectionId?.trim();
+    if (normalizedCollectionId && normalizedCollectionId.length > 0) {
+      searchParams.set('collectionId', normalizedCollectionId);
+    }
+
+    const normalizedProjectId = params.projectId?.trim();
+    if (normalizedProjectId && normalizedProjectId.length > 0) {
+      searchParams.set('projectId', normalizedProjectId);
+    }
+
+    if (params.statuses) {
+      params.statuses.forEach((status) => {
+        searchParams.append('status', status);
+      });
+    }
+
+    if (typeof params.limit === 'number' && Number.isFinite(params.limit) && params.limit > 0) {
+      searchParams.set('limit', String(Math.floor(params.limit)));
+    }
+
+    const query = searchParams.toString();
+    const path = query.length > 0 ? `/api/v1/generation-jobs?${query}` : '/api/v1/generation-jobs';
+    return backendApiRequest<GenerationJob[]>(path);
   }
 }

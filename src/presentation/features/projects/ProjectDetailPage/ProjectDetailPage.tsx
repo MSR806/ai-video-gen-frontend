@@ -4,7 +4,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Collection, Scene, CollectionItem } from '@core';
 import { CreateCollectionUseCase, type CollectionCreationPayload } from '@core/collection';
-import { DeleteCollectionItemUseCase, GetCollectionItemsUseCase } from '@core/collection-item';
+import {
+  DeleteCollectionItemUseCase,
+  GenerateCollectionItemUseCase,
+  GetCollectionItemsUseCase,
+  GetGenerationJobUseCase,
+  ListGenerationJobsUseCase,
+  type GenerationAspectRatio,
+  type GenerationJob,
+} from '@core/collection-item';
 import {
   CreateSceneUseCase,
   DeleteSceneUseCase,
@@ -28,14 +36,13 @@ import { CollectionDetails } from '../../collections/components/details/Collecti
 import { CollectionItemGrid } from '../../collections/components/CollectionItemGrid';
 import { CollectionItemLightbox } from '../../collections/components/CollectionItemLightbox';
 import { CollectionItemUploadModal } from '../../collections/components/CollectionItemUploadModal/CollectionItemUploadModal';
-import { CollectionItemGenerationView } from '../../collections/components/CollectionItemGenerationView/CollectionItemGenerationView';
+import { GenerationControlBar } from '../../collections/components/CollectionItemGenerationView/components/GenerationControlBar/GenerationControlBar';
 import { ScenesEditor } from '../../scenes/components/ScenesEditor';
 import { ToastContainer } from '@presentation/components/feedback';
 import { Button, Modal } from '@presentation/components/ui';
 import styles from './ProjectDetailPage.module.css';
 
 type Item = Collection | null;
-type CenterViewMode = 'grid' | 'generation';
 
 interface ProjectDetailPageProps {
   projectId: string;
@@ -65,13 +72,18 @@ const getCollectionItemDownloadName = (item: CollectionItem): string => {
     : `${baseName}.${extension}`;
 };
 
+const GENERATION_POLL_INTERVAL_MS = 2000;
+const GENERATION_MAX_POLL_ATTEMPTS = 60;
+const ACTIVE_GENERATION_JOBS_POLL_INTERVAL_MS = 3000;
+const ACTIVE_GENERATION_JOBS_MAX_POLL_ATTEMPTS = 240;
+
 /**
  * ProjectDetailPage
  *
  * Orchestrates the four-panel layout for viewing project details:
  * - Tab navigation (Collections/Scenes/Shots)
  * - List of collections
- * - Collection item grid OR generation view showing media for selected collection
+ * - Collection item grid with inline generation controls
  * - Details panel showing selected collection
  */
 export function ProjectDetailPage({
@@ -84,10 +96,10 @@ export function ProjectDetailPage({
 }: ProjectDetailPageProps) {
   const router = useRouter();
   const [lightboxItem, setLightboxItem] = useState<CollectionItem | null>(null);
-  const [centerViewMode, setCenterViewMode] = useState<CenterViewMode>('grid');
   const [collectionCreateModalOpen, setCollectionCreateModalOpen] = useState(false);
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [isGeneratingCollectionItem, setIsGeneratingCollectionItem] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [itemRefreshKey, setItemRefreshKey] = useState(0);
   const [loadedCollections, setLoadedCollections] = useState<Collection[]>(collections);
@@ -137,7 +149,6 @@ export function ProjectDetailPage({
       return;
     }
 
-    setCenterViewMode('grid');
     router.push(getProjectCollectionPath(projectId, collectionId));
   };
 
@@ -158,7 +169,6 @@ export function ProjectDetailPage({
       const created = await createCollectionUseCase.execute(payload);
 
       setLoadedCollections((prev) => [...prev, created]);
-      setCenterViewMode('grid');
       router.push(getProjectCollectionPath(projectId, created.id));
       addToast('Collection created successfully!', 'success');
     } catch (error) {
@@ -170,24 +180,72 @@ export function ProjectDetailPage({
     }
   };
 
-  const handleGenerateClick = () => {
-    setCenterViewMode('generation');
-  };
-
-  const handleBackToGrid = () => {
-    setCenterViewMode('grid');
-  };
-
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info') => {
     const id = Date.now().toString();
     setToasts((prev) => [...prev, { id, message, type }]);
   }, []);
 
-  const handleCollectionItemCreated = () => {
-    setItemRefreshKey((prev) => prev + 1);
-    addToast('Collection item created successfully!', 'success');
-    setCenterViewMode('grid');
-  };
+  const waitForGenerationTerminalState = useCallback(
+    async (jobId: string): Promise<GenerationJob> => {
+      const repository = new CollectionItemRepositoryImpl();
+      const getGenerationJobUseCase = new GetGenerationJobUseCase(repository);
+
+      for (let attempt = 0; attempt < GENERATION_MAX_POLL_ATTEMPTS; attempt += 1) {
+        const job = await getGenerationJobUseCase.execute(jobId);
+        if (job.status === 'SUCCEEDED' || job.status === 'FAILED' || job.status === 'CANCELLED') {
+          return job;
+        }
+
+        await new Promise<void>((resolve) => setTimeout(resolve, GENERATION_POLL_INTERVAL_MS));
+      }
+
+      throw new Error('Generation timed out. Please check back in a moment.');
+    },
+    [],
+  );
+
+  const handleGenerateCollectionItem = useCallback(
+    async (prompt: string, referenceImages: string[], aspectRatio: GenerationAspectRatio) => {
+      if (!selectedCollectionId) {
+        return;
+      }
+
+      setIsGeneratingCollectionItem(true);
+
+      try {
+        const repository = new CollectionItemRepositoryImpl();
+        const generateCollectionItemUseCase = new GenerateCollectionItemUseCase(repository);
+        const submission = await generateCollectionItemUseCase.execute({
+          prompt,
+          referenceImages,
+          aspectRatio,
+          projectId,
+          collectionId: selectedCollectionId,
+        });
+
+        const terminalJob = await waitForGenerationTerminalState(submission.jobId);
+        setItemRefreshKey((prev) => prev + 1);
+
+        if (terminalJob.status === 'SUCCEEDED') {
+          addToast('Generation completed successfully.', 'success');
+          return;
+        }
+
+        addToast(terminalJob.error?.message || 'Generation failed on backend.', 'error');
+      } catch (error) {
+        console.error('Error generating collection item:', error);
+        addToast(
+          error instanceof Error && error.message.trim().length > 0
+            ? error.message
+            : 'Failed to generate collection item.',
+          'error',
+        );
+      } finally {
+        setIsGeneratingCollectionItem(false);
+      }
+    },
+    [addToast, projectId, selectedCollectionId, waitForGenerationTerminalState],
+  );
 
   const handleUploadSuccess = () => {
     setItemRefreshKey((prev) => prev + 1);
@@ -201,6 +259,12 @@ export function ProjectDetailPage({
         return;
       }
 
+      const mediaUrl = item.url?.trim() ?? '';
+      if (item.status !== 'READY' || mediaUrl.length === 0) {
+        addToast('This item is still processing and cannot be copied yet.', 'info');
+        return;
+      }
+
       if (
         typeof navigator === 'undefined' ||
         !navigator.clipboard?.write ||
@@ -211,7 +275,7 @@ export function ProjectDetailPage({
       }
 
       try {
-        const response = await fetch(item.url);
+        const response = await fetch(mediaUrl);
         if (!response.ok) {
           throw new Error(`Copy request failed with status ${response.status}`);
         }
@@ -246,11 +310,17 @@ export function ProjectDetailPage({
         return;
       }
 
+      const mediaUrl = item.url?.trim() ?? '';
+      if (item.status !== 'READY' || mediaUrl.length === 0) {
+        addToast('This item is still processing and cannot be downloaded yet.', 'info');
+        return;
+      }
+
       void (async () => {
         let objectUrl: string | null = null;
 
         try {
-          const response = await fetch(item.url);
+          const response = await fetch(mediaUrl);
           if (!response.ok) {
             throw new Error(`Download request failed with status ${response.status}`);
           }
@@ -380,6 +450,42 @@ export function ProjectDetailPage({
     [addToast, projectId],
   );
 
+  const refreshCollectionItems = useCallback(
+    async (
+      collectionId: string,
+      options?: { silentError?: boolean },
+    ): Promise<CollectionItem[] | null> => {
+      const silentError = options?.silentError ?? false;
+
+      try {
+        const repository = new CollectionItemRepositoryImpl();
+        const getCollectionItemsUseCase = new GetCollectionItemsUseCase(repository);
+        const items = await getCollectionItemsUseCase.execute(collectionId);
+
+        setLoadedCollectionItems((prev) => [
+          ...prev.filter((item) => item.collectionId !== collectionId),
+          ...items,
+        ]);
+
+        return items;
+      } catch (error) {
+        console.error('Error loading collection items:', error);
+        if (!silentError) {
+          setToasts((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              message: 'Failed to load collection items.',
+              type: 'error',
+            },
+          ]);
+        }
+        return null;
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     setLoadedCollections(collections);
   }, [collections]);
@@ -391,10 +497,6 @@ export function ProjectDetailPage({
   useEffect(() => {
     setLoadedScenes(scenes);
   }, [scenes]);
-
-  useEffect(() => {
-    setCenterViewMode('grid');
-  }, [activeTab, selectedCollectionId]);
 
   useEffect(() => {
     if (activeTab !== 'scenes') return;
@@ -433,31 +535,114 @@ export function ProjectDetailPage({
     if (!selectedCollectionId || activeTab !== 'collections') return;
 
     let isCancelled = false;
+    let isPolling = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const pollStartedAt = Date.now();
+    const maxPollDurationMs =
+      ACTIVE_GENERATION_JOBS_MAX_POLL_ATTEMPTS * ACTIVE_GENERATION_JOBS_POLL_INTERVAL_MS;
 
-    const loadItems = async () => {
+    const stopPolling = () => {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+
+    const scheduleNextPoll = () => {
+      if (isCancelled || timeoutId !== null) {
+        return;
+      }
+
+      timeoutId = setTimeout(() => {
+        timeoutId = null;
+        void pollActiveGenerationJobs();
+      }, ACTIVE_GENERATION_JOBS_POLL_INTERVAL_MS);
+    };
+
+    const listActiveGenerationJobs = async (): Promise<GenerationJob[] | null> => {
       try {
         const repository = new CollectionItemRepositoryImpl();
-        const getCollectionItemsUseCase = new GetCollectionItemsUseCase(repository);
-        const items = await getCollectionItemsUseCase.execute(selectedCollectionId);
-
-        if (isCancelled) return;
-
-        setLoadedCollectionItems((prev) => [
-          ...prev.filter((item) => item.collectionId !== selectedCollectionId),
-          ...items,
-        ]);
+        const listGenerationJobsUseCase = new ListGenerationJobsUseCase(repository);
+        return await listGenerationJobsUseCase.execute({
+          collectionId: selectedCollectionId,
+          statuses: ['QUEUED', 'IN_PROGRESS'],
+          limit: 100,
+        });
       } catch (error) {
-        if (!isCancelled) {
-          console.error('Error loading collection items:', error);
-          setToasts((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              message: 'Failed to load collection items.',
-              type: 'error',
-            },
-          ]);
+        console.error('Error loading active generation jobs:', error);
+        return null;
+      }
+    };
+
+    const pollActiveGenerationJobs = async () => {
+      if (isCancelled || isPolling) {
+        return;
+      }
+
+      if (Date.now() - pollStartedAt >= maxPollDurationMs) {
+        stopPolling();
+        return;
+      }
+
+      isPolling = true;
+      try {
+        const activeJobs = await listActiveGenerationJobs();
+        if (isCancelled) {
+          return;
         }
+
+        if (activeJobs === null || activeJobs.length > 0) {
+          scheduleNextPoll();
+          return;
+        }
+
+        const refreshedItems = await refreshCollectionItems(selectedCollectionId, {
+          silentError: true,
+        });
+        if (isCancelled) {
+          return;
+        }
+
+        if (refreshedItems?.some((item) => item.status === 'GENERATING')) {
+          scheduleNextPoll();
+          return;
+        }
+
+        stopPolling();
+      } finally {
+        isPolling = false;
+      }
+    };
+
+    const loadItems = async () => {
+      const items = await refreshCollectionItems(selectedCollectionId, { silentError: false });
+      if (isCancelled) {
+        return;
+      }
+
+      if (!items?.some((item) => item.status === 'GENERATING')) {
+        return;
+      }
+
+      const activeJobs = await listActiveGenerationJobs();
+      if (isCancelled) {
+        return;
+      }
+
+      if (activeJobs === null || activeJobs.length > 0) {
+        scheduleNextPoll();
+        return;
+      }
+
+      const refreshedItems = await refreshCollectionItems(selectedCollectionId, {
+        silentError: true,
+      });
+      if (isCancelled) {
+        return;
+      }
+
+      if (refreshedItems?.some((item) => item.status === 'GENERATING')) {
+        scheduleNextPoll();
       }
     };
 
@@ -465,8 +650,9 @@ export function ProjectDetailPage({
 
     return () => {
       isCancelled = true;
+      stopPolling();
     };
-  }, [selectedCollectionId, activeTab, itemRefreshKey]);
+  }, [selectedCollectionId, activeTab, itemRefreshKey, refreshCollectionItems]);
 
   const items = getItems();
   const selectedItem = getSelectedItem();
@@ -515,7 +701,7 @@ export function ProjectDetailPage({
           />
 
           <div className={styles.collectionsWorkspaceArea}>
-            {centerViewMode === 'grid' ? (
+            <div className={styles.collectionItemsPane}>
               <CollectionItemGrid
                 key={itemRefreshKey}
                 items={selectedCollectionItems}
@@ -526,17 +712,15 @@ export function ProjectDetailPage({
                 deletingItemIds={deletingItemIds}
                 emptyMessage={emptyMessage}
                 onUploadClick={canCreateCollectionItems ? handleUploadClick : undefined}
-                onGenerateClick={canCreateCollectionItems ? handleGenerateClick : undefined}
                 showAddButton={canCreateCollectionItems}
               />
-            ) : selectedCollectionId ? (
-              <CollectionItemGenerationView
-                collectionId={selectedCollectionId}
-                projectId={projectId}
-                onBack={handleBackToGrid}
-                onItemCreated={handleCollectionItemCreated}
+            </div>
+            {canCreateCollectionItems && (
+              <GenerationControlBar
+                onGenerate={handleGenerateCollectionItem}
+                isGenerating={isGeneratingCollectionItem}
               />
-            ) : null}
+            )}
           </div>
 
           <aside className={styles.detailsPanel}>

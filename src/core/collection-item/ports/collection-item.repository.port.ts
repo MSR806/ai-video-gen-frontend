@@ -2,8 +2,10 @@ import type {
   CollectionItem,
   CollectionItemCreationPayload,
   CollectionItemGenerationParams,
+  GenerationJob,
+  GenerationSubmission,
+  ListGenerationJobsParams,
   CollectionItemUploadPayload,
-  GeneratedCollectionItem,
 } from '../domain/collection-item.entity';
 
 /**
@@ -15,5 +17,7 @@ export interface CollectionItemRepository {
   create(payload: CollectionItemCreationPayload): Promise<CollectionItem>;
   delete(collectionId: string, itemId: string): Promise<void>;
   upload(payload: CollectionItemUploadPayload): Promise<CollectionItem>;
-  generateWithAI(params: CollectionItemGenerationParams): Promise<GeneratedCollectionItem>;
+  generateWithAI(params: CollectionItemGenerationParams): Promise<GenerationSubmission>;
+  getGenerationJob(jobId: string): Promise<GenerationJob>;
+  listGenerationJobs(params: ListGenerationJobsParams): Promise<GenerationJob[]>;
 }

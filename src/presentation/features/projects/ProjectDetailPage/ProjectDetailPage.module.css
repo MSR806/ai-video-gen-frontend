@@ -143,6 +143,14 @@
 .collectionsWorkspaceArea {
   grid-column: 3 / 4;
   background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.collectionItemsPane {
+  flex: 1;
+  min-height: 0;
 }
 
 .scenesArea {
