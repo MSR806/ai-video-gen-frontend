@@ -1,6 +1,6 @@
 import type {
+  CollectionItem,
   CollectionItemGenerationParams,
-  GenerationSubmission,
 } from '../domain/collection-item.entity';
 import type { CollectionItemRepository } from '../ports/collection-item.repository.port';
 
@@ -10,7 +10,7 @@ import type { CollectionItemRepository } from '../ports/collection-item.reposito
 export class GenerateCollectionItemUseCase {
   constructor(private collectionItemRepository: CollectionItemRepository) {}
 
-  async execute(params: CollectionItemGenerationParams): Promise<GenerationSubmission> {
+  async execute(params: CollectionItemGenerationParams): Promise<CollectionItem> {
     return this.collectionItemRepository.generateWithAI(params);
   }
 }

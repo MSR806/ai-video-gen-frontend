@@ -6,3 +6,4 @@ export * from './use-cases/delete-collection-item.use-case';
 export * from './use-cases/upload-collection-item.use-case';
 export * from './use-cases/generate-collection-item.use-case';
 export * from './use-cases/get-generation-job.use-case';
+export * from './use-cases/get-collection-item-by-id.use-case';

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { CollectionItem } from '@core/collection-item';
 import { Dropdown, DropdownItem } from '@presentation/components/ui';
 import styles from './CollectionItemCard.module.css';
@@ -56,6 +56,53 @@ export function CollectionItemCard({
   const canDownload = item.status === 'READY' && mediaUrl.length > 0;
   const canDragAsReference =
     item.mediaType === 'image' && item.status === 'READY' && mediaUrl.length > 0;
+  const isGenerating = item.status === 'GENERATING';
+  const isFailed = item.status === 'FAILED';
+  const failedMessage = item.generationErrorMessage?.trim() || 'Generation failed';
+  const dragPreviewRef = useRef<HTMLDivElement | null>(null);
+
+  const cleanupDragPreview = () => {
+    if (!dragPreviewRef.current) {
+      return;
+    }
+    dragPreviewRef.current.remove();
+    dragPreviewRef.current = null;
+  };
+
+  useEffect(() => {
+    return () => {
+      cleanupDragPreview();
+    };
+  }, []);
+
+  const createCompactDragPreview = () => {
+    if (typeof document === 'undefined') {
+      return null;
+    }
+
+    cleanupDragPreview();
+
+    const preview = document.createElement('div');
+    preview.className = styles.dragPreview;
+
+    const imageSource = thumbnailUrl.length > 0 ? thumbnailUrl : mediaUrl;
+    if (imageSource.length > 0) {
+      const image = document.createElement('img');
+      image.className = styles.dragPreviewImage;
+      image.src = imageSource;
+      image.alt = '';
+      preview.appendChild(image);
+    } else {
+      const label = document.createElement('span');
+      label.className = styles.dragPreviewLabel;
+      label.textContent = item.name;
+      preview.appendChild(label);
+    }
+
+    document.body.appendChild(preview);
+    dragPreviewRef.current = preview;
+    return preview;
+  };
 
   const handleDragStart = (event: React.DragEvent<HTMLButtonElement>) => {
     if (!canDragAsReference) {
@@ -65,6 +112,15 @@ export function CollectionItemCard({
     event.dataTransfer.setData('text/plain', mediaUrl);
     event.dataTransfer.setData('text/uri-list', mediaUrl);
     event.dataTransfer.setData('application/x-ai-video-gen-item-url', mediaUrl);
+
+    const dragPreview = createCompactDragPreview();
+    if (dragPreview) {
+      event.dataTransfer.setDragImage(dragPreview, 18, 18);
+    }
+  };
+
+  const handleDragEnd = () => {
+    cleanupDragPreview();
   };
 
   const [failedThumbnailKey, setFailedThumbnailKey] = useState<string | null>(null);
@@ -113,6 +169,7 @@ export function CollectionItemCard({
         className={`${styles.card} ${canDragAsReference ? styles.draggable : ''}`}
         onClick={handleClick}
         onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
         draggable={canDragAsReference && !isDeleting}
         aria-label={item.name}
         style={cardStyle}
@@ -120,7 +177,9 @@ export function CollectionItemCard({
       >
         <div className={styles.thumbnailContainer}>
           {renderMedia()}
-          <div className={styles.overlay}>
+          <div
+            className={`${styles.overlay} ${isGenerating ? styles.overlayGenerating : ''} ${isFailed ? styles.overlayFailed : ''}`}
+          >
             {item.mediaType === 'video' && (
               <div className={styles.mediaTypeBadge}>
                 <svg
@@ -138,6 +197,19 @@ export function CollectionItemCard({
                 </svg>
               </div>
             )}
+
+            {isGenerating && (
+              <div className={`${styles.statusBadge} ${styles.statusBadgeGenerating}`}>
+                <span className={styles.statusSpinner} />
+                <span>Generating...</span>
+              </div>
+            )}
+
+            {isFailed && (
+              <div className={`${styles.statusBadge} ${styles.statusBadgeFailed}`}>Failed</div>
+            )}
+
+            {isFailed && <p className={styles.failureMessage}>{failedMessage}</p>}
 
             <div className={styles.descriptionChip}>
               <span className={styles.descriptionIcon} aria-hidden="true">
@@ -168,63 +240,65 @@ export function CollectionItemCard({
         </div>
       </button>
 
-      <div className={styles.menuContainer}>
-        <Dropdown
-          menuClassName={styles.actionMenu}
-          trigger={
-            <button
-              type="button"
-              className={styles.menuButton}
-              disabled={isDeleting}
-              aria-label={isDeleting ? `Updating ${item.name}` : `Open menu for ${item.name}`}
-            >
-              ⋮
-            </button>
-          }
-        >
-          <DropdownItem
-            icon={<span className={styles.menuGlyph}>⧉</span>}
-            label="Copy"
-            className={styles.actionItem}
-            onClick={() => {
-              if (!canCopyImage) {
-                return;
-              }
-              void onCopy(item);
-            }}
-            disabled={isDeleting || !canCopyImage}
-          />
-          <DropdownItem
-            icon={<span className={styles.menuGlyph}>↓</span>}
-            label="Download"
-            className={styles.actionItem}
-            onClick={() => {
-              if (!canDownload) {
-                return;
-              }
-              onDownload(item);
-            }}
-            disabled={isDeleting || !canDownload}
-          />
-          {onDelete && (
-            <>
-              <div className={styles.menuDivider} />
-              <DropdownItem
-                icon={<span className={styles.menuGlyph}>⌫</span>}
-                label={isDeleting ? 'Deleting...' : 'Delete'}
-                className={styles.actionItem}
-                danger
-                onClick={() => {
-                  if (!isDeleting) {
-                    onDelete(item);
-                  }
-                }}
+      {!isGenerating && (
+        <div className={styles.menuContainer}>
+          <Dropdown
+            menuClassName={styles.actionMenu}
+            trigger={
+              <button
+                type="button"
+                className={styles.menuButton}
                 disabled={isDeleting}
-              />
-            </>
-          )}
-        </Dropdown>
-      </div>
+                aria-label={isDeleting ? `Updating ${item.name}` : `Open menu for ${item.name}`}
+              >
+                ⋮
+              </button>
+            }
+          >
+            <DropdownItem
+              icon={<span className={styles.menuGlyph}>⧉</span>}
+              label="Copy"
+              className={styles.actionItem}
+              onClick={() => {
+                if (!canCopyImage) {
+                  return;
+                }
+                void onCopy(item);
+              }}
+              disabled={isDeleting || !canCopyImage}
+            />
+            <DropdownItem
+              icon={<span className={styles.menuGlyph}>↓</span>}
+              label="Download"
+              className={styles.actionItem}
+              onClick={() => {
+                if (!canDownload) {
+                  return;
+                }
+                onDownload(item);
+              }}
+              disabled={isDeleting || !canDownload}
+            />
+            {onDelete && (
+              <>
+                <div className={styles.menuDivider} />
+                <DropdownItem
+                  icon={<span className={styles.menuGlyph}>⌫</span>}
+                  label={isDeleting ? 'Deleting...' : 'Delete'}
+                  className={styles.actionItem}
+                  danger
+                  onClick={() => {
+                    if (!isDeleting) {
+                      onDelete(item);
+                    }
+                  }}
+                  disabled={isDeleting}
+                />
+              </>
+            )}
+          </Dropdown>
+        </div>
+      )}
     </div>
   );
 }

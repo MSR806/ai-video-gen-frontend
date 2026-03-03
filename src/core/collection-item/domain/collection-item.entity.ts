@@ -77,14 +77,6 @@ export interface CollectionItemGenerationParams {
   collectionId: string;
 }
 
-export type GenerationSubmissionStatus = 'QUEUED' | 'IN_PROGRESS';
-
-export interface GenerationSubmission {
-  jobId: string;
-  itemId: string;
-  status: GenerationSubmissionStatus;
-}
-
 export type GenerationJobStatus = 'QUEUED' | 'IN_PROGRESS' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 
 export interface GenerationJobError {

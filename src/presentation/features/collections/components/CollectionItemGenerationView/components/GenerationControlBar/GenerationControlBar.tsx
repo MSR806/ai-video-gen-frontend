@@ -58,6 +58,13 @@ export function GenerationControlBar({ onGenerate, isGenerating }: GenerationCon
   const handleGenerate = () => {
     if (!prompt.trim() || isGenerating) return;
     onGenerate(prompt.trim(), referenceImages, aspectRatio);
+    setPrompt('');
+    setReferenceImages([]);
+    setIsDropActive(false);
+
+    if (promptRef.current) {
+      promptRef.current.style.height = '44px';
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

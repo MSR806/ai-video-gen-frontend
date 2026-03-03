@@ -6,11 +6,10 @@ import type {
   CollectionItemUploadPayload,
   CollectionItemRepository,
   GenerationJob,
-  GenerationSubmission,
   ImageMetadata,
   VideoMetadata,
 } from '@core/collection-item';
-import { backendApiRequest } from '@infra/http/backend-api';
+import { BackendApiError, backendApiRequest } from '@infra/http/backend-api';
 
 interface ApiCollectionItem {
   id: string;
@@ -96,7 +95,18 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
   }
 
   async getById(id: string): Promise<CollectionItem | null> {
-    return this.cache.get(id) || null;
+    try {
+      const item = await backendApiRequest<ApiCollectionItem>(`/api/v1/collection-items/${id}`);
+      const mappedItem = mapApiCollectionItem(item);
+      this.cache.set(mappedItem.id, mappedItem);
+      return mappedItem;
+    } catch (error) {
+      if (error instanceof BackendApiError && error.status === 404) {
+        this.cache.delete(id);
+        return null;
+      }
+      throw error;
+    }
   }
 
   async create(payload: CollectionItemCreationPayload): Promise<CollectionItem> {
@@ -151,7 +161,7 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
     return mappedCreated;
   }
 
-  async generateWithAI(params: CollectionItemGenerationParams): Promise<GenerationSubmission> {
+  async generateWithAI(params: CollectionItemGenerationParams): Promise<CollectionItem> {
     const referenceUrls = (params.referenceImages ?? [])
       .map((url) => url.trim())
       .filter((url) => /^https?:\/\//i.test(url));
@@ -168,7 +178,7 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
       requestBody.sourceImageUrls = [referenceUrls[0]];
     }
 
-    return backendApiRequest<GenerationSubmission>(
+    const generatedPlaceholder = await backendApiRequest<ApiCollectionItem>(
       `/api/v1/collections/${params.collectionId}/items/generate`,
       {
         method: 'POST',
@@ -178,6 +188,10 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
         body: JSON.stringify(requestBody),
       },
     );
+
+    const mappedGeneratedPlaceholder = mapApiCollectionItem(generatedPlaceholder);
+    this.cache.set(mappedGeneratedPlaceholder.id, mappedGeneratedPlaceholder);
+    return mappedGeneratedPlaceholder;
   }
 
   async getGenerationJob(jobId: string): Promise<GenerationJob> {
