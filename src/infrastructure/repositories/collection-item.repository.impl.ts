@@ -7,7 +7,6 @@ import type {
   CollectionItemRepository,
   GenerationJob,
   GenerationSubmission,
-  ListGenerationJobsParams,
   ImageMetadata,
   VideoMetadata,
 } from '@core/collection-item';
@@ -17,6 +16,7 @@ interface ApiCollectionItem {
   id: string;
   projectId: string;
   collectionId: string;
+  jobId?: string | null;
   mediaType: 'image' | 'video';
   status?: CollectionItemStatus;
   name: string;
@@ -65,6 +65,7 @@ const mapApiCollectionItem = (item: ApiCollectionItem): CollectionItem => {
     id: item.id,
     projectId: item.projectId,
     collectionId: item.collectionId,
+    jobId: item.jobId ?? null,
     mediaType: item.mediaType,
     status: item.status ?? (normalizedUrl ? 'READY' : 'GENERATING'),
     name: item.name,
@@ -181,33 +182,5 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
 
   async getGenerationJob(jobId: string): Promise<GenerationJob> {
     return backendApiRequest<GenerationJob>(`/api/v1/generation-jobs/${jobId}`);
-  }
-
-  async listGenerationJobs(params: ListGenerationJobsParams): Promise<GenerationJob[]> {
-    const searchParams = new URLSearchParams();
-
-    const normalizedCollectionId = params.collectionId?.trim();
-    if (normalizedCollectionId && normalizedCollectionId.length > 0) {
-      searchParams.set('collectionId', normalizedCollectionId);
-    }
-
-    const normalizedProjectId = params.projectId?.trim();
-    if (normalizedProjectId && normalizedProjectId.length > 0) {
-      searchParams.set('projectId', normalizedProjectId);
-    }
-
-    if (params.statuses) {
-      params.statuses.forEach((status) => {
-        searchParams.append('status', status);
-      });
-    }
-
-    if (typeof params.limit === 'number' && Number.isFinite(params.limit) && params.limit > 0) {
-      searchParams.set('limit', String(Math.floor(params.limit)));
-    }
-
-    const query = searchParams.toString();
-    const path = query.length > 0 ? `/api/v1/generation-jobs?${query}` : '/api/v1/generation-jobs';
-    return backendApiRequest<GenerationJob[]>(path);
   }
 }

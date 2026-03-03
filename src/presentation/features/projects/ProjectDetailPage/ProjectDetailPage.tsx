@@ -9,7 +9,6 @@ import {
   GenerateCollectionItemUseCase,
   GetCollectionItemsUseCase,
   GetGenerationJobUseCase,
-  ListGenerationJobsUseCase,
   type GenerationAspectRatio,
   type GenerationJob,
 } from '@core/collection-item';
@@ -559,17 +558,42 @@ export function ProjectDetailPage({
       }, ACTIVE_GENERATION_JOBS_POLL_INTERVAL_MS);
     };
 
-    const listActiveGenerationJobs = async (): Promise<GenerationJob[] | null> => {
+    const getActiveJobIds = (items: CollectionItem[]): string[] => {
+      const activeJobIds = new Set<string>();
+      items
+        .filter((item) => item.status === 'GENERATING')
+        .forEach((item) => {
+          const jobId = item.jobId?.trim();
+          if (jobId && jobId.length > 0) {
+            activeJobIds.add(jobId);
+          }
+        });
+      return Array.from(activeJobIds);
+    };
+
+    const hasInProgressJobs = async (jobIds: string[]): Promise<boolean | null> => {
+      if (jobIds.length === 0) {
+        return null;
+      }
+
       try {
         const repository = new CollectionItemRepositoryImpl();
-        const listGenerationJobsUseCase = new ListGenerationJobsUseCase(repository);
-        return await listGenerationJobsUseCase.execute({
-          collectionId: selectedCollectionId,
-          statuses: ['QUEUED', 'IN_PROGRESS'],
-          limit: 100,
-        });
+        const getGenerationJobUseCase = new GetGenerationJobUseCase(repository);
+        const results = await Promise.allSettled(
+          jobIds.map((jobId) => getGenerationJobUseCase.execute(jobId)),
+        );
+
+        if (results.some((result) => result.status === 'rejected')) {
+          return null;
+        }
+
+        return results.some(
+          (result) =>
+            result.status === 'fulfilled' &&
+            (result.value.status === 'QUEUED' || result.value.status === 'IN_PROGRESS'),
+        );
       } catch (error) {
-        console.error('Error loading active generation jobs:', error);
+        console.error('Error polling generation jobs:', error);
         return null;
       }
     };
@@ -586,24 +610,48 @@ export function ProjectDetailPage({
 
       isPolling = true;
       try {
-        const activeJobs = await listActiveGenerationJobs();
-        if (isCancelled) {
-          return;
-        }
-
-        if (activeJobs === null || activeJobs.length > 0) {
-          scheduleNextPoll();
-          return;
-        }
-
-        const refreshedItems = await refreshCollectionItems(selectedCollectionId, {
+        const currentItems = await refreshCollectionItems(selectedCollectionId, {
           silentError: true,
         });
         if (isCancelled) {
           return;
         }
 
-        if (refreshedItems?.some((item) => item.status === 'GENERATING')) {
+        if (currentItems === null) {
+          scheduleNextPoll();
+          return;
+        }
+
+        const generatingItems = currentItems.filter((item) => item.status === 'GENERATING');
+        if (generatingItems.length === 0) {
+          stopPolling();
+          return;
+        }
+
+        const activeJobIds = getActiveJobIds(generatingItems);
+        if (activeJobIds.length === 0) {
+          scheduleNextPoll();
+          return;
+        }
+
+        const hasInProgress = await hasInProgressJobs(activeJobIds);
+        if (isCancelled) {
+          return;
+        }
+
+        if (hasInProgress !== false) {
+          scheduleNextPoll();
+          return;
+        }
+
+        const finalRefresh = await refreshCollectionItems(selectedCollectionId, {
+          silentError: true,
+        });
+        if (isCancelled) {
+          return;
+        }
+
+        if (finalRefresh?.some((item) => item.status === 'GENERATING')) {
           scheduleNextPoll();
           return;
         }
@@ -624,26 +672,7 @@ export function ProjectDetailPage({
         return;
       }
 
-      const activeJobs = await listActiveGenerationJobs();
-      if (isCancelled) {
-        return;
-      }
-
-      if (activeJobs === null || activeJobs.length > 0) {
-        scheduleNextPoll();
-        return;
-      }
-
-      const refreshedItems = await refreshCollectionItems(selectedCollectionId, {
-        silentError: true,
-      });
-      if (isCancelled) {
-        return;
-      }
-
-      if (refreshedItems?.some((item) => item.status === 'GENERATING')) {
-        scheduleNextPoll();
-      }
+      scheduleNextPoll();
     };
 
     void loadItems();

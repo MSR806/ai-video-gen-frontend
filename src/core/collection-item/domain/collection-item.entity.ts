@@ -30,6 +30,7 @@ export interface CollectionItem {
   id: string;
   projectId: string;
   collectionId: string;
+  jobId?: string | null;
   mediaType: 'image' | 'video';
   status: CollectionItemStatus;
   name: string;
@@ -105,13 +106,6 @@ export interface GenerationJob {
   updatedAt: string;
   submittedAt?: string | null;
   completedAt?: string | null;
-}
-
-export interface ListGenerationJobsParams {
-  collectionId?: string;
-  projectId?: string;
-  statuses?: GenerationJobStatus[];
-  limit?: number;
 }
 
 /**
