@@ -153,6 +153,10 @@
   min-height: 0;
 }
 
+.collectionsWorkspaceAreaExpanded {
+  grid-column: 2 / 5;
+}
+
 .scenesArea {
   grid-column: 2 / 5;
   height: 100%;

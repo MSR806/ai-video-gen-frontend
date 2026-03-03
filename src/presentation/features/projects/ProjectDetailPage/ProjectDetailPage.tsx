@@ -693,14 +693,18 @@ export function ProjectDetailPage({
         </div>
       ) : (
         <>
-          <ItemList
-            items={items}
-            selectedId={selectedCollectionId}
-            onItemSelect={handleCollectionSelect}
-            onAddClick={handleCreateCollectionClick}
-          />
+          {selectedCollectionId === null ? (
+            <ItemList
+              items={items}
+              selectedId={selectedCollectionId}
+              onItemSelect={handleCollectionSelect}
+              onAddClick={handleCreateCollectionClick}
+            />
+          ) : null}
 
-          <div className={styles.collectionsWorkspaceArea}>
+          <div
+            className={`${styles.collectionsWorkspaceArea} ${selectedCollectionId ? styles.collectionsWorkspaceAreaExpanded : ''}`}
+          >
             <div className={styles.collectionItemsPane}>
               <CollectionItemGrid
                 key={itemRefreshKey}
@@ -723,22 +727,24 @@ export function ProjectDetailPage({
             )}
           </div>
 
-          <aside className={styles.detailsPanel}>
-            {!selectedItem ? (
-              <div className={styles.emptyDetails}>
-                <p>Select collection to view details</p>
-              </div>
-            ) : (
-              <div className={styles.details}>
-                {activeTab === 'collections' && (
-                  <CollectionDetails
-                    collection={selectedItem}
-                    itemCount={selectedCollectionItems.length}
-                  />
-                )}
-              </div>
-            )}
-          </aside>
+          {selectedCollectionId === null ? (
+            <aside className={styles.detailsPanel}>
+              {!selectedItem ? (
+                <div className={styles.emptyDetails}>
+                  <p>Select collection to view details</p>
+                </div>
+              ) : (
+                <div className={styles.details}>
+                  {activeTab === 'collections' && (
+                    <CollectionDetails
+                      collection={selectedItem}
+                      itemCount={selectedCollectionItems.length}
+                    />
+                  )}
+                </div>
+              )}
+            </aside>
+          ) : null}
         </>
       )}
 
