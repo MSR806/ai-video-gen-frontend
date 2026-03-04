@@ -1,3 +1,5 @@
+import type { Collection } from '../../collection/domain/collection.entity';
+
 /**
  * Metadata for image collection items.
  */
@@ -38,6 +40,11 @@ export interface CollectionItem {
   url: string | null;
   metadata: ImageMetadata | VideoMetadata;
   generationErrorMessage?: string | null;
+}
+
+export interface CollectionContents {
+  items: CollectionItem[];
+  childCollections: Collection[];
 }
 
 /**

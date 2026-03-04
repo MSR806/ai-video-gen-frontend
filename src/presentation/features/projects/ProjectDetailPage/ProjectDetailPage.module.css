@@ -148,6 +148,67 @@
   min-height: 0;
 }
 
+.collectionsPathBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-raised);
+}
+
+.pathBackButton {
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.pathBackButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pathCrumbGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pathSeparator {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.pathCrumbButton {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pathCrumbButton:hover {
+  color: var(--text-primary);
+}
+
+.pathCurrent {
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.pathMeta {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 .collectionItemsPane {
   flex: 1;
   min-height: 0;

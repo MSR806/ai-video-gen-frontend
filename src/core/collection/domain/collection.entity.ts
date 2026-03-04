@@ -5,6 +5,7 @@
 export interface Collection {
   id: string;
   projectId: string;
+  parentCollectionId: string | null;
   name: string;
   tag: string;
   description: string;
@@ -15,6 +16,7 @@ export interface Collection {
  */
 export interface CollectionCreationPayload {
   projectId: string;
+  parentCollectionId?: string | null;
   name: string;
   tag: string;
   description: string;

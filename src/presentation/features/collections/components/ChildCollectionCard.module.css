@@ -1,0 +1,99 @@
+.cardShell {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: block;
+  height: 400px;
+  width: auto;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  background:
+    radial-gradient(
+      120% 100% at 80% 10%,
+      color-mix(in srgb, var(--accent-primary) 22%, var(--bg-base) 78%) 0%,
+      transparent 48%
+    ),
+    linear-gradient(155deg, var(--bg-raised) 0%, var(--bg-base) 55%, var(--bg-elevated) 100%);
+  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-default);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--space-3);
+}
+
+.overlay::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 70%;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-base) 0%, transparent) 0%,
+    color-mix(in srgb, var(--bg-base) 78%, transparent) 100%
+  );
+  pointer-events: none;
+}
+
+.badge {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--bg-overlay) 88%, var(--bg-base) 12%);
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 4px var(--space-2);
+  position: relative;
+  z-index: 1;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}
+
+.title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 600;
+  text-align: left;
+  text-wrap: balance;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.description {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  text-align: left;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

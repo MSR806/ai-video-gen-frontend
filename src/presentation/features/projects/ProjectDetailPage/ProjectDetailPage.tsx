@@ -7,8 +7,8 @@ import { CreateCollectionUseCase, type CollectionCreationPayload } from '@core/c
 import {
   DeleteCollectionItemUseCase,
   GenerateCollectionItemUseCase,
+  GetCollectionContentsUseCase,
   GetCollectionItemByIdUseCase,
-  GetCollectionItemsUseCase,
   GetGenerationJobUseCase,
   UploadCollectionItemUseCase,
   type GenerationAspectRatio,
@@ -28,13 +28,14 @@ import {
   CollectionRepositoryImpl,
   SceneRepositoryImpl,
 } from '@infra/repositories';
-import { getProjectCollectionPath } from '@presentation/features/projects/routes';
+import {
+  getProjectCollectionPath,
+  getProjectCollectionsPath,
+} from '@presentation/features/projects/routes';
 import type { TabType } from './types';
 import { TabNavigation } from './components/TabNavigation';
 import { CollectionsCardList } from './components/CollectionsCardList';
-import { ItemList } from '../../collections/components/ItemList';
 import { CollectionCreateModal } from '../../collections/components/CollectionCreateModal';
-import { CollectionDetails } from '../../collections/components/details/CollectionDetails';
 import { CollectionItemGrid } from '../../collections/components/CollectionItemGrid';
 import { CollectionItemLightbox } from '../../collections/components/CollectionItemLightbox';
 import { GenerationControlBar } from '../../collections/components/CollectionItemGenerationView/components/GenerationControlBar/GenerationControlBar';
@@ -52,6 +53,7 @@ interface ProjectDetailPageProps {
   collections: Collection[];
   scenes: Scene[];
   collectionItems: CollectionItem[];
+  selectedCollectionChildCollections: Collection[];
 }
 
 interface Toast {
@@ -73,6 +75,18 @@ const getCollectionItemDownloadName = (item: CollectionItem): string => {
     : `${baseName}.${extension}`;
 };
 
+const getMediaProxyUrl = (mediaUrl: string): string =>
+  `/api/media-proxy?url=${encodeURIComponent(mediaUrl)}`;
+
+const fetchMediaResponse = async (mediaUrl: string): Promise<Response> => {
+  const proxiedResponse = await fetch(getMediaProxyUrl(mediaUrl));
+  if (proxiedResponse.status !== 400 && proxiedResponse.status !== 403) {
+    return proxiedResponse;
+  }
+
+  return fetch(mediaUrl);
+};
+
 const ACTIVE_GENERATION_JOBS_POLL_INTERVAL_MS = 3000;
 const ACTIVE_GENERATION_JOBS_MAX_POLL_ATTEMPTS = 240;
 const MISSING_JOB_FALLBACK_REFRESH_INTERVAL_MS = 15000;
@@ -82,11 +96,10 @@ const ITEM_TERMINAL_REFRESH_MAX_RETRIES = 5;
 /**
  * ProjectDetailPage
  *
- * Orchestrates the four-panel layout for viewing project details:
+ * Orchestrates the project workspace layout:
  * - Tab navigation (Collections/Scenes/Shots)
- * - List of collections
+ * - Root collection cards or selected collection drill-down workspace
  * - Collection item grid with inline generation controls
- * - Details panel showing selected collection
  */
 export function ProjectDetailPage({
   projectId,
@@ -95,6 +108,7 @@ export function ProjectDetailPage({
   collections,
   scenes,
   collectionItems,
+  selectedCollectionChildCollections,
 }: ProjectDetailPageProps) {
   const router = useRouter();
   const [lightboxItem, setLightboxItem] = useState<CollectionItem | null>(null);
@@ -109,20 +123,15 @@ export function ProjectDetailPage({
   const [loadedCollectionItems, setLoadedCollectionItems] =
     useState<CollectionItem[]>(collectionItems);
   const loadedCollectionItemsRef = useRef<CollectionItem[]>(collectionItems);
+  const [loadedSelectedChildCollections, setLoadedSelectedChildCollections] =
+    useState<Collection[]>(selectedCollectionChildCollections);
   const [deletingItemIds, setDeletingItemIds] = useState<Set<string>>(new Set());
   const [deleteCandidate, setDeleteCandidate] = useState<CollectionItem | null>(null);
   const [isScenesReady, setIsScenesReady] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
-  const getItems = () => {
-    switch (activeTab) {
-      case 'collections':
-        return loadedCollections;
-      case 'scenes':
-      case 'shots':
-        return [];
-    }
-  };
+  const getRootCollections = (): Collection[] =>
+    loadedCollections.filter((collection) => collection.parentCollectionId === null);
 
   const getCollectionItems = (): CollectionItem[] => {
     if (!selectedCollectionId || activeTab !== 'collections') return [];
@@ -137,6 +146,34 @@ export function ProjectDetailPage({
     return loadedCollections.find((collection) => collection.id === selectedCollectionId) || null;
   };
 
+  const getCollectionBreadcrumb = (): Collection[] => {
+    if (!selectedCollectionId || activeTab !== 'collections') {
+      return [];
+    }
+
+    const collectionsById = new Map(loadedCollections.map((collection) => [collection.id, collection]));
+    const breadcrumb: Collection[] = [];
+    const visited = new Set<string>();
+
+    let currentId: string | null = selectedCollectionId;
+    while (currentId) {
+      if (visited.has(currentId)) {
+        break;
+      }
+      visited.add(currentId);
+
+      const current = collectionsById.get(currentId);
+      if (!current) {
+        break;
+      }
+
+      breadcrumb.unshift(current);
+      currentId = current.parentCollectionId;
+    }
+
+    return breadcrumb;
+  };
+
   const getEmptyMessage = (): string => {
     if (!selectedCollectionId) {
       if (activeTab === 'collections') return 'Select a collection to view items';
@@ -145,7 +182,7 @@ export function ProjectDetailPage({
 
     if (activeTab === 'scenes' || activeTab === 'shots') return 'Not applicable for this view';
 
-    return 'No collection items available';
+    return 'No collection items or subcollections available';
   };
 
   const handleCollectionSelect = (collectionId: string) => {
@@ -154,6 +191,24 @@ export function ProjectDetailPage({
     }
 
     router.push(getProjectCollectionPath(projectId, collectionId));
+  };
+
+  const handleNavigateToRoot = () => {
+    router.push(getProjectCollectionsPath(projectId));
+  };
+
+  const handleNavigateToParent = () => {
+    if (!selectedCollectionId) {
+      return;
+    }
+
+    const selectedCollection = loadedCollections.find((collection) => collection.id === selectedCollectionId);
+    if (!selectedCollection || selectedCollection.parentCollectionId === null) {
+      handleNavigateToRoot();
+      return;
+    }
+
+    router.push(getProjectCollectionPath(projectId, selectedCollection.parentCollectionId));
   };
 
   const handleUploadClick = () => {
@@ -168,6 +223,45 @@ export function ProjectDetailPage({
     setCollectionCreateModalOpen(true);
   };
 
+  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info') => {
+    const id = Date.now().toString();
+    setToasts((prev) => [...prev, { id, message, type }]);
+  }, []);
+
+  const refreshCollectionContents = useCallback(
+    async (
+      collectionId: string,
+      options?: { silentError?: boolean },
+    ): Promise<{ items: CollectionItem[]; childCollections: Collection[] } | null> => {
+      const silentError = options?.silentError ?? false;
+
+      try {
+        const repository = new CollectionItemRepositoryImpl();
+        const getCollectionContentsUseCase = new GetCollectionContentsUseCase(repository);
+        const contents = await getCollectionContentsUseCase.execute(collectionId);
+
+        setLoadedCollectionItems(contents.items);
+        setLoadedSelectedChildCollections(contents.childCollections);
+
+        return contents;
+      } catch (error) {
+        console.error('Error loading collection contents:', error);
+        if (!silentError) {
+          setToasts((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              message: 'Failed to load collection contents.',
+              type: 'error',
+            },
+          ]);
+        }
+        return null;
+      }
+    },
+    [],
+  );
+
   const handleCreateCollection = async (payload: CollectionCreationPayload) => {
     setIsCreatingCollection(true);
 
@@ -177,8 +271,14 @@ export function ProjectDetailPage({
       const created = await createCollectionUseCase.execute(payload);
 
       setLoadedCollections((prev) => [...prev, created]);
-      router.push(getProjectCollectionPath(projectId, created.id));
-      addToast('Collection created successfully!', 'success');
+
+      if (selectedCollectionId) {
+        await refreshCollectionContents(selectedCollectionId, { silentError: true });
+        addToast('Subcollection created successfully!', 'success');
+      } else {
+        router.push(getProjectCollectionPath(projectId, created.id));
+        addToast('Collection created successfully!', 'success');
+      }
     } catch (error) {
       console.error('Error creating collection:', error);
       addToast('Failed to create collection. Please try again.', 'error');
@@ -187,11 +287,6 @@ export function ProjectDetailPage({
       setIsCreatingCollection(false);
     }
   };
-
-  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info') => {
-    const id = Date.now().toString();
-    setToasts((prev) => [...prev, { id, message, type }]);
-  }, []);
 
   const handleGenerateCollectionItem = useCallback(
     async (prompt: string, referenceImages: string[], aspectRatio: GenerationAspectRatio) => {
@@ -394,7 +489,7 @@ export function ProjectDetailPage({
       }
 
       try {
-        const response = await fetch(mediaUrl);
+        const response = await fetchMediaResponse(mediaUrl);
         if (!response.ok) {
           throw new Error(`Copy request failed with status ${response.status}`);
         }
@@ -439,7 +534,7 @@ export function ProjectDetailPage({
         let objectUrl: string | null = null;
 
         try {
-          const response = await fetch(mediaUrl);
+          const response = await fetchMediaResponse(mediaUrl);
           if (!response.ok) {
             throw new Error(`Download request failed with status ${response.status}`);
           }
@@ -569,42 +664,6 @@ export function ProjectDetailPage({
     [addToast, projectId],
   );
 
-  const refreshCollectionItems = useCallback(
-    async (
-      collectionId: string,
-      options?: { silentError?: boolean },
-    ): Promise<CollectionItem[] | null> => {
-      const silentError = options?.silentError ?? false;
-
-      try {
-        const repository = new CollectionItemRepositoryImpl();
-        const getCollectionItemsUseCase = new GetCollectionItemsUseCase(repository);
-        const items = await getCollectionItemsUseCase.execute(collectionId);
-
-        setLoadedCollectionItems((prev) => [
-          ...prev.filter((item) => item.collectionId !== collectionId),
-          ...items,
-        ]);
-
-        return items;
-      } catch (error) {
-        console.error('Error loading collection items:', error);
-        if (!silentError) {
-          setToasts((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              message: 'Failed to load collection items.',
-              type: 'error',
-            },
-          ]);
-        }
-        return null;
-      }
-    },
-    [],
-  );
-
   const fetchCollectionItemById = useCallback(
     async (itemId: string, options?: { silentError?: boolean }): Promise<CollectionItem | null> => {
       const silentError = options?.silentError ?? false;
@@ -656,6 +715,10 @@ export function ProjectDetailPage({
   }, [loadedCollectionItems]);
 
   useEffect(() => {
+    setLoadedSelectedChildCollections(selectedCollectionChildCollections);
+  }, [selectedCollectionChildCollections]);
+
+  useEffect(() => {
     setLoadedScenes(scenes);
   }, [scenes]);
 
@@ -695,8 +758,8 @@ export function ProjectDetailPage({
   useEffect(() => {
     if (!selectedCollectionId || activeTab !== 'collections') return;
 
-    void refreshCollectionItems(selectedCollectionId, { silentError: false });
-  }, [selectedCollectionId, activeTab, itemRefreshKey, refreshCollectionItems]);
+    void refreshCollectionContents(selectedCollectionId, { silentError: false });
+  }, [selectedCollectionId, activeTab, itemRefreshKey, refreshCollectionContents]);
 
   useEffect(() => {
     if (!selectedCollectionId || activeTab !== 'collections') return;
@@ -773,7 +836,7 @@ export function ProjectDetailPage({
 
       missingJobFallbackAttempts += 1;
       lastMissingJobFallbackAt = now;
-      await refreshCollectionItems(selectedCollectionId, { silentError: true });
+      await refreshCollectionContents(selectedCollectionId, { silentError: true });
     };
 
     const pollActiveGenerationJobs = async () => {
@@ -858,7 +921,7 @@ export function ProjectDetailPage({
           });
 
           if (needsCollectionFallbackRefresh) {
-            await refreshCollectionItems(selectedCollectionId, { silentError: true });
+            await refreshCollectionContents(selectedCollectionId, { silentError: true });
             if (isCancelled) {
               return;
             }
@@ -888,12 +951,14 @@ export function ProjectDetailPage({
     activeTab,
     loadedCollectionItems,
     fetchCollectionItemById,
-    refreshCollectionItems,
+    refreshCollectionContents,
   ]);
 
-  const items = getItems();
+  const rootCollections = getRootCollections();
   const selectedItem = getSelectedItem();
   const selectedCollectionItems = getCollectionItems();
+  const selectedChildCollectionsCount = loadedSelectedChildCollections.length;
+  const breadcrumb = getCollectionBreadcrumb();
   const emptyMessage = getEmptyMessage();
 
   const canCreateCollectionItems = !!selectedCollectionId && activeTab === 'collections';
@@ -904,7 +969,7 @@ export function ProjectDetailPage({
 
       {activeTab === 'collections' && !selectedCollectionId ? (
         <CollectionsCardList
-          collections={loadedCollections}
+          collections={rootCollections}
           onCollectionSelect={handleCollectionSelect}
           onAddClick={handleCreateCollectionClick}
         />
@@ -929,67 +994,79 @@ export function ProjectDetailPage({
           <div>Shots Storyboard Placeholder</div>
         </div>
       ) : (
-        <>
-          {selectedCollectionId === null ? (
-            <ItemList
-              items={items}
-              selectedId={selectedCollectionId}
-              onItemSelect={handleCollectionSelect}
-              onAddClick={handleCreateCollectionClick}
-            />
-          ) : null}
-
-          <div
-            className={`${styles.collectionsWorkspaceArea} ${selectedCollectionId ? styles.collectionsWorkspaceAreaExpanded : ''}`}
-          >
-            <div className={styles.collectionItemsPane}>
-              <CollectionItemGrid
-                key={itemRefreshKey}
-                items={selectedCollectionItems}
-                onItemClick={setLightboxItem}
-                onItemCopy={handleCopyCollectionItem}
-                onItemDownload={handleDownloadCollectionItem}
-                onItemDelete={canCreateCollectionItems ? handleDeleteRequest : undefined}
-                deletingItemIds={deletingItemIds}
-                emptyMessage={emptyMessage}
-                onUploadClick={canCreateCollectionItems ? handleUploadClick : undefined}
-                isUploadDisabled={isUploadingCollectionItems}
-                showAddButton={canCreateCollectionItems}
-              />
-            </div>
-            {canCreateCollectionItems && (
-              <GenerationControlBar
-                onGenerate={handleGenerateCollectionItem}
-                isGenerating={isGeneratingCollectionItem}
-              />
-            )}
+        <div
+          className={`${styles.collectionsWorkspaceArea} ${selectedCollectionId ? styles.collectionsWorkspaceAreaExpanded : ''}`}
+        >
+          <div className={styles.collectionsPathBar}>
+            <button
+              type="button"
+              className={styles.pathBackButton}
+              onClick={handleNavigateToParent}
+              disabled={!selectedItem}
+            >
+              Up
+            </button>
+            <button
+              type="button"
+              className={styles.pathCrumbButton}
+              onClick={handleNavigateToRoot}
+            >
+              Collections
+            </button>
+            {breadcrumb.map((collection, index) => {
+              const isLast = index === breadcrumb.length - 1;
+              return (
+                <span key={collection.id} className={styles.pathCrumbGroup}>
+                  <span className={styles.pathSeparator}>/</span>
+                  {isLast ? (
+                    <span className={styles.pathCurrent}>{collection.name}</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.pathCrumbButton}
+                      onClick={() => handleCollectionSelect(collection.id)}
+                    >
+                      {collection.name}
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+            <span className={styles.pathMeta}>{`${selectedChildCollectionsCount} subcollection(s)`}</span>
           </div>
 
-          {selectedCollectionId === null ? (
-            <aside className={styles.detailsPanel}>
-              {!selectedItem ? (
-                <div className={styles.emptyDetails}>
-                  <p>Select collection to view details</p>
-                </div>
-              ) : (
-                <div className={styles.details}>
-                  {activeTab === 'collections' && (
-                    <CollectionDetails
-                      collection={selectedItem}
-                      itemCount={selectedCollectionItems.length}
-                    />
-                  )}
-                </div>
-              )}
-            </aside>
-          ) : null}
-        </>
+          <div className={styles.collectionItemsPane}>
+            <CollectionItemGrid
+              key={itemRefreshKey}
+              items={selectedCollectionItems}
+              childCollections={loadedSelectedChildCollections}
+              onChildCollectionClick={handleCollectionSelect}
+              onItemClick={setLightboxItem}
+              onItemCopy={handleCopyCollectionItem}
+              onItemDownload={handleDownloadCollectionItem}
+              onItemDelete={canCreateCollectionItems ? handleDeleteRequest : undefined}
+              deletingItemIds={deletingItemIds}
+              emptyMessage={emptyMessage}
+              onUploadClick={canCreateCollectionItems ? handleUploadClick : undefined}
+              onCreateCollectionClick={canCreateCollectionItems ? handleCreateCollectionClick : undefined}
+              isUploadDisabled={isUploadingCollectionItems}
+              showAddButton={canCreateCollectionItems}
+            />
+          </div>
+          {canCreateCollectionItems && (
+            <GenerationControlBar
+              onGenerate={handleGenerateCollectionItem}
+              isGenerating={isGeneratingCollectionItem}
+            />
+          )}
+        </div>
       )}
 
       <CollectionItemLightbox item={lightboxItem} onClose={() => setLightboxItem(null)} />
 
       <CollectionCreateModal
         projectId={projectId}
+        parentCollectionId={selectedCollectionId}
         isOpen={collectionCreateModalOpen}
         isSubmitting={isCreatingCollection}
         onClose={() => setCollectionCreateModalOpen(false)}

@@ -20,6 +20,7 @@ export default async function ProjectScenesPage({ params }: PageProps) {
         collections={[]}
         scenes={scenes}
         collectionItems={[]}
+        selectedCollectionChildCollections={[]}
       />
     </div>
   );

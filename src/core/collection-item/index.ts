@@ -1,6 +1,7 @@
 export * from './domain/collection-item.entity';
 export * from './ports/collection-item.repository.port';
 export * from './use-cases/get-collection-items.use-case';
+export * from './use-cases/get-collection-contents.use-case';
 export * from './use-cases/create-collection-item.use-case';
 export * from './use-cases/delete-collection-item.use-case';
 export * from './use-cases/upload-collection-item.use-case';

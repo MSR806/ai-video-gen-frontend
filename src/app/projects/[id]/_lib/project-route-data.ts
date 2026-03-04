@@ -1,6 +1,6 @@
 import type { CollectionItem, Scene, Collection, Project } from '@core';
 import { GetProjectCollectionsUseCase } from '@core/collection';
-import { GetCollectionItemsUseCase } from '@core/collection-item';
+import { GetCollectionContentsUseCase } from '@core/collection-item';
 import { GetProjectByIdUseCase } from '@core/project';
 import { GetProjectScenesUseCase } from '@core/scene';
 import {
@@ -19,7 +19,7 @@ const collectionItemRepo = new CollectionItemRepositoryImpl();
 const getProjectByIdUseCase = new GetProjectByIdUseCase(projectRepo);
 const getProjectCollectionsUseCase = new GetProjectCollectionsUseCase(collectionRepo);
 const getProjectScenesUseCase = new GetProjectScenesUseCase(sceneRepo);
-const getCollectionItemsUseCase = new GetCollectionItemsUseCase(collectionItemRepo);
+const getCollectionContentsUseCase = new GetCollectionContentsUseCase(collectionItemRepo);
 
 export async function getProjectOrThrow(projectId: string): Promise<Project> {
   const project = await getProjectByIdUseCase.execute(projectId);
@@ -35,22 +35,35 @@ interface CollectionsWorkspaceData {
   project: Project;
   collections: Collection[];
   collectionItems: CollectionItem[];
+  selectedCollectionChildCollections: Collection[];
 }
 
 export async function getCollectionsWorkspaceData(
   projectId: string,
+  selectedCollectionId: string | null = null,
 ): Promise<CollectionsWorkspaceData> {
   const project = await getProjectOrThrow(projectId);
   const collections = await getProjectCollectionsUseCase.execute(projectId);
 
-  const itemsByCollection = await Promise.all(
-    collections.map((collection) => getCollectionItemsUseCase.execute(collection.id)),
-  );
+  let collectionItems: CollectionItem[] = [];
+  let selectedCollectionChildCollections: Collection[] = [];
+
+  if (selectedCollectionId !== null) {
+    const selectedCollectionExists = collections.some(
+      (collection) => collection.id === selectedCollectionId,
+    );
+    if (selectedCollectionExists) {
+      const selectedContents = await getCollectionContentsUseCase.execute(selectedCollectionId);
+      collectionItems = selectedContents.items;
+      selectedCollectionChildCollections = selectedContents.childCollections;
+    }
+  }
 
   return {
     project,
     collections,
-    collectionItems: itemsByCollection.flat(),
+    collectionItems,
+    selectedCollectionChildCollections,
   };
 }
 

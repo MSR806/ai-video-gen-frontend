@@ -10,15 +10,24 @@ interface ItemListProps {
   selectedId: string | null;
   onItemSelect: (id: string) => void;
   onAddClick?: () => void;
+  title?: string;
+  emptyMessage?: string;
 }
 
-export function ItemList({ items, selectedId, onItemSelect, onAddClick }: ItemListProps) {
+export function ItemList({
+  items,
+  selectedId,
+  onItemSelect,
+  onAddClick,
+  title = 'Collections',
+  emptyMessage = 'No collections found',
+}: ItemListProps) {
   return (
     <aside className={styles.listPanel}>
-      <h2 className={styles.listTitle}>Collections</h2>
+      <h2 className={styles.listTitle}>{title}</h2>
       <div className={styles.list}>
         {items.length === 0 ? (
-          <p className={styles.emptyList}>No collections found</p>
+          <p className={styles.emptyList}>{emptyMessage}</p>
         ) : (
           items.map((item) => (
             <button

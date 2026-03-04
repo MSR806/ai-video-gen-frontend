@@ -7,6 +7,7 @@ import styles from './CollectionCreateModal.module.css';
 
 interface CollectionCreateModalProps {
   projectId: string;
+  parentCollectionId: string | null;
   isOpen: boolean;
   isSubmitting: boolean;
   onClose: () => void;
@@ -15,6 +16,7 @@ interface CollectionCreateModalProps {
 
 export function CollectionCreateModal({
   projectId,
+  parentCollectionId,
   isOpen,
   isSubmitting,
   onClose,
@@ -50,6 +52,7 @@ export function CollectionCreateModal({
     try {
       await onSubmit({
         projectId,
+        parentCollectionId,
         name: name.trim(),
         tag: tag.trim(),
         description: description.trim(),

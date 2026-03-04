@@ -1,4 +1,5 @@
 import type {
+  CollectionContents,
   CollectionItem,
   CollectionItemCreationPayload,
   CollectionItemGenerationParams,
@@ -10,6 +11,7 @@ import type {
  * Repository interface for CollectionItem persistence.
  */
 export interface CollectionItemRepository {
+  getContentsByCollectionId(collectionId: string): Promise<CollectionContents>;
   getByCollectionId(collectionId: string): Promise<CollectionItem[]>;
   getById(id: string): Promise<CollectionItem | null>;
   create(payload: CollectionItemCreationPayload): Promise<CollectionItem>;

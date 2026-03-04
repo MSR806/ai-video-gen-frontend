@@ -1,4 +1,5 @@
 import type {
+  CollectionContents,
   CollectionItem,
   CollectionItemCreationPayload,
   CollectionItemGenerationParams,
@@ -9,6 +10,7 @@ import type {
   ImageMetadata,
   VideoMetadata,
 } from '@core/collection-item';
+import type { Collection } from '@core/collection';
 import { BackendApiError, backendApiRequest } from '@infra/http/backend-api';
 
 interface ApiCollectionItem {
@@ -23,6 +25,20 @@ interface ApiCollectionItem {
   url: string | null;
   metadata?: unknown;
   generationErrorMessage?: string | null;
+}
+
+interface ApiCollection {
+  id: string;
+  projectId: string;
+  parentCollectionId: string | null;
+  name: string;
+  tag: string;
+  description: string;
+}
+
+interface ApiCollectionContentsResponse {
+  items: ApiCollectionItem[];
+  childCollections: ApiCollection[];
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -75,23 +91,43 @@ const mapApiCollectionItem = (item: ApiCollectionItem): CollectionItem => {
   };
 };
 
+const mapApiCollection = (collection: ApiCollection): Collection => {
+  return {
+    id: collection.id,
+    projectId: collection.projectId,
+    parentCollectionId: collection.parentCollectionId,
+    name: collection.name,
+    tag: collection.tag,
+    description: collection.description,
+  };
+};
+
 /**
  * API-backed implementation of CollectionItemRepository.
  */
 export class CollectionItemRepositoryImpl implements CollectionItemRepository {
   private cache = new Map<string, CollectionItem>();
 
-  async getByCollectionId(collectionId: string): Promise<CollectionItem[]> {
-    const items = await backendApiRequest<ApiCollectionItem[]>(
+  async getContentsByCollectionId(collectionId: string): Promise<CollectionContents> {
+    const response = await backendApiRequest<ApiCollectionContentsResponse>(
       `/api/v1/collections/${collectionId}/items`,
     );
-    const mappedItems = items.map(mapApiCollectionItem);
+    const mappedItems = response.items.map(mapApiCollectionItem);
+    const mappedChildCollections = response.childCollections.map(mapApiCollection);
 
     mappedItems.forEach((item) => {
       this.cache.set(item.id, item);
     });
 
-    return mappedItems;
+    return {
+      items: mappedItems,
+      childCollections: mappedChildCollections,
+    };
+  }
+
+  async getByCollectionId(collectionId: string): Promise<CollectionItem[]> {
+    const contents = await this.getContentsByCollectionId(collectionId);
+    return contents.items;
   }
 
   async getById(id: string): Promise<CollectionItem | null> {

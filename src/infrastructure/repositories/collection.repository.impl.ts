@@ -4,6 +4,7 @@ import { BackendApiError, backendApiRequest } from '@infra/http/backend-api';
 interface CollectionDto {
   id: string;
   projectId: string;
+  parentCollectionId: string | null;
   name: string;
   tag: string;
   description: string;
@@ -13,6 +14,7 @@ function toCollection(dto: CollectionDto): Collection {
   return {
     id: dto.id,
     projectId: dto.projectId,
+    parentCollectionId: dto.parentCollectionId,
     name: dto.name,
     tag: dto.tag,
     description: dto.description,
@@ -54,6 +56,7 @@ export class CollectionRepositoryImpl implements CollectionRepository {
           name: payload.name,
           tag: payload.tag,
           description: payload.description,
+          parentCollectionId: payload.parentCollectionId ?? null,
         }),
       },
     );

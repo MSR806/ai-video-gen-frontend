@@ -8,7 +8,8 @@ interface PageProps {
 
 export default async function ProjectCollectionsPage({ params }: PageProps) {
   const { id } = await params;
-  const { project, collections, collectionItems } = await getCollectionsWorkspaceData(id);
+  const { project, collections, collectionItems, selectedCollectionChildCollections } =
+    await getCollectionsWorkspaceData(id, null);
 
   return (
     <div>
@@ -20,6 +21,7 @@ export default async function ProjectCollectionsPage({ params }: PageProps) {
         collections={collections}
         scenes={[]}
         collectionItems={collectionItems}
+        selectedCollectionChildCollections={selectedCollectionChildCollections}
       />
     </div>
   );

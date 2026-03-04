@@ -4,9 +4,10 @@ import styles from './CollectionDetails.module.css';
 interface CollectionDetailsProps {
   collection: Collection;
   itemCount: number;
+  childCount: number;
 }
 
-export function CollectionDetails({ collection, itemCount }: CollectionDetailsProps) {
+export function CollectionDetails({ collection, itemCount, childCount }: CollectionDetailsProps) {
   return (
     <div className={styles.detailsContent}>
       <h2 className={styles.detailsTitle}>{collection.name}</h2>
@@ -21,6 +22,10 @@ export function CollectionDetails({ collection, itemCount }: CollectionDetailsPr
       <div className={styles.detailsSection}>
         <h3>Collection Items</h3>
         <p>{itemCount} item(s)</p>
+      </div>
+      <div className={styles.detailsSection}>
+        <h3>Subcollections</h3>
+        <p>{childCount} collection(s)</p>
       </div>
     </div>
   );
