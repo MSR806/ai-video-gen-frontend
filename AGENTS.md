@@ -312,3 +312,32 @@ Prefer avoiding circular feature dependencies. If two features need the same gen
 
 - Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `chore:`).
 - Keep messages specific to the change set.
+
+---
+
+## 📚 Curated External Rules
+
+Use the following curated rule packs for implementation and review. These are adapted from `vercel-labs/agent-skills` and intentionally reduced to high-impact items for this repository.
+
+1. React + Next performance:
+
+- `.agent/rules/react-next-performance.curated.md`
+
+2. Component composition and decomposition:
+
+- `.agent/rules/component-composition.curated.md`
+
+3. UI/UX and accessibility checklist:
+
+- `.agent/rules/web-ui-ux-a11y-checklist.md`
+
+4. Frontend design direction (optional; net-new UI surfaces):
+
+- `.agent/rules/frontend-design.curated.md`
+
+### Precedence
+
+- `AGENTS.md` remains the primary architecture and workflow policy.
+- Curated rule packs are applied as supporting standards.
+- If there is a conflict, follow `AGENTS.md` first.
+- The frontend design direction pack is opt-in for major UI creation/redesign work.
