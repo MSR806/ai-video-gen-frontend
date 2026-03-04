@@ -288,3 +288,27 @@ Prefer avoiding circular feature dependencies. If two features need the same gen
 4. **Update Feature Export**: Add exports to `@core/[feature]/index.ts`.
 5. **Implement API Call**: Create repository in `@infra/repositories/[feature].repository.impl.ts` using `fetch`.
 6. **Connect UI**: Create page in `src/app`, instantiate the repo/use-case with dependency injection.
+
+---
+
+## 🔐 Git Commit Guidelines (Mandatory)
+
+1. Commit preparation:
+
+- Run commits from this repo root only (`ai-video-gen-frontend`).
+- Check staged diff before commit (`git diff --staged`).
+
+2. Required checks before commit:
+
+- `bun run lint`
+- `bun run build`
+
+3. Hook policy:
+
+- Do not use `git commit --no-verify` unless the user explicitly asks.
+- If a `.pre-commit-config.yaml` is added later, run `pre-commit run --all-files` before commit.
+
+4. Commit message policy:
+
+- Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `chore:`).
+- Keep messages specific to the change set.
