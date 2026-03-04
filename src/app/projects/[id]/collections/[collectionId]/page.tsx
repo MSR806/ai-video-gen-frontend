@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import { ProjectHeader } from '@presentation/components/layout/ProjectHeader';
 import { ProjectDetailPage } from '@presentation/features/projects/ProjectDetailPage/ProjectDetailPage';
 import { getCollectionsWorkspaceData } from '../../_lib/project-route-data';
 
@@ -9,7 +8,7 @@ interface PageProps {
 
 export default async function ProjectCollectionDetailPage({ params }: PageProps) {
   const { id, collectionId } = await params;
-  const { project, collections, collectionItems, selectedCollectionChildCollections } =
+  const { collections, collectionItems, selectedCollectionChildCollections } =
     await getCollectionsWorkspaceData(id, collectionId);
 
   const selectedCollection = collections.find((collection) => collection.id === collectionId);
@@ -20,7 +19,6 @@ export default async function ProjectCollectionDetailPage({ params }: PageProps)
 
   return (
     <div>
-      <ProjectHeader projectName={project.name} />
       <ProjectDetailPage
         projectId={id}
         activeTab="collections"
@@ -29,6 +27,7 @@ export default async function ProjectCollectionDetailPage({ params }: PageProps)
         scenes={[]}
         collectionItems={collectionItems}
         selectedCollectionChildCollections={selectedCollectionChildCollections}
+        viewportOffsetPx={0}
       />
     </div>
   );

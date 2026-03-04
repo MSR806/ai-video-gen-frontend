@@ -301,6 +301,8 @@ export function GenerationControlBar({
           onDragLeave={handleDropZoneLeave}
           onDrop={handleDrop}
         >
+          <div className={styles.dropZoneOverlay}>+ Add Ingredients</div>
+
           {referenceImages.length > 0 && (
             <div className={styles.referenceChips}>
               {referenceImages.map((img, index) => (
@@ -326,7 +328,7 @@ export function GenerationControlBar({
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Describe the collection item you want to generate..."
+            placeholder="What magic should we do today?"
             rows={1}
             style={{ height: 'auto', minHeight: '44px', maxHeight: '120px' }}
             onInput={(e) => {
@@ -370,15 +372,36 @@ export function GenerationControlBar({
               onClick={handleGenerate}
               disabled={!canGenerate}
             >
-              {isGenerating ? '…' : '→'}
+              {isGenerating ? (
+                '…'
+              ) : (
+                <svg
+                  className={styles.generateIcon}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M21.5 2.5L10.5 13.5"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M21.5 2.5L14.5 21.5L10.5 13.5L2.5 9.5L21.5 2.5Z"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
             </button>
           </div>
         </div>
       </div>
-
-      <p className={styles.dropHint}>
-        Drag a collection image card here or use + to attach references.
-      </p>
     </div>
   );
 }

@@ -104,12 +104,34 @@ html {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
   background-color: var(--bg-base);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Keep scrolling behavior, but hide scrollbar chrome across the app. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 /* ==========================================

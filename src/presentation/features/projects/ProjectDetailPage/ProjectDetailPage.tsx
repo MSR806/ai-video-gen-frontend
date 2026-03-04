@@ -1,6 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ChangeEvent,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import type { Collection, Scene, CollectionItem } from '@core';
 import { CreateCollectionUseCase, type CollectionCreationPayload } from '@core/collection';
@@ -41,7 +48,7 @@ import { CollectionItemLightbox } from '../../collections/components/CollectionI
 import { GenerationControlBar } from '../../collections/components/CollectionItemGenerationView/components/GenerationControlBar/GenerationControlBar';
 import { ScenesEditor } from '../../scenes/components/ScenesEditor';
 import { ToastContainer } from '@presentation/components/feedback';
-import { Button, Modal } from '@presentation/components/ui';
+import { Button, Dropdown, DropdownItem, Modal } from '@presentation/components/ui';
 import styles from './ProjectDetailPage.module.css';
 
 type Item = Collection | null;
@@ -54,6 +61,7 @@ interface ProjectDetailPageProps {
   scenes: Scene[];
   collectionItems: CollectionItem[];
   selectedCollectionChildCollections: Collection[];
+  viewportOffsetPx?: number;
 }
 
 interface Toast {
@@ -109,6 +117,7 @@ export function ProjectDetailPage({
   scenes,
   collectionItems,
   selectedCollectionChildCollections,
+  viewportOffsetPx = 57,
 }: ProjectDetailPageProps) {
   const router = useRouter();
   const [lightboxItem, setLightboxItem] = useState<CollectionItem | null>(null);
@@ -973,14 +982,16 @@ export function ProjectDetailPage({
   const rootCollections = getRootCollections();
   const selectedItem = getSelectedItem();
   const selectedCollectionItems = getCollectionItems();
-  const selectedChildCollectionsCount = loadedSelectedChildCollections.length;
   const breadcrumb = getCollectionBreadcrumb();
   const emptyMessage = getEmptyMessage();
 
   const canCreateCollectionItems = !!selectedCollectionId && activeTab === 'collections';
+  const containerStyle = {
+    '--workspace-viewport-offset': `${viewportOffsetPx}px`,
+  } as CSSProperties;
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} style={containerStyle}>
       <TabNavigation projectId={projectId} activeTab={activeTab} />
 
       {activeTab === 'collections' && !selectedCollectionId ? (
@@ -1020,7 +1031,7 @@ export function ProjectDetailPage({
               onClick={handleNavigateToParent}
               disabled={!selectedItem}
             >
-              Up
+              Back
             </button>
             <button type="button" className={styles.pathCrumbButton} onClick={handleNavigateToRoot}>
               Collections
@@ -1044,9 +1055,29 @@ export function ProjectDetailPage({
                 </span>
               );
             })}
-            <span
-              className={styles.pathMeta}
-            >{`${selectedChildCollectionsCount} subcollection(s)`}</span>
+            <div className={styles.pathActions}>
+              {canCreateCollectionItems ? (
+                <Dropdown
+                  trigger={
+                    <button
+                      type="button"
+                      className={styles.pathAddButton}
+                      aria-label="Add options"
+                      disabled={isUploadingCollectionItems}
+                    >
+                      +
+                    </button>
+                  }
+                >
+                  <DropdownItem
+                    icon="+"
+                    label="New collection"
+                    onClick={handleCreateCollectionClick}
+                  />
+                  <DropdownItem icon="↑" label="Upload image" onClick={handleUploadClick} />
+                </Dropdown>
+              ) : null}
+            </div>
           </div>
 
           <div className={styles.collectionItemsPane}>
@@ -1061,12 +1092,6 @@ export function ProjectDetailPage({
               onItemDelete={canCreateCollectionItems ? handleDeleteRequest : undefined}
               deletingItemIds={deletingItemIds}
               emptyMessage={emptyMessage}
-              onUploadClick={canCreateCollectionItems ? handleUploadClick : undefined}
-              onCreateCollectionClick={
-                canCreateCollectionItems ? handleCreateCollectionClick : undefined
-              }
-              isUploadDisabled={isUploadingCollectionItems}
-              showAddButton={canCreateCollectionItems}
             />
           </div>
           {canCreateCollectionItems && (

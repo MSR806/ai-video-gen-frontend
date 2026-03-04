@@ -1,6 +1,5 @@
 import type { CollectionItem } from '@core/collection-item';
 import type { Collection } from '@core/collection';
-import { Dropdown, DropdownItem } from '@presentation/components/ui';
 import { CollectionItemCard } from './CollectionItemCard';
 import { ChildCollectionCard } from './ChildCollectionCard';
 import styles from './CollectionItemGrid.module.css';
@@ -15,10 +14,6 @@ interface CollectionItemGridProps {
   onItemDelete?: (item: CollectionItem) => void;
   deletingItemIds?: ReadonlySet<string>;
   emptyMessage: string;
-  onUploadClick?: () => void;
-  onCreateCollectionClick?: () => void;
-  isUploadDisabled?: boolean;
-  showAddButton?: boolean;
 }
 
 export function CollectionItemGrid({
@@ -31,38 +26,11 @@ export function CollectionItemGrid({
   onItemDelete,
   deletingItemIds,
   emptyMessage,
-  onUploadClick,
-  onCreateCollectionClick,
-  isUploadDisabled = false,
-  showAddButton = true,
 }: CollectionItemGridProps) {
-  const hasAddActions = showAddButton && (onUploadClick || onCreateCollectionClick);
   const hasGridContent = childCollections.length > 0 || items.length > 0;
 
   return (
     <div className={styles.container}>
-      <div className={styles.toolbar}>
-        {hasAddActions ? (
-          <Dropdown
-            trigger={
-              <button
-                type="button"
-                className={styles.addButton}
-                aria-label="Add options"
-                disabled={isUploadDisabled}
-              >
-                +
-              </button>
-            }
-          >
-            {onCreateCollectionClick ? (
-              <DropdownItem icon="+" label="New collection" onClick={onCreateCollectionClick} />
-            ) : null}
-            {onUploadClick ? <DropdownItem icon="↑" label="Upload image" onClick={onUploadClick} /> : null}
-          </Dropdown>
-        ) : null}
-      </div>
-
       {!hasGridContent ? (
         <div className={styles.empty}>
           <p className={styles.emptyMessage}>{emptyMessage}</p>

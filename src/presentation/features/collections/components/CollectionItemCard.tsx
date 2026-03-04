@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import type { CollectionItem } from '@core/collection-item';
 import { Dropdown, DropdownItem } from '@presentation/components/ui';
 import styles from './CollectionItemCard.module.css';
@@ -61,49 +61,6 @@ export function CollectionItemCard({
   const failedMessage = item.generationErrorMessage?.trim() || 'Generation failed';
   const dragPreviewRef = useRef<HTMLDivElement | null>(null);
 
-  const cleanupDragPreview = () => {
-    if (!dragPreviewRef.current) {
-      return;
-    }
-    dragPreviewRef.current.remove();
-    dragPreviewRef.current = null;
-  };
-
-  useEffect(() => {
-    return () => {
-      cleanupDragPreview();
-    };
-  }, []);
-
-  const createCompactDragPreview = () => {
-    if (typeof document === 'undefined') {
-      return null;
-    }
-
-    cleanupDragPreview();
-
-    const preview = document.createElement('div');
-    preview.className = styles.dragPreview;
-
-    const imageSource = thumbnailUrl.length > 0 ? thumbnailUrl : mediaUrl;
-    if (imageSource.length > 0) {
-      const image = document.createElement('img');
-      image.className = styles.dragPreviewImage;
-      image.src = imageSource;
-      image.alt = '';
-      preview.appendChild(image);
-    } else {
-      const label = document.createElement('span');
-      label.className = styles.dragPreviewLabel;
-      label.textContent = item.name;
-      preview.appendChild(label);
-    }
-
-    document.body.appendChild(preview);
-    dragPreviewRef.current = preview;
-    return preview;
-  };
-
   const handleDragStart = (event: React.DragEvent<HTMLButtonElement>) => {
     if (!canDragAsReference) {
       return;
@@ -113,14 +70,16 @@ export function CollectionItemCard({
     event.dataTransfer.setData('text/uri-list', mediaUrl);
     event.dataTransfer.setData('application/x-ai-video-gen-item-url', mediaUrl);
 
-    const dragPreview = createCompactDragPreview();
-    if (dragPreview) {
-      event.dataTransfer.setDragImage(dragPreview, 18, 18);
+    // Use the pre-rendered hidden drag preview element
+    if (dragPreviewRef.current) {
+      event.dataTransfer.setDragImage(dragPreviewRef.current, 30, 48);
     }
+    document.body.classList.add('is-dragging-ingredient');
   };
 
   const handleDragEnd = () => {
-    cleanupDragPreview();
+    // No cleanup needed for the preview — it stays hidden in the DOM
+    document.body.classList.remove('is-dragging-ingredient');
   };
 
   const [failedThumbnailKey, setFailedThumbnailKey] = useState<string | null>(null);
@@ -297,6 +256,18 @@ export function CollectionItemCard({
               </>
             )}
           </Dropdown>
+        </div>
+      )}
+
+      {/* Hidden drag preview — pre-rendered so the image is already painted */}
+      {canDragAsReference && (
+        <div ref={dragPreviewRef} className={styles.dragPreview} aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={thumbnailUrl.length > 0 ? thumbnailUrl : mediaUrl}
+            alt=""
+            className={styles.dragPreviewImage}
+          />
         </div>
       )}
     </div>

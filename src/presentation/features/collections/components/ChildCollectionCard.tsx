@@ -16,6 +16,9 @@ export function ChildCollectionCard({ collection, onClick }: ChildCollectionCard
         aria-label={`Open collection ${collection.name}`}
       >
         <div className={styles.overlay}>
+          <span className={styles.centerGlyph} aria-hidden="true">
+            ✿
+          </span>
           <div className={styles.content}>
             <h3 className={styles.title}>{collection.name}</h3>
           </div>
