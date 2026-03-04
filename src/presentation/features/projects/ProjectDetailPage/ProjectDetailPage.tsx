@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Collection, Scene, CollectionItem } from '@core';
 import { CreateCollectionUseCase, type CollectionCreationPayload } from '@core/collection';
@@ -10,7 +10,10 @@ import {
   GetCollectionItemByIdUseCase,
   GetCollectionItemsUseCase,
   GetGenerationJobUseCase,
+  UploadCollectionItemUseCase,
   type GenerationAspectRatio,
+  type ImageMetadata,
+  type VideoMetadata,
 } from '@core/collection-item';
 import {
   CreateSceneUseCase,
@@ -34,7 +37,6 @@ import { CollectionCreateModal } from '../../collections/components/CollectionCr
 import { CollectionDetails } from '../../collections/components/details/CollectionDetails';
 import { CollectionItemGrid } from '../../collections/components/CollectionItemGrid';
 import { CollectionItemLightbox } from '../../collections/components/CollectionItemLightbox';
-import { CollectionItemUploadModal } from '../../collections/components/CollectionItemUploadModal/CollectionItemUploadModal';
 import { GenerationControlBar } from '../../collections/components/CollectionItemGenerationView/components/GenerationControlBar/GenerationControlBar';
 import { ScenesEditor } from '../../scenes/components/ScenesEditor';
 import { ToastContainer } from '@presentation/components/feedback';
@@ -98,7 +100,7 @@ export function ProjectDetailPage({
   const [lightboxItem, setLightboxItem] = useState<CollectionItem | null>(null);
   const [collectionCreateModalOpen, setCollectionCreateModalOpen] = useState(false);
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [isUploadingCollectionItems, setIsUploadingCollectionItems] = useState(false);
   const [isGeneratingCollectionItem, setIsGeneratingCollectionItem] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [itemRefreshKey, setItemRefreshKey] = useState(0);
@@ -110,6 +112,7 @@ export function ProjectDetailPage({
   const [deletingItemIds, setDeletingItemIds] = useState<Set<string>>(new Set());
   const [deleteCandidate, setDeleteCandidate] = useState<CollectionItem | null>(null);
   const [isScenesReady, setIsScenesReady] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const getItems = () => {
     switch (activeTab) {
@@ -154,7 +157,11 @@ export function ProjectDetailPage({
   };
 
   const handleUploadClick = () => {
-    setUploadModalOpen(true);
+    if (isUploadingCollectionItems) {
+      return;
+    }
+
+    uploadInputRef.current?.click();
   };
 
   const handleCreateCollectionClick = () => {
@@ -229,10 +236,140 @@ export function ProjectDetailPage({
     [addToast, projectId, selectedCollectionId],
   );
 
-  const handleUploadSuccess = () => {
-    setItemRefreshKey((prev) => prev + 1);
-    addToast('Collection item uploaded successfully!', 'success');
-  };
+  const getImageDimensions = useCallback(
+    (file: File): Promise<{ width: number; height: number }> => {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        const objectUrl = URL.createObjectURL(file);
+
+        image.onload = () => {
+          resolve({ width: image.width, height: image.height });
+          URL.revokeObjectURL(objectUrl);
+        };
+
+        image.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error(`Unable to read image dimensions for "${file.name}"`));
+        };
+
+        image.src = objectUrl;
+      });
+    },
+    [],
+  );
+
+  const buildUploadMetadata = useCallback(
+    async (file: File): Promise<ImageMetadata | VideoMetadata> => {
+      const formatFromMime = file.type.includes('/') ? file.type.split('/')[1] : '';
+      const formatFromName = file.name.split('.').pop()?.toLowerCase() ?? '';
+      const format = formatFromMime || formatFromName || 'unknown';
+
+      if (file.type.startsWith('image/')) {
+        try {
+          const dimensions = await getImageDimensions(file);
+          return {
+            width: dimensions.width,
+            height: dimensions.height,
+            format,
+            thumbnailUrl: '',
+          };
+        } catch (error) {
+          console.error('Error reading image metadata:', error);
+          return {
+            width: 0,
+            height: 0,
+            format,
+            thumbnailUrl: '',
+          };
+        }
+      }
+
+      return {
+        width: 1920,
+        height: 1080,
+        duration: 10,
+        format,
+        thumbnailUrl: '',
+      };
+    },
+    [getImageDimensions],
+  );
+
+  const handleUploadInputChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const selectedFiles = event.target.files ? Array.from(event.target.files) : [];
+      event.target.value = '';
+
+      if (selectedFiles.length === 0 || isUploadingCollectionItems || !selectedCollectionId) {
+        return;
+      }
+
+      setIsUploadingCollectionItems(true);
+
+      const repository = new CollectionItemRepositoryImpl();
+      const uploadCollectionItemUseCase = new UploadCollectionItemUseCase(repository);
+
+      let successCount = 0;
+      const failedFileNames: string[] = [];
+
+      try {
+        for (const file of selectedFiles) {
+          const fileNameWithoutExtension = file.name.replace(/\.[^/.]+$/, '').trim();
+          const normalizedName =
+            fileNameWithoutExtension.length > 0 ? fileNameWithoutExtension : 'upload';
+
+          try {
+            const metadata = await buildUploadMetadata(file);
+            await uploadCollectionItemUseCase.execute({
+              projectId,
+              collectionId: selectedCollectionId,
+              name: normalizedName,
+              description: '',
+              file,
+              metadata,
+            });
+            successCount += 1;
+          } catch (error) {
+            console.error(`Error uploading file "${file.name}":`, error);
+            failedFileNames.push(file.name);
+          }
+        }
+      } finally {
+        setIsUploadingCollectionItems(false);
+      }
+
+      if (successCount > 0) {
+        setItemRefreshKey((prev) => prev + 1);
+      }
+
+      if (failedFileNames.length === 0) {
+        const message =
+          successCount === 1
+            ? 'Collection item uploaded successfully!'
+            : `${successCount} collection items uploaded successfully!`;
+        addToast(message, 'success');
+        return;
+      }
+
+      const failedPreview = failedFileNames.slice(0, 3).join(', ');
+      const hasMoreFailures = failedFileNames.length > 3;
+      const failedSuffix = hasMoreFailures ? ', ...' : '';
+
+      if (successCount === 0) {
+        addToast(
+          `Failed to upload ${failedFileNames.length} file(s): ${failedPreview}${failedSuffix}`,
+          'error',
+        );
+        return;
+      }
+
+      addToast(
+        `Uploaded ${successCount} file(s), failed ${failedFileNames.length}: ${failedPreview}${failedSuffix}`,
+        'error',
+      );
+    },
+    [addToast, buildUploadMetadata, isUploadingCollectionItems, projectId, selectedCollectionId],
+  );
 
   const handleCopyCollectionItem = useCallback(
     async (item: CollectionItem) => {
@@ -816,6 +953,7 @@ export function ProjectDetailPage({
                 deletingItemIds={deletingItemIds}
                 emptyMessage={emptyMessage}
                 onUploadClick={canCreateCollectionItems ? handleUploadClick : undefined}
+                isUploadDisabled={isUploadingCollectionItems}
                 showAddButton={canCreateCollectionItems}
               />
             </div>
@@ -857,16 +995,14 @@ export function ProjectDetailPage({
         onClose={() => setCollectionCreateModalOpen(false)}
         onSubmit={handleCreateCollection}
       />
-
-      {selectedCollectionId && canCreateCollectionItems && (
-        <CollectionItemUploadModal
-          isOpen={uploadModalOpen}
-          onClose={() => setUploadModalOpen(false)}
-          collectionId={selectedCollectionId}
-          projectId={projectId}
-          onSuccess={handleUploadSuccess}
-        />
-      )}
+      <input
+        ref={uploadInputRef}
+        type="file"
+        accept="image/*,video/*"
+        multiple
+        onChange={handleUploadInputChange}
+        className={styles.hiddenFileInput}
+      />
 
       <Modal
         isOpen={deleteCandidate !== null}

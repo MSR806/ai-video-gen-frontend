@@ -12,7 +12,7 @@ interface CollectionItemGridProps {
   deletingItemIds?: ReadonlySet<string>;
   emptyMessage: string;
   onUploadClick?: () => void;
-  onGenerateClick?: () => void;
+  isUploadDisabled?: boolean;
   showAddButton?: boolean;
 }
 
@@ -25,11 +25,30 @@ export function CollectionItemGrid({
   deletingItemIds,
   emptyMessage,
   onUploadClick,
-  onGenerateClick,
+  isUploadDisabled = false,
   showAddButton = true,
 }: CollectionItemGridProps) {
   return (
     <div className={styles.container}>
+      <div className={styles.toolbar}>
+        {showAddButton && onUploadClick ? (
+          <Dropdown
+            trigger={
+              <button
+                type="button"
+                className={styles.addButton}
+                aria-label="Add collection item"
+                disabled={isUploadDisabled}
+              >
+                +
+              </button>
+            }
+          >
+            <DropdownItem icon="↑" label="Upload image" onClick={onUploadClick} />
+          </Dropdown>
+        ) : null}
+      </div>
+
       {items.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyMessage}>{emptyMessage}</p>
@@ -47,26 +66,6 @@ export function CollectionItemGrid({
               isDeleting={deletingItemIds?.has(item.id) ?? false}
             />
           ))}
-        </div>
-      )}
-
-      {showAddButton && (onUploadClick || onGenerateClick) && (
-        <div className={styles.fabContainer}>
-          <Dropdown
-            direction="up"
-            trigger={
-              <button className={styles.fab} aria-label="Add Collection Item">
-                +
-              </button>
-            }
-          >
-            {onUploadClick && (
-              <DropdownItem icon="📤" label="Upload File" onClick={onUploadClick} />
-            )}
-            {onGenerateClick && (
-              <DropdownItem icon="✨" label="Generate with AI" onClick={onGenerateClick} />
-            )}
-          </Dropdown>
         </div>
       )}
     </div>
