@@ -1,0 +1,300 @@
+.popover {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + var(--space-2));
+  z-index: 20;
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-raised) 94%, black 6%);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: min(68vh, 560px);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.crumbGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.crumbDivider {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.breadcrumbButton {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.2;
+  cursor: pointer;
+  padding: 0;
+}
+
+.breadcrumbButton:hover {
+  color: var(--accent-primary);
+}
+
+.crumbCurrent {
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.closeButton {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.metaLabel {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  gap: var(--space-3);
+  min-height: 0;
+  height: min(52vh, 380px);
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.imageSection {
+  min-height: 0;
+}
+
+.imageSection .emptyText,
+.imageSection .errorText {
+  padding-top: var(--space-2);
+}
+
+.imageSection .assetGrid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.imageSection .assetGrid::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.section {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow: hidden;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.collectionList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-right: 4px;
+}
+
+.collectionButton {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-elevated) 84%, black 16%);
+  padding: 0.55rem 0.6rem;
+  display: block;
+  cursor: pointer;
+}
+
+.collectionButton:hover {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary-muted) 70%, var(--bg-elevated) 30%);
+}
+
+.collectionName {
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assetGrid {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding-right: 4px;
+}
+
+.assetButton {
+  --asset-aspect-ratio: 1;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: transparent;
+  padding: 0;
+  display: block;
+  cursor: pointer;
+  flex: 0 0 auto;
+  height: 146px;
+  width: auto;
+  aspect-ratio: var(--asset-aspect-ratio);
+  min-width: 74px;
+  overflow: hidden;
+}
+
+.assetButton:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+}
+
+.assetButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.assetButtonSelected {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 40%, transparent 60%);
+}
+
+.assetFrame {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.assetThumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  background: var(--bg-base);
+}
+
+/* Floating preview that appears above hovered thumbnail */
+.floatingPreview {
+  position: fixed;
+  z-index: 9999;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  border-radius: 10px;
+  overflow: hidden;
+  animation: previewFadeIn 0.15s ease-out;
+}
+
+@keyframes previewFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.floatingPreviewImage {
+  display: block;
+  max-width: 480px;
+  max-height: 420px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.emptyText {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.errorText {
+  margin: 0;
+  color: var(--status-error);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .popover {
+    padding: var(--space-2);
+    max-height: min(72vh, 560px);
+  }
+
+  .body {
+    grid-template-columns: 1fr;
+    height: min(56vh, 420px);
+  }
+
+  .collectionList {
+    max-height: 120px;
+  }
+
+  .assetButton {
+    height: 124px;
+    min-width: 62px;
+  }
+}

@@ -123,8 +123,9 @@ export function ProjectDetailPage({
   const [loadedCollectionItems, setLoadedCollectionItems] =
     useState<CollectionItem[]>(collectionItems);
   const loadedCollectionItemsRef = useRef<CollectionItem[]>(collectionItems);
-  const [loadedSelectedChildCollections, setLoadedSelectedChildCollections] =
-    useState<Collection[]>(selectedCollectionChildCollections);
+  const [loadedSelectedChildCollections, setLoadedSelectedChildCollections] = useState<
+    Collection[]
+  >(selectedCollectionChildCollections);
   const [deletingItemIds, setDeletingItemIds] = useState<Set<string>>(new Set());
   const [deleteCandidate, setDeleteCandidate] = useState<CollectionItem | null>(null);
   const [isScenesReady, setIsScenesReady] = useState(false);
@@ -151,7 +152,9 @@ export function ProjectDetailPage({
       return [];
     }
 
-    const collectionsById = new Map(loadedCollections.map((collection) => [collection.id, collection]));
+    const collectionsById = new Map(
+      loadedCollections.map((collection) => [collection.id, collection]),
+    );
     const breadcrumb: Collection[] = [];
     const visited = new Set<string>();
 
@@ -202,7 +205,9 @@ export function ProjectDetailPage({
       return;
     }
 
-    const selectedCollection = loadedCollections.find((collection) => collection.id === selectedCollectionId);
+    const selectedCollection = loadedCollections.find(
+      (collection) => collection.id === selectedCollectionId,
+    );
     if (!selectedCollection || selectedCollection.parentCollectionId === null) {
       handleNavigateToRoot();
       return;
@@ -261,6 +266,17 @@ export function ProjectDetailPage({
     },
     [],
   );
+
+  const loadCollectionContentsForPicker = useCallback(async (collectionId: string) => {
+    try {
+      const repository = new CollectionItemRepositoryImpl();
+      const getCollectionContentsUseCase = new GetCollectionContentsUseCase(repository);
+      return await getCollectionContentsUseCase.execute(collectionId);
+    } catch (error) {
+      console.error('Error loading picker collection contents:', error);
+      return null;
+    }
+  }, []);
 
   const handleCreateCollection = async (payload: CollectionCreationPayload) => {
     setIsCreatingCollection(true);
@@ -1006,11 +1022,7 @@ export function ProjectDetailPage({
             >
               Up
             </button>
-            <button
-              type="button"
-              className={styles.pathCrumbButton}
-              onClick={handleNavigateToRoot}
-            >
+            <button type="button" className={styles.pathCrumbButton} onClick={handleNavigateToRoot}>
               Collections
             </button>
             {breadcrumb.map((collection, index) => {
@@ -1032,7 +1044,9 @@ export function ProjectDetailPage({
                 </span>
               );
             })}
-            <span className={styles.pathMeta}>{`${selectedChildCollectionsCount} subcollection(s)`}</span>
+            <span
+              className={styles.pathMeta}
+            >{`${selectedChildCollectionsCount} subcollection(s)`}</span>
           </div>
 
           <div className={styles.collectionItemsPane}>
@@ -1048,7 +1062,9 @@ export function ProjectDetailPage({
               deletingItemIds={deletingItemIds}
               emptyMessage={emptyMessage}
               onUploadClick={canCreateCollectionItems ? handleUploadClick : undefined}
-              onCreateCollectionClick={canCreateCollectionItems ? handleCreateCollectionClick : undefined}
+              onCreateCollectionClick={
+                canCreateCollectionItems ? handleCreateCollectionClick : undefined
+              }
               isUploadDisabled={isUploadingCollectionItems}
               showAddButton={canCreateCollectionItems}
             />
@@ -1057,6 +1073,11 @@ export function ProjectDetailPage({
             <GenerationControlBar
               onGenerate={handleGenerateCollectionItem}
               isGenerating={isGeneratingCollectionItem}
+              collections={loadedCollections}
+              selectedCollectionId={selectedCollectionId}
+              selectedCollectionItems={selectedCollectionItems}
+              selectedCollectionChildCollections={loadedSelectedChildCollections}
+              loadCollectionContentsForPicker={loadCollectionContentsForPicker}
             />
           )}
         </div>

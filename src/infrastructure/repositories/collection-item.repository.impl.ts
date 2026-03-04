@@ -211,7 +211,7 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
     };
 
     if (isImageToImage) {
-      requestBody.sourceImageUrls = [referenceUrls[0]];
+      requestBody.sourceImageUrls = referenceUrls;
     }
 
     const generatedPlaceholder = await backendApiRequest<ApiCollectionItem>(

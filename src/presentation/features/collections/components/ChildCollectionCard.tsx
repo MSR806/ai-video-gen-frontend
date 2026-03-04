@@ -7,8 +7,6 @@ interface ChildCollectionCardProps {
 }
 
 export function ChildCollectionCard({ collection, onClick }: ChildCollectionCardProps) {
-  const description = collection.description.trim();
-
   return (
     <div className={styles.cardShell}>
       <button
@@ -18,14 +16,8 @@ export function ChildCollectionCard({ collection, onClick }: ChildCollectionCard
         aria-label={`Open collection ${collection.name}`}
       >
         <div className={styles.overlay}>
-          <span className={styles.badge}>Collection</span>
           <div className={styles.content}>
             <h3 className={styles.title}>{collection.name}</h3>
-            {description.length > 0 ? (
-              <p className={styles.description}>{description}</p>
-            ) : (
-              <p className={styles.description}>{collection.tag}</p>
-            )}
           </div>
         </div>
       </button>
