@@ -1,1 +1,5 @@
-bunx lint-staged
+#!/usr/bin/env sh
+
+bunx lint-staged || exit 1
+bun run test || exit 1
+bun run test:e2e

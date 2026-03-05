@@ -1,0 +1,5 @@
+[test]
+preload = [
+  "./tests/setup/dom.ts",
+  "./tests/setup/testing-library.ts",
+]

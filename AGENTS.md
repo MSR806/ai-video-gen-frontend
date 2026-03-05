@@ -237,8 +237,17 @@ Prefer avoiding circular feature dependencies. If two features need the same gen
 
 ### Testing
 
-- `bun test` is used for high-performance unit testing.
-- **Focus**: Test **Core Use Cases** to ensure business logic is correct independent of UI or API.
+- Non-E2E tests run with `bun test`.
+- Component tests use Happy DOM via Bun preload (`bunfig.toml` + `tests/setup/*`).
+- E2E smoke tests run with Playwright via `bun run test:e2e`.
+- Coverage reports are generated with `bun run test:coverage` (output: `coverage/lcov.info`).
+- Test placement:
+  - `src/**/**/*.test.ts` and `src/**/**/*.test.tsx` for unit/integration/presentation.
+  - `tests/e2e/**/*.e2e.ts` for Playwright smoke tests.
+- Tests must not depend on a live backend:
+  - Unit/integration tests mock network boundaries.
+  - E2E tests mock backend traffic (route interception + local mock backend support).
+- **Focus**: Prioritize **Core Use Cases**, high-risk infrastructure adapters, route handlers, and complex UI orchestration flows.
 
 ---
 
@@ -302,9 +311,13 @@ Prefer avoiding circular feature dependencies. If two features need the same gen
 
 - `bun run lint`
 - `bun run build`
+- `bun run test`
+- `bun run test:e2e`
 
 3. Hook policy:
 
+- `.husky/pre-commit` runs `bunx lint-staged`, `bun run test`, and `bun run test:e2e`.
+- Ensure Playwright browser binaries are installed locally (`bunx playwright install chromium`).
 - Do not use `git commit --no-verify` unless the user explicitly asks.
 - If a `.pre-commit-config.yaml` is added later, run `pre-commit run --all-files` before commit.
 
