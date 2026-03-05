@@ -94,12 +94,14 @@ export interface GenerationJobError {
 export interface GenerationJob {
   id: string;
   status: GenerationJobStatus;
-  operation: 'TEXT_TO_IMAGE' | 'IMAGE_TO_IMAGE';
+  operationKey: string;
   provider: string;
   modelKey: string;
+  endpointId?: string | null;
   projectId: string;
   collectionId: string;
   itemId: string | null;
+  outputs?: Array<Record<string, unknown>>;
   error?: GenerationJobError | null;
   createdAt: string;
   updatedAt: string;
