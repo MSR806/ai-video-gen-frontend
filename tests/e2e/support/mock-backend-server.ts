@@ -9,7 +9,7 @@ export interface MockProjectDto {
   updatedAt: string;
 }
 
-export interface MockCollectionDto {
+interface MockCollectionDto {
   id: string;
   projectId: string;
   parentCollectionId: string | null;

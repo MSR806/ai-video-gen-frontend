@@ -108,16 +108,3 @@ export interface GenerationJob {
   submittedAt?: string | null;
   completedAt?: string | null;
 }
-
-/**
- * Response from AI generation API.
- */
-export interface GeneratedCollectionItem {
-  itemId?: string;
-  url: string;
-  thumbnailUrl: string;
-  width: number;
-  height: number;
-  format: string;
-  duration?: number;
-}
