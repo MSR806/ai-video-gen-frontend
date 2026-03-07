@@ -5,6 +5,7 @@ import { GenerateCollectionItemUseCase } from './generate-collection-item.use-ca
 import { GetCollectionContentsUseCase } from './get-collection-contents.use-case';
 import { GetCollectionItemByIdUseCase } from './get-collection-item-by-id.use-case';
 import { GetCollectionItemsUseCase } from './get-collection-items.use-case';
+import { GetGenerationCapabilitiesUseCase } from './get-generation-capabilities.use-case';
 import { GetGenerationRunUseCase } from './get-generation-run.use-case';
 import { UploadCollectionItemUseCase } from './upload-collection-item.use-case';
 import type {
@@ -12,6 +13,7 @@ import type {
   CollectionItem,
   CollectionItemCreationPayload,
   CollectionItemGenerationParams,
+  GenerationCapabilities,
   CollectionItemRepository,
   CollectionItemUploadPayload,
   GenerationRun,
@@ -70,10 +72,42 @@ const sampleCreationPayload: CollectionItemCreationPayload = {
 const sampleGenerationPayload: CollectionItemGenerationParams = {
   projectId: 'project-1',
   collectionId: 'collection-1',
-  prompt: 'cinematic portrait',
-  aspectRatio: 'PORTRAIT',
+  mediaType: 'image',
+  modelKey: 'nano_banana',
+  operationKey: 'image_to_image',
+  inputs: {
+    prompt: 'cinematic portrait',
+    image_urls: ['https://example.com/ref.png'],
+    aspect_ratio: '9:16',
+  },
   outputCount: 2,
-  referenceImages: ['https://example.com/ref.png'],
+};
+
+const sampleGenerationCapabilities: GenerationCapabilities = {
+  image: [
+    {
+      model: 'Nano Banana',
+      modelKey: 'nano_banana',
+      provider: 'fal',
+      mediaType: 'image',
+      operations: [
+        {
+          operationKey: 'text_to_image',
+          endpointId: 'fal-ai/nano-banana',
+          required: ['prompt'],
+          fields: [
+            {
+              key: 'prompt',
+              type: 'string',
+              required: true,
+              description: 'Prompt',
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  video: [],
 };
 
 const sampleUploadPayload: CollectionItemUploadPayload = {
@@ -145,6 +179,7 @@ function createRepository(
     create: async () => sampleCollectionItem,
     delete: async () => undefined,
     upload: async () => sampleCollectionItem,
+    getGenerationCapabilities: async () => sampleGenerationCapabilities,
     generateWithAI: async () => sampleGenerationRunSubmit,
     getGenerationRun: async () => sampleGenerationRun,
     ...overrides,
@@ -262,6 +297,22 @@ describe('collection-item use cases', () => {
     expect(result).toEqual(sampleGenerationRun);
   });
 
+  it('GetGenerationCapabilitiesUseCase delegates and returns capabilities', async () => {
+    const calls: string[] = [];
+    const repository = createRepository({
+      getGenerationCapabilities: async () => {
+        calls.push('called');
+        return sampleGenerationCapabilities;
+      },
+    });
+
+    const useCase = new GetGenerationCapabilitiesUseCase(repository);
+    const result = await useCase.execute();
+
+    expect(calls).toEqual(['called']);
+    expect(result).toEqual(sampleGenerationCapabilities);
+  });
+
   it('UploadCollectionItemUseCase delegates payload and returns uploaded item', async () => {
     const calls: CollectionItemUploadPayload[] = [];
     const repository = createRepository({
@@ -288,6 +339,9 @@ describe('collection-item use cases', () => {
         throw failure;
       },
       generateWithAI: async () => {
+        throw failure;
+      },
+      getGenerationCapabilities: async () => {
         throw failure;
       },
       getContentsByCollectionId: async () => {
@@ -326,6 +380,7 @@ describe('collection-item use cases', () => {
       failure,
     );
     await expect(new GetGenerationRunUseCase(failingRepo).execute('run-1')).rejects.toBe(failure);
+    await expect(new GetGenerationCapabilitiesUseCase(failingRepo).execute()).rejects.toBe(failure);
     await expect(
       new UploadCollectionItemUseCase(failingRepo).execute(sampleUploadPayload),
     ).rejects.toBe(failure);

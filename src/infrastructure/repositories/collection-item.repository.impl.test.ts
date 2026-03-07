@@ -80,12 +80,9 @@ describe('CollectionItemRepositoryImpl', () => {
     await expect(repository.getById('missing-item')).resolves.toBeNull();
   });
 
-  it('chooses image_to_image generation operation when reference images are provided', async () => {
-    let submitRequestBody: Record<string, unknown> | null = null;
-
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  it('loads and maps generation capabilities for image and video models', async () => {
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
       const url = String(input);
-
       if (url.endsWith('/api/backend/api/v1/generation/capabilities')) {
         return new Response(
           JSON.stringify({
@@ -93,7 +90,7 @@ describe('CollectionItemRepositoryImpl', () => {
               {
                 model: 'Nano Banana',
                 modelKey: 'nano-banana-pro',
-                provider: 'provider',
+                provider: 'fal',
                 operations: [
                   {
                     operationKey: 'text_to_image',
@@ -110,26 +107,24 @@ describe('CollectionItemRepositoryImpl', () => {
                       },
                     ],
                   },
+                ],
+              },
+            ],
+            video: [
+              {
+                model: 'Veo 3.1',
+                modelKey: 'veo_3_1',
+                provider: 'fal',
+                operations: [
                   {
-                    operationKey: 'image_to_image',
-                    endpointId: 'image-endpoint',
-                    required: ['prompt', 'image_urls'],
-                    fields: [
-                      { key: 'prompt', type: 'string', required: true, description: null },
-                      { key: 'image_urls', type: 'array', required: true, description: null },
-                      {
-                        key: 'aspect_ratio',
-                        type: 'string',
-                        required: false,
-                        description: null,
-                        enum: ['1:1', '9:16', '16:9'],
-                      },
-                    ],
+                    operationKey: 'text_to_video',
+                    endpointId: 'video-endpoint',
+                    required: ['prompt'],
+                    fields: [{ key: 'prompt', type: 'string', required: true, description: null }],
                   },
                 ],
               },
             ],
-            video: [],
           }),
           {
             status: 200,
@@ -138,6 +133,34 @@ describe('CollectionItemRepositoryImpl', () => {
         );
       }
 
+      throw new Error(`Unexpected request URL: ${url}`);
+    }) as typeof fetch;
+
+    const repository = new CollectionItemRepositoryImpl();
+    const capabilities = await repository.getGenerationCapabilities();
+
+    expect(capabilities.image).toHaveLength(1);
+    expect(capabilities.image[0]).toEqual(
+      expect.objectContaining({
+        modelKey: 'nano-banana-pro',
+        mediaType: 'image',
+      }),
+    );
+    expect(capabilities.video).toHaveLength(1);
+    expect(capabilities.video[0]).toEqual(
+      expect.objectContaining({
+        modelKey: 'veo_3_1',
+        mediaType: 'video',
+      }),
+    );
+  });
+
+  it('submits selected model, operation and inputs for generation', async () => {
+    let submitRequestBody: Record<string, unknown> | null = null;
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
       if (url.endsWith('/api/backend/api/v1/collections/collection-1/generation-runs')) {
         submitRequestBody = JSON.parse(String(init?.body));
 
@@ -145,8 +168,8 @@ describe('CollectionItemRepositoryImpl', () => {
           JSON.stringify({
             runId: 'run-1',
             status: 'IN_PROGRESS',
-            modelKey: 'nano-banana-pro',
-            operationKey: 'image_to_image',
+            modelKey: 'veo_3_1',
+            operationKey: 'text_to_video',
             outputs: [
               {
                 outputId: 'output-1',
@@ -170,20 +193,23 @@ describe('CollectionItemRepositoryImpl', () => {
     const result = await repository.generateWithAI({
       projectId: 'project-1',
       collectionId: 'collection-1',
-      prompt: 'cinematic prompt',
-      aspectRatio: 'PORTRAIT',
+      mediaType: 'video',
+      modelKey: 'veo_3_1',
+      operationKey: 'text_to_video',
+      inputs: {
+        prompt: 'cinematic prompt',
+        duration: 8,
+      },
       outputCount: 1,
-      referenceImages: [' https://assets.example.com/ref-1.png '],
     });
 
     expect(submitRequestBody).toEqual({
       projectId: 'project-1',
-      modelKey: 'nano-banana-pro',
-      operationKey: 'image_to_image',
+      modelKey: 'veo_3_1',
+      operationKey: 'text_to_video',
       inputs: {
         prompt: 'cinematic prompt',
-        image_urls: ['https://assets.example.com/ref-1.png'],
-        aspect_ratio: '9:16',
+        duration: 8,
       },
       outputCount: 1,
     });

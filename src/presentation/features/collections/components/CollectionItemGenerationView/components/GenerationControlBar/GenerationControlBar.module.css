@@ -10,7 +10,7 @@
 
 .composerWrap {
   position: relative;
-  width: min(100%, 760px);
+  width: min(100%, 900px);
   margin: 0 auto;
 }
 
@@ -54,7 +54,6 @@
   background: color-mix(in srgb, var(--bg-raised) 85%, var(--accent-primary) 15%);
 }
 
-/* Transform to Add Ingredients box immediately when dragging starts anywhere */
 :global(.is-dragging-ingredient) .dropZoneOverlay {
   opacity: 1;
   pointer-events: auto;
@@ -62,6 +61,69 @@
 
 :global(.is-dragging-ingredient) .composer > *:not(.dropZoneOverlay) {
   opacity: 0;
+  pointer-events: none;
+}
+
+.modelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.mediaToggle {
+  display: inline-flex;
+  background: color-mix(in srgb, var(--bg-elevated) 70%, black 30%);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.mediaButton {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0.38rem 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mediaButtonActive {
+  background: var(--accent-primary-muted);
+  color: var(--text-primary);
+}
+
+.mediaButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.selectWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.select {
+  appearance: none;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-elevated) 75%, black 25%);
+  color: var(--text-secondary);
+  padding: 0.42rem 1.7rem 0.42rem 0.65rem;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.selectWrap::after {
+  content: '▾';
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-52%);
+  font-size: 0.65rem;
+  color: var(--text-muted);
   pointer-events: none;
 }
 
@@ -116,6 +178,58 @@
   background: rgba(239, 68, 68, 0.9);
 }
 
+.optionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.inlineField {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--bg-elevated) 65%, black 35%);
+  border-radius: 999px;
+  padding: 0.25rem 0.4rem 0.25rem 0.5rem;
+}
+
+.inlineFieldLabel {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.inlineInput,
+.inlineSelect {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  min-width: 80px;
+}
+
+.inlineInput:focus,
+.inlineSelect:focus {
+  outline: none;
+}
+
+.inlineInputError {
+  color: #ff9d9d;
+}
+
+.checkboxField {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--bg-elevated) 65%, black 35%);
+  border-radius: 999px;
+  padding: 0.35rem 0.6rem;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
 .promptInput {
   width: 100%;
   min-height: 36px;
@@ -135,9 +249,20 @@
   outline: none;
 }
 
+.promptInputError {
+  color: #ffb0b0;
+}
+
 .promptInput::placeholder {
   color: var(--text-muted);
   font-size: 0.95rem;
+}
+
+.fieldError {
+  margin: -0.1rem 0 0;
+  color: #ffb0b0;
+  font-size: 0.74rem;
+  padding: 0 0.8rem;
 }
 
 .bottomRow {
@@ -169,44 +294,9 @@
   background: var(--accent-primary-muted);
 }
 
-.aspectRatioSelectWrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.aspectRatioSelect {
-  appearance: none;
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-elevated) 75%, black 25%);
-  color: var(--text-secondary);
-  padding: 0.45rem 1.7rem 0.45rem 0.65rem;
-  font-size: 0.8rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.aspectRatioSelectWrap::after {
-  content: '▾';
-  position: absolute;
-  right: 0.6rem;
-  top: 50%;
-  transform: translateY(-52%);
-  font-size: 0.65rem;
-  color: var(--text-muted);
-  pointer-events: none;
-}
-
-.modelBadge {
-  margin-left: auto;
-  padding: 0.45rem 0.65rem;
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  line-height: 1;
-  white-space: nowrap;
-  background: color-mix(in srgb, var(--bg-elevated) 75%, black 25%);
+.plusButtonSpacer {
+  width: 38px;
+  height: 38px;
 }
 
 .generateButton {
@@ -250,21 +340,19 @@
     font-size: 0.88rem;
   }
 
-  .plusButton {
+  .plusButton,
+  .plusButtonSpacer {
     width: 34px;
     height: 34px;
+  }
+
+  .plusButton {
     font-size: 1.4rem;
-    border-radius: 50%;
   }
 
-  .modelBadge {
-    font-size: 0.78rem;
-    padding: 0.4rem 0.55rem;
-  }
-
-  .aspectRatioSelect {
-    font-size: 0.75rem;
-    padding: 0.4rem 1.55rem 0.4rem 0.55rem;
+  .select {
+    font-size: 0.74rem;
+    padding: 0.38rem 1.5rem 0.38rem 0.55rem;
   }
 
   .generateButton {
@@ -289,21 +377,9 @@
     padding: var(--space-2);
   }
 
-  .bottomRow {
+  .modelRow,
+  .bottomRow,
+  .optionsRow {
     flex-wrap: wrap;
-  }
-
-  .modelBadge {
-    order: 3;
-    width: 100%;
-    text-align: center;
-  }
-
-  .aspectRatioSelectWrap {
-    order: 2;
-  }
-
-  .dropHint {
-    text-align: center;
   }
 }

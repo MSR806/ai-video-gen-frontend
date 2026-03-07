@@ -3,9 +3,13 @@ import type {
   CollectionItem,
   CollectionItemCreationPayload,
   CollectionItemGenerationParams,
+  GenerationCapabilities,
+  GenerationInputFieldType,
+  GenerationMediaType,
+  GenerationModelCapability,
+  GenerationOperationCapability,
   GenerationRun,
   GenerationRunSubmitResponse,
-  GenerationAspectRatio,
   CollectionItemStatus,
   CollectionItemUploadPayload,
   CollectionItemRepository,
@@ -212,11 +216,42 @@ const mapApiGenerationRun = (run: ApiGenerationRun): GenerationRun => {
   };
 };
 
-const UI_ASPECT_RATIO_TO_BACKEND_VALUE: Record<GenerationAspectRatio, string> = {
-  SQUARE: '1:1',
-  PORTRAIT: '9:16',
-  LANDSCAPE: '16:9',
-};
+const mapApiGenerationOperations = (
+  operations: ApiGenerationOperationCapability[] | undefined,
+): GenerationOperationCapability[] =>
+  Array.isArray(operations)
+    ? operations.map((operation) => ({
+        operationKey: operation.operationKey,
+        endpointId: operation.endpointId,
+        required: Array.isArray(operation.required) ? operation.required : [],
+        fields: Array.isArray(operation.fields)
+          ? operation.fields.map((field) => ({
+              key: field.key,
+              type: field.type as GenerationInputFieldType,
+              required: field.required,
+              description: field.description,
+              default: field.default,
+              enum: field.enum ?? null,
+              format: field.format ?? null,
+              itemsType: field.itemsType ?? null,
+            }))
+          : [],
+      }))
+    : [];
+
+const mapApiGenerationModels = (
+  models: ApiGenerationModelCapability[] | undefined,
+  mediaType: GenerationMediaType,
+): GenerationModelCapability[] =>
+  Array.isArray(models)
+    ? models.map((model) => ({
+        model: model.model,
+        modelKey: model.modelKey,
+        provider: model.provider,
+        mediaType,
+        operations: mapApiGenerationOperations(model.operations),
+      }))
+    : [];
 
 /**
  * API-backed implementation of CollectionItemRepository.
@@ -224,83 +259,15 @@ const UI_ASPECT_RATIO_TO_BACKEND_VALUE: Record<GenerationAspectRatio, string> = 
 export class CollectionItemRepositoryImpl implements CollectionItemRepository {
   private cache = new Map<string, CollectionItem>();
 
-  private async getGenerationCapabilities(): Promise<ApiGenerationCapabilitiesResponse> {
+  async getGenerationCapabilities(): Promise<GenerationCapabilities> {
     const response = await backendApiRequest<ApiGenerationCapabilitiesResponse>(
       '/api/v1/generation/capabilities',
     );
 
     return {
-      image: Array.isArray(response.image) ? response.image : [],
-      video: Array.isArray(response.video) ? response.video : [],
+      image: mapApiGenerationModels(response.image, 'image'),
+      video: mapApiGenerationModels(response.video, 'video'),
     };
-  }
-
-  private resolveImageOperation(
-    capabilities: ApiGenerationCapabilitiesResponse,
-    isImageToImage: boolean,
-  ): { modelKey: string; operation: ApiGenerationOperationCapability } {
-    const desiredOperationKey = isImageToImage ? 'image_to_image' : 'text_to_image';
-
-    for (const model of capabilities.image) {
-      const matchedOperation = model.operations.find(
-        (operation) => operation.operationKey === desiredOperationKey,
-      );
-
-      if (matchedOperation) {
-        return {
-          modelKey: model.modelKey,
-          operation: matchedOperation,
-        };
-      }
-    }
-
-    throw new Error(`No image model available for operation "${desiredOperationKey}".`);
-  }
-
-  private buildGenerationInputs(params: {
-    prompt: string;
-    referenceUrls: string[];
-    aspectRatio: GenerationAspectRatio;
-    operation: ApiGenerationOperationCapability;
-  }): Record<string, unknown> {
-    const { prompt, referenceUrls, aspectRatio, operation } = params;
-    const inputs: Record<string, unknown> = {};
-    const fieldsByKey = new Map(operation.fields.map((field) => [field.key, field]));
-    const requiredSet = new Set(operation.required);
-
-    if (fieldsByKey.has('prompt')) {
-      inputs.prompt = prompt;
-    } else if (requiredSet.has('prompt')) {
-      throw new Error('Selected image model requires a prompt field that is not exposed.');
-    }
-
-    if (referenceUrls.length > 0) {
-      if (fieldsByKey.has('image_urls')) {
-        inputs.image_urls = referenceUrls;
-      } else if (fieldsByKey.has('image_url')) {
-        inputs.image_url = referenceUrls[0];
-      } else if (requiredSet.has('image_urls') || requiredSet.has('image_url')) {
-        throw new Error('Selected image edit model requires image reference fields.');
-      }
-    }
-
-    if (fieldsByKey.has('aspect_ratio')) {
-      const targetAspectRatio = UI_ASPECT_RATIO_TO_BACKEND_VALUE[aspectRatio];
-      const aspectRatioField = fieldsByKey.get('aspect_ratio');
-      const enumValues = Array.isArray(aspectRatioField?.enum)
-        ? aspectRatioField.enum.filter((value): value is string => typeof value === 'string')
-        : [];
-
-      if (enumValues.length === 0 || enumValues.includes(targetAspectRatio)) {
-        inputs.aspect_ratio = targetAspectRatio;
-      } else if (typeof aspectRatioField?.default === 'string') {
-        inputs.aspect_ratio = aspectRatioField.default;
-      } else {
-        inputs.aspect_ratio = enumValues[0];
-      }
-    }
-
-    return inputs;
   }
 
   async getContentsByCollectionId(collectionId: string): Promise<CollectionContents> {
@@ -395,22 +362,11 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
   async generateWithAI(
     params: CollectionItemGenerationParams,
   ): Promise<GenerationRunSubmitResponse> {
-    const referenceUrls = (params.referenceImages ?? [])
-      .map((url) => url.trim())
-      .filter((url) => /^https?:\/\//i.test(url));
-    const isImageToImage = referenceUrls.length > 0;
-    const capabilities = await this.getGenerationCapabilities();
-    const { modelKey, operation } = this.resolveImageOperation(capabilities, isImageToImage);
     const requestBody = {
       projectId: params.projectId,
-      modelKey,
-      operationKey: operation.operationKey,
-      inputs: this.buildGenerationInputs({
-        prompt: params.prompt,
-        referenceUrls,
-        aspectRatio: params.aspectRatio,
-        operation,
-      }),
+      modelKey: params.modelKey,
+      operationKey: params.operationKey,
+      inputs: params.inputs,
       outputCount: params.outputCount,
     };
 

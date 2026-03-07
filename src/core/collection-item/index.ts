@@ -7,4 +7,5 @@ export * from './use-cases/delete-collection-item.use-case';
 export * from './use-cases/upload-collection-item.use-case';
 export * from './use-cases/generate-collection-item.use-case';
 export * from './use-cases/get-generation-run.use-case';
+export * from './use-cases/get-generation-capabilities.use-case';
 export * from './use-cases/get-collection-item-by-id.use-case';

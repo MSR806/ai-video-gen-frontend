@@ -22,7 +22,15 @@ export interface VideoMetadata {
 }
 
 export type CollectionItemStatus = 'GENERATING' | 'READY' | 'FAILED';
-export type GenerationAspectRatio = 'SQUARE' | 'PORTRAIT' | 'LANDSCAPE';
+export type GenerationMediaType = 'image' | 'video';
+export type GenerationInputFieldType =
+  | 'string'
+  | 'integer'
+  | 'number'
+  | 'boolean'
+  | 'array'
+  | 'object'
+  | 'union';
 
 /**
  * CollectionItem Entity
@@ -78,12 +86,44 @@ export interface CollectionItemUploadPayload {
  * Parameters for AI collection item generation.
  */
 export interface CollectionItemGenerationParams {
-  prompt: string;
-  referenceImages?: string[];
-  aspectRatio: GenerationAspectRatio;
-  outputCount: number;
   projectId: string;
   collectionId: string;
+  mediaType: GenerationMediaType;
+  modelKey: string;
+  operationKey: string;
+  inputs: Record<string, unknown>;
+  outputCount: number;
+}
+
+export interface GenerationInputFieldCapability {
+  key: string;
+  type: GenerationInputFieldType;
+  required: boolean;
+  description: string | null;
+  default?: unknown;
+  enum?: unknown[] | null;
+  format?: string | null;
+  itemsType?: string | null;
+}
+
+export interface GenerationOperationCapability {
+  operationKey: string;
+  endpointId: string;
+  required: string[];
+  fields: GenerationInputFieldCapability[];
+}
+
+export interface GenerationModelCapability {
+  model: string;
+  modelKey: string;
+  provider: string;
+  mediaType: GenerationMediaType;
+  operations: GenerationOperationCapability[];
+}
+
+export interface GenerationCapabilities {
+  image: GenerationModelCapability[];
+  video: GenerationModelCapability[];
 }
 
 export type GenerationRunStatus =

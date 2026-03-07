@@ -12,13 +12,15 @@ import { useRouter } from 'next/navigation';
 import type { Collection, Scene, CollectionItem } from '@core';
 import { CreateCollectionUseCase, type CollectionCreationPayload } from '@core/collection';
 import {
+  type CollectionItemGenerationParams,
   DeleteCollectionItemUseCase,
   GenerateCollectionItemUseCase,
   GetCollectionContentsUseCase,
   GetCollectionItemByIdUseCase,
+  GetGenerationCapabilitiesUseCase,
   GetGenerationRunUseCase,
   UploadCollectionItemUseCase,
-  type GenerationAspectRatio,
+  type GenerationCapabilities,
   type ImageMetadata,
   type VideoMetadata,
 } from '@core/collection-item';
@@ -125,6 +127,9 @@ export function ProjectDetailPage({
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [isUploadingCollectionItems, setIsUploadingCollectionItems] = useState(false);
   const [isGeneratingCollectionItem, setIsGeneratingCollectionItem] = useState(false);
+  const [generationCapabilities, setGenerationCapabilities] =
+    useState<GenerationCapabilities | null>(null);
+  const [isLoadingGenerationCapabilities, setIsLoadingGenerationCapabilities] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [itemRefreshKey, setItemRefreshKey] = useState(0);
   const [loadedCollections, setLoadedCollections] = useState<Collection[]>(collections);
@@ -314,12 +319,7 @@ export function ProjectDetailPage({
   };
 
   const handleGenerateCollectionItem = useCallback(
-    async (
-      prompt: string,
-      referenceImages: string[],
-      aspectRatio: GenerationAspectRatio,
-      outputCount: number,
-    ) => {
+    async (params: CollectionItemGenerationParams) => {
       if (!selectedCollectionId) {
         return;
       }
@@ -330,13 +330,37 @@ export function ProjectDetailPage({
         const repository = new CollectionItemRepositoryImpl();
         const generateCollectionItemUseCase = new GenerateCollectionItemUseCase(repository);
         const submission = await generateCollectionItemUseCase.execute({
-          prompt,
-          referenceImages,
-          aspectRatio,
-          outputCount,
+          ...params,
           projectId,
           collectionId: selectedCollectionId,
         });
+
+        const modelCatalog = [
+          ...(generationCapabilities?.image ?? []),
+          ...(generationCapabilities?.video ?? []),
+        ];
+        const selectedModel = modelCatalog.find((model) => model.modelKey === params.modelKey);
+        const mediaType = selectedModel?.mediaType ?? params.mediaType;
+        const promptValue = params.inputs.prompt;
+        const description =
+          typeof promptValue === 'string' && promptValue.trim().length > 0
+            ? promptValue.trim()
+            : `Running ${params.operationKey}`;
+        const metadata =
+          mediaType === 'video'
+            ? ({
+                width: 0,
+                height: 0,
+                duration: 0,
+                format: 'mp4',
+                thumbnailUrl: '',
+              } as VideoMetadata)
+            : ({
+                width: 0,
+                height: 0,
+                format: 'png',
+                thumbnailUrl: '',
+              } as ImageMetadata);
 
         const generatedPlaceholders: CollectionItem[] = submission.outputs.map((output) => ({
           id: output.collectionItemId,
@@ -344,17 +368,12 @@ export function ProjectDetailPage({
           collectionId: selectedCollectionId,
           runId: submission.runId,
           generationRunOutputId: output.outputId,
-          mediaType: 'image',
+          mediaType,
           status: 'GENERATING',
-          name: 'Generating image',
-          description: prompt,
+          name: `Generating ${mediaType}`,
+          description,
           url: null,
-          metadata: {
-            width: 0,
-            height: 0,
-            format: 'png',
-            thumbnailUrl: '',
-          },
+          metadata,
           generationErrorMessage: null,
         }));
 
@@ -377,7 +396,7 @@ export function ProjectDetailPage({
         setIsGeneratingCollectionItem(false);
       }
     },
-    [addToast, projectId, selectedCollectionId],
+    [addToast, generationCapabilities, projectId, selectedCollectionId],
   );
 
   const getImageDimensions = useCallback(
@@ -805,6 +824,42 @@ export function ProjectDetailPage({
   }, [activeTab, addToast, projectId]);
 
   useEffect(() => {
+    if (activeTab !== 'collections' || !selectedCollectionId) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadGenerationCapabilities = async () => {
+      setIsLoadingGenerationCapabilities(true);
+      try {
+        const repository = new CollectionItemRepositoryImpl();
+        const getGenerationCapabilitiesUseCase = new GetGenerationCapabilitiesUseCase(repository);
+        const capabilities = await getGenerationCapabilitiesUseCase.execute();
+        if (!isCancelled) {
+          setGenerationCapabilities(capabilities);
+        }
+      } catch (error) {
+        if (isCancelled) {
+          return;
+        }
+        console.error('Error loading generation capabilities:', error);
+        addToast('Failed to load generation models.', 'error');
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingGenerationCapabilities(false);
+        }
+      }
+    };
+
+    void loadGenerationCapabilities();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeTab, addToast, selectedCollectionId]);
+
+  useEffect(() => {
     if (!selectedCollectionId || activeTab !== 'collections') return;
 
     void refreshCollectionContents(selectedCollectionId, { silentError: false });
@@ -1104,7 +1159,7 @@ export function ProjectDetailPage({
                     label="New collection"
                     onClick={handleCreateCollectionClick}
                   />
-                  <DropdownItem icon="↑" label="Upload image" onClick={handleUploadClick} />
+                  <DropdownItem icon="↑" label="Upload media" onClick={handleUploadClick} />
                 </Dropdown>
               ) : null}
             </div>
@@ -1128,11 +1183,14 @@ export function ProjectDetailPage({
             <GenerationControlBar
               onGenerate={handleGenerateCollectionItem}
               isGenerating={isGeneratingCollectionItem}
+              projectId={projectId}
               collections={loadedCollections}
               selectedCollectionId={selectedCollectionId}
               selectedCollectionItems={selectedCollectionItems}
               selectedCollectionChildCollections={loadedSelectedChildCollections}
               loadCollectionContentsForPicker={loadCollectionContentsForPicker}
+              generationCapabilities={generationCapabilities}
+              isCapabilitiesLoading={isLoadingGenerationCapabilities}
             />
           )}
         </div>

@@ -2,6 +2,7 @@ import type {
   CollectionContents,
   CollectionItem,
   CollectionItemCreationPayload,
+  GenerationCapabilities,
   CollectionItemGenerationParams,
   GenerationRun,
   GenerationRunSubmitResponse,
@@ -18,6 +19,7 @@ export interface CollectionItemRepository {
   create(payload: CollectionItemCreationPayload): Promise<CollectionItem>;
   delete(collectionId: string, itemId: string): Promise<void>;
   upload(payload: CollectionItemUploadPayload): Promise<CollectionItem>;
+  getGenerationCapabilities(): Promise<GenerationCapabilities>;
   generateWithAI(params: CollectionItemGenerationParams): Promise<GenerationRunSubmitResponse>;
   getGenerationRun(runId: string): Promise<GenerationRun>;
 }
