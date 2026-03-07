@@ -16,7 +16,7 @@ import {
   GenerateCollectionItemUseCase,
   GetCollectionContentsUseCase,
   GetCollectionItemByIdUseCase,
-  GetGenerationJobUseCase,
+  GetGenerationRunUseCase,
   UploadCollectionItemUseCase,
   type GenerationAspectRatio,
   type ImageMetadata,
@@ -95,10 +95,10 @@ const fetchMediaResponse = async (mediaUrl: string): Promise<Response> => {
   return fetch(mediaUrl);
 };
 
-const ACTIVE_GENERATION_JOBS_POLL_INTERVAL_MS = 3000;
-const ACTIVE_GENERATION_JOBS_MAX_POLL_ATTEMPTS = 240;
-const MISSING_JOB_FALLBACK_REFRESH_INTERVAL_MS = 15000;
-const MISSING_JOB_FALLBACK_MAX_ATTEMPTS = 4;
+const ACTIVE_GENERATION_RUNS_POLL_INTERVAL_MS = 3000;
+const ACTIVE_GENERATION_RUNS_MAX_POLL_ATTEMPTS = 240;
+const MISSING_RUN_FALLBACK_REFRESH_INTERVAL_MS = 15000;
+const MISSING_RUN_FALLBACK_MAX_ATTEMPTS = 4;
 const ITEM_TERMINAL_REFRESH_MAX_RETRIES = 5;
 
 /**
@@ -314,7 +314,12 @@ export function ProjectDetailPage({
   };
 
   const handleGenerateCollectionItem = useCallback(
-    async (prompt: string, referenceImages: string[], aspectRatio: GenerationAspectRatio) => {
+    async (
+      prompt: string,
+      referenceImages: string[],
+      aspectRatio: GenerationAspectRatio,
+      outputCount: number,
+    ) => {
       if (!selectedCollectionId) {
         return;
       }
@@ -324,22 +329,41 @@ export function ProjectDetailPage({
       try {
         const repository = new CollectionItemRepositoryImpl();
         const generateCollectionItemUseCase = new GenerateCollectionItemUseCase(repository);
-        const generatedPlaceholder = await generateCollectionItemUseCase.execute({
+        const submission = await generateCollectionItemUseCase.execute({
           prompt,
           referenceImages,
           aspectRatio,
+          outputCount,
           projectId,
           collectionId: selectedCollectionId,
         });
-        setLoadedCollectionItems((prev) => {
-          const existingIndex = prev.findIndex((item) => item.id === generatedPlaceholder.id);
-          if (existingIndex === -1) {
-            return [...prev, generatedPlaceholder];
-          }
 
-          const next = [...prev];
-          next[existingIndex] = generatedPlaceholder;
-          return next;
+        const generatedPlaceholders: CollectionItem[] = submission.outputs.map((output) => ({
+          id: output.collectionItemId,
+          projectId,
+          collectionId: selectedCollectionId,
+          runId: submission.runId,
+          generationRunOutputId: output.outputId,
+          mediaType: 'image',
+          status: 'GENERATING',
+          name: 'Generating image',
+          description: prompt,
+          url: null,
+          metadata: {
+            width: 0,
+            height: 0,
+            format: 'png',
+            thumbnailUrl: '',
+          },
+          generationErrorMessage: null,
+        }));
+
+        setLoadedCollectionItems((prev) => {
+          const nextById = new Map(prev.map((item) => [item.id, item]));
+          generatedPlaceholders.forEach((item) => {
+            nextById.set(item.id, item);
+          });
+          return Array.from(nextById.values());
         });
       } catch (error) {
         console.error('Error generating collection item:', error);
@@ -799,11 +823,11 @@ export function ProjectDetailPage({
     let isCancelled = false;
     let isPolling = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let missingJobFallbackAttempts = 0;
-    let lastMissingJobFallbackAt = 0;
+    let missingRunFallbackAttempts = 0;
+    let lastMissingRunFallbackAt = 0;
     const pollStartedAt = Date.now();
     const maxPollDurationMs =
-      ACTIVE_GENERATION_JOBS_MAX_POLL_ATTEMPTS * ACTIVE_GENERATION_JOBS_POLL_INTERVAL_MS;
+      ACTIVE_GENERATION_RUNS_MAX_POLL_ATTEMPTS * ACTIVE_GENERATION_RUNS_POLL_INTERVAL_MS;
     const terminalItemRefreshAttempts = new Map<string, number>();
 
     const stopPolling = () => {
@@ -820,8 +844,8 @@ export function ProjectDetailPage({
 
       timeoutId = setTimeout(() => {
         timeoutId = null;
-        void pollActiveGenerationJobs();
-      }, ACTIVE_GENERATION_JOBS_POLL_INTERVAL_MS);
+        void pollActiveGenerationRuns();
+      }, ACTIVE_GENERATION_RUNS_POLL_INTERVAL_MS);
     };
 
     const getGeneratingItems = (): CollectionItem[] =>
@@ -829,42 +853,42 @@ export function ProjectDetailPage({
         (item) => item.collectionId === selectedCollectionId && item.status === 'GENERATING',
       );
 
-    const getActiveJobIds = (items: CollectionItem[]): string[] => {
-      const activeJobIds = new Set<string>();
+    const getActiveRunIds = (items: CollectionItem[]): string[] => {
+      const activeRunIds = new Set<string>();
       items.forEach((item) => {
-        const jobId = item.jobId?.trim();
-        if (jobId && jobId.length > 0) {
-          activeJobIds.add(jobId);
+        const runId = item.runId?.trim();
+        if (runId && runId.length > 0) {
+          activeRunIds.add(runId);
         }
       });
-      return Array.from(activeJobIds);
+      return Array.from(activeRunIds);
     };
 
-    const maybeRefreshMissingJobItems = async (items: CollectionItem[]): Promise<void> => {
-      const hasMissingJob = items.some((item) => {
-        const jobId = item.jobId?.trim() ?? '';
-        return jobId.length === 0;
+    const maybeRefreshMissingRunItems = async (items: CollectionItem[]): Promise<void> => {
+      const hasMissingRun = items.some((item) => {
+        const runId = item.runId?.trim() ?? '';
+        return runId.length === 0;
       });
 
-      if (!hasMissingJob) {
+      if (!hasMissingRun) {
         return;
       }
 
       const now = Date.now();
-      if (missingJobFallbackAttempts >= MISSING_JOB_FALLBACK_MAX_ATTEMPTS) {
+      if (missingRunFallbackAttempts >= MISSING_RUN_FALLBACK_MAX_ATTEMPTS) {
         return;
       }
 
-      if (now - lastMissingJobFallbackAt < MISSING_JOB_FALLBACK_REFRESH_INTERVAL_MS) {
+      if (now - lastMissingRunFallbackAt < MISSING_RUN_FALLBACK_REFRESH_INTERVAL_MS) {
         return;
       }
 
-      missingJobFallbackAttempts += 1;
-      lastMissingJobFallbackAt = now;
+      missingRunFallbackAttempts += 1;
+      lastMissingRunFallbackAt = now;
       await refreshCollectionContents(selectedCollectionId, { silentError: true });
     };
 
-    const pollActiveGenerationJobs = async () => {
+    const pollActiveGenerationRuns = async () => {
       if (isCancelled || isPolling) {
         return;
       }
@@ -882,21 +906,21 @@ export function ProjectDetailPage({
           return;
         }
 
-        await maybeRefreshMissingJobItems(generatingItems);
+        await maybeRefreshMissingRunItems(generatingItems);
         if (isCancelled) {
           return;
         }
 
-        const activeJobIds = getActiveJobIds(generatingItems);
-        if (activeJobIds.length === 0) {
+        const activeRunIds = getActiveRunIds(generatingItems);
+        if (activeRunIds.length === 0) {
           scheduleNextPoll();
           return;
         }
 
         const repository = new CollectionItemRepositoryImpl();
-        const getGenerationJobUseCase = new GetGenerationJobUseCase(repository);
+        const getGenerationRunUseCase = new GetGenerationRunUseCase(repository);
         const results = await Promise.allSettled(
-          activeJobIds.map((jobId) => getGenerationJobUseCase.execute(jobId)),
+          activeRunIds.map((runId) => getGenerationRunUseCase.execute(runId)),
         );
         if (isCancelled) {
           return;
@@ -912,10 +936,16 @@ export function ProjectDetailPage({
             return;
           }
 
-          const itemId = result.value.itemId?.trim();
-          if (itemId && itemId.length > 0) {
-            terminalItemIds.add(itemId);
-          }
+          result.value.outputs.forEach((output) => {
+            if (output.status === 'QUEUED') {
+              return;
+            }
+
+            const itemId = output.collectionItemId?.trim();
+            if (itemId && itemId.length > 0) {
+              terminalItemIds.add(itemId);
+            }
+          });
         });
 
         if (terminalItemIds.size > 0) {
@@ -965,7 +995,7 @@ export function ProjectDetailPage({
       }
     };
 
-    void pollActiveGenerationJobs();
+    void pollActiveGenerationRuns();
 
     return () => {
       isCancelled = true;

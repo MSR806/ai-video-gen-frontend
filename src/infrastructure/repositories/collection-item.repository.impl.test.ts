@@ -138,69 +138,26 @@ describe('CollectionItemRepositoryImpl', () => {
         );
       }
 
-      if (url.endsWith('/api/backend/api/v1/collections/collection-1/items/generate')) {
+      if (url.endsWith('/api/backend/api/v1/collections/collection-1/generation-runs')) {
         submitRequestBody = JSON.parse(String(init?.body));
 
         return new Response(
           JSON.stringify({
-            jobId: 'job-1',
-            status: 'QUEUED',
+            runId: 'run-1',
+            status: 'IN_PROGRESS',
             modelKey: 'nano-banana-pro',
             operationKey: 'image_to_image',
+            outputs: [
+              {
+                outputId: 'output-1',
+                outputIndex: 0,
+                status: 'QUEUED',
+                collectionItemId: 'item-1',
+              },
+            ],
           }),
           {
             status: 202,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        );
-      }
-
-      if (url.endsWith('/api/backend/api/v1/generation-jobs/job-1')) {
-        return new Response(
-          JSON.stringify({
-            id: 'job-1',
-            status: 'IN_PROGRESS',
-            operationKey: 'image_to_image',
-            provider: 'provider',
-            modelKey: 'nano-banana-pro',
-            projectId: 'project-1',
-            collectionId: 'collection-1',
-            itemId: 'item-1',
-            outputs: [],
-            error: null,
-            createdAt: '2025-01-01T00:00:00.000Z',
-            updatedAt: '2025-01-01T00:00:00.000Z',
-            submittedAt: null,
-            completedAt: null,
-          }),
-          {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        );
-      }
-
-      if (url.endsWith('/api/backend/api/v1/collection-items/item-1')) {
-        return new Response(
-          JSON.stringify({
-            id: 'item-1',
-            projectId: 'project-1',
-            collectionId: 'collection-1',
-            mediaType: 'image',
-            status: 'GENERATING',
-            name: 'Generating image',
-            description: 'cinematic prompt',
-            url: null,
-            metadata: {
-              width: 0,
-              height: 0,
-              format: 'png',
-              thumbnailUrl: '',
-            },
-            generationErrorMessage: null,
-          }),
-          {
-            status: 200,
             headers: { 'Content-Type': 'application/json' },
           },
         );
@@ -210,11 +167,12 @@ describe('CollectionItemRepositoryImpl', () => {
     }) as typeof fetch;
 
     const repository = new CollectionItemRepositoryImpl();
-    await repository.generateWithAI({
+    const result = await repository.generateWithAI({
       projectId: 'project-1',
       collectionId: 'collection-1',
       prompt: 'cinematic prompt',
       aspectRatio: 'PORTRAIT',
+      outputCount: 1,
       referenceImages: [' https://assets.example.com/ref-1.png '],
     });
 
@@ -227,121 +185,84 @@ describe('CollectionItemRepositoryImpl', () => {
         image_urls: ['https://assets.example.com/ref-1.png'],
         aspect_ratio: '9:16',
       },
+      outputCount: 1,
     });
+    expect(result.runId).toBe('run-1');
+    expect(result.outputs).toHaveLength(1);
+    expect(result.outputs[0].collectionItemId).toBe('item-1');
   });
 
-  it('returns generation fallback item when placeholder item is still unavailable', async () => {
-    const originalSetTimeout = globalThis.setTimeout;
-
-    globalThis.setTimeout = ((callback: (...args: unknown[]) => void) => {
-      callback();
-      return 0 as unknown as ReturnType<typeof setTimeout>;
-    }) as typeof setTimeout;
-
+  it('loads generation run details', async () => {
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const url = String(input);
 
-      if (url.endsWith('/api/backend/api/v1/generation/capabilities')) {
+      if (url.endsWith('/api/backend/api/v1/generation-runs/run-2')) {
         return new Response(
           JSON.stringify({
-            image: [
-              {
-                model: 'Nano Banana',
-                modelKey: 'nano-banana-pro',
-                provider: 'provider',
-                operations: [
-                  {
-                    operationKey: 'text_to_image',
-                    endpointId: 'text-endpoint',
-                    required: ['prompt'],
-                    fields: [{ key: 'prompt', type: 'string', required: true, description: null }],
-                  },
-                ],
-              },
-            ],
-            video: [],
-          }),
-          {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        );
-      }
-
-      if (url.endsWith('/api/backend/api/v1/collections/collection-1/items/generate')) {
-        return new Response(
-          JSON.stringify({
-            jobId: 'job-2',
-            status: 'QUEUED',
-            modelKey: 'nano-banana-pro',
-            operationKey: 'text_to_image',
-          }),
-          {
-            status: 202,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        );
-      }
-
-      if (url.endsWith('/api/backend/api/v1/generation-jobs/job-2')) {
-        return new Response(
-          JSON.stringify({
-            id: 'job-2',
-            status: 'IN_PROGRESS',
+            runId: 'run-2',
+            status: 'PARTIAL_FAILED',
             operationKey: 'text_to_image',
             provider: 'provider',
             modelKey: 'nano-banana-pro',
+            endpointId: 'text-endpoint',
             projectId: 'project-1',
-            collectionId: 'collection-1',
-            itemId: 'item-2',
-            outputs: [],
-            error: null,
+            requestedOutputCount: 2,
+            outputs: [
+              {
+                outputId: 'output-1',
+                outputIndex: 0,
+                status: 'READY',
+                collectionItemId: 'item-1',
+                providerOutput: { provider_url: 'https://provider/image.png' },
+                storedOutput: { storedUrl: 'https://cdn/image.png' },
+              },
+              {
+                outputId: 'output-2',
+                outputIndex: 1,
+                status: 'FAILED',
+                collectionItemId: 'item-2',
+                errorCode: 'provider_generation_failed',
+                errorMessage: 'Generation failed on provider',
+              },
+            ],
+            error: {
+              code: 'partial_failed',
+              message: 'Some outputs failed',
+            },
             createdAt: '2025-01-01T00:00:00.000Z',
-            updatedAt: '2025-01-01T00:00:00.000Z',
-            submittedAt: null,
-            completedAt: null,
+            updatedAt: '2025-01-01T00:01:00.000Z',
+            submittedAt: '2025-01-01T00:00:10.000Z',
+            completedAt: '2025-01-01T00:01:00.000Z',
           }),
           {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
           },
         );
-      }
-
-      if (url.endsWith('/api/backend/api/v1/collection-items/item-2')) {
-        return new Response(JSON.stringify({ error: { message: 'Not found' } }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' },
-        });
       }
 
       throw new Error(`Unexpected request URL: ${url}`);
     }) as typeof fetch;
 
-    try {
-      const repository = new CollectionItemRepositoryImpl();
-      const result = await repository.generateWithAI({
-        projectId: 'project-1',
-        collectionId: 'collection-1',
-        prompt: 'fallback prompt',
-        aspectRatio: 'SQUARE',
-      });
+    const repository = new CollectionItemRepositoryImpl();
+    const result = await repository.getGenerationRun('run-2');
 
-      expect(result).toEqual(
+    expect(result.runId).toBe('run-2');
+    expect(result.status).toBe('PARTIAL_FAILED');
+    expect(result.outputs).toEqual(
+      expect.arrayContaining([
         expect.objectContaining({
-          id: 'item-2',
-          projectId: 'project-1',
-          collectionId: 'collection-1',
-          jobId: 'job-2',
-          status: 'GENERATING',
-          name: 'Generating image',
-          description: 'fallback prompt',
-          url: null,
+          outputId: 'output-1',
+          status: 'READY',
+          collectionItemId: 'item-1',
         }),
-      );
-    } finally {
-      globalThis.setTimeout = originalSetTimeout;
-    }
+        expect.objectContaining({
+          outputId: 'output-2',
+          status: 'FAILED',
+          collectionItemId: 'item-2',
+        }),
+      ]),
+    );
   });
 
   it('builds upload FormData payload with optional fields', async () => {

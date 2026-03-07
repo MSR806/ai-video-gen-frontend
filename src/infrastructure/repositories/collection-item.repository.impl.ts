@@ -3,11 +3,12 @@ import type {
   CollectionItem,
   CollectionItemCreationPayload,
   CollectionItemGenerationParams,
+  GenerationRun,
+  GenerationRunSubmitResponse,
   GenerationAspectRatio,
   CollectionItemStatus,
   CollectionItemUploadPayload,
   CollectionItemRepository,
-  GenerationJob,
   ImageMetadata,
   VideoMetadata,
 } from '@core/collection-item';
@@ -18,7 +19,8 @@ interface ApiCollectionItem {
   id: string;
   projectId: string;
   collectionId: string;
-  jobId?: string | null;
+  runId?: string | null;
+  generationRunOutputId?: string | null;
   mediaType: 'image' | 'video';
   status?: CollectionItemStatus;
   name: string;
@@ -42,11 +44,17 @@ interface ApiCollectionContentsResponse {
   childCollections: ApiCollection[];
 }
 
-interface ApiGenerationSubmitResponse {
-  jobId: string;
-  status: GenerationJob['status'];
+interface ApiGenerationRunSubmitResponse {
+  runId: string;
+  status: GenerationRun['status'];
   modelKey: string;
   operationKey: string;
+  outputs: Array<{
+    outputId: string;
+    outputIndex: number;
+    status: 'QUEUED' | 'READY' | 'FAILED';
+    collectionItemId: string;
+  }>;
 }
 
 interface ApiGenerationCapabilitiesResponse {
@@ -79,23 +87,33 @@ interface ApiGenerationInputFieldCapability {
   itemsType?: string | null;
 }
 
-interface ApiGenerationJobError {
+interface ApiGenerationRunError {
   code?: string | null;
   message?: string | null;
 }
 
-interface ApiGenerationJob {
-  id: string;
-  status: GenerationJob['status'];
+interface ApiGenerationRunOutput {
+  outputId: string;
+  outputIndex: number;
+  status: 'QUEUED' | 'READY' | 'FAILED';
+  collectionItemId: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  providerOutput?: Record<string, unknown> | null;
+  storedOutput?: Record<string, unknown> | null;
+}
+
+interface ApiGenerationRun {
+  runId: string;
+  status: GenerationRun['status'];
   operationKey: string;
   provider: string;
   modelKey: string;
   endpointId?: string | null;
   projectId: string;
-  collectionId: string;
-  itemId: string | null;
-  outputs?: Array<Record<string, unknown>>;
-  error?: ApiGenerationJobError | null;
+  requestedOutputCount: number;
+  outputs: ApiGenerationRunOutput[];
+  error?: ApiGenerationRunError | null;
   createdAt: string;
   updatedAt: string;
   submittedAt?: string | null;
@@ -141,7 +159,8 @@ const mapApiCollectionItem = (item: ApiCollectionItem): CollectionItem => {
     id: item.id,
     projectId: item.projectId,
     collectionId: item.collectionId,
-    jobId: item.jobId ?? null,
+    runId: item.runId ?? null,
+    generationRunOutputId: item.generationRunOutputId ?? null,
     mediaType: item.mediaType,
     status: item.status ?? (normalizedUrl ? 'READY' : 'GENERATING'),
     name: item.name,
@@ -163,23 +182,33 @@ const mapApiCollection = (collection: ApiCollection): Collection => {
   };
 };
 
-const mapApiGenerationJob = (job: ApiGenerationJob): GenerationJob => {
+const mapApiGenerationRun = (run: ApiGenerationRun): GenerationRun => {
   return {
-    id: job.id,
-    status: job.status,
-    operationKey: job.operationKey,
-    provider: job.provider,
-    modelKey: job.modelKey,
-    endpointId: job.endpointId ?? null,
-    projectId: job.projectId,
-    collectionId: job.collectionId,
-    itemId: job.itemId ?? null,
-    outputs: Array.isArray(job.outputs) ? job.outputs : [],
-    error: job.error ?? null,
-    createdAt: job.createdAt,
-    updatedAt: job.updatedAt,
-    submittedAt: job.submittedAt ?? null,
-    completedAt: job.completedAt ?? null,
+    runId: run.runId,
+    status: run.status,
+    operationKey: run.operationKey,
+    provider: run.provider,
+    modelKey: run.modelKey,
+    endpointId: run.endpointId ?? null,
+    projectId: run.projectId,
+    requestedOutputCount: run.requestedOutputCount,
+    outputs: Array.isArray(run.outputs)
+      ? run.outputs.map((output) => ({
+          outputId: output.outputId,
+          outputIndex: output.outputIndex,
+          status: output.status,
+          collectionItemId: output.collectionItemId,
+          errorCode: output.errorCode ?? null,
+          errorMessage: output.errorMessage ?? null,
+          providerOutput: output.providerOutput ?? null,
+          storedOutput: output.storedOutput ?? null,
+        }))
+      : [],
+    error: run.error ?? null,
+    createdAt: run.createdAt,
+    updatedAt: run.updatedAt,
+    submittedAt: run.submittedAt ?? null,
+    completedAt: run.completedAt ?? null,
   };
 };
 
@@ -188,15 +217,6 @@ const UI_ASPECT_RATIO_TO_BACKEND_VALUE: Record<GenerationAspectRatio, string> = 
   PORTRAIT: '9:16',
   LANDSCAPE: '16:9',
 };
-
-const GENERATION_JOB_LOOKUP_MAX_ATTEMPTS = 5;
-const GENERATION_ITEM_LOOKUP_MAX_ATTEMPTS = 5;
-const LOOKUP_DELAY_MS = 250;
-
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 
 /**
  * API-backed implementation of CollectionItemRepository.
@@ -281,69 +301,6 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
     }
 
     return inputs;
-  }
-
-  private async waitForGenerationJob(jobId: string): Promise<GenerationJob> {
-    let lastJob: GenerationJob | null = null;
-
-    for (let attempt = 1; attempt <= GENERATION_JOB_LOOKUP_MAX_ATTEMPTS; attempt += 1) {
-      lastJob = await this.getGenerationJob(jobId);
-      if (lastJob.itemId && lastJob.itemId.trim().length > 0) {
-        return lastJob;
-      }
-
-      if (attempt < GENERATION_JOB_LOOKUP_MAX_ATTEMPTS) {
-        await sleep(LOOKUP_DELAY_MS);
-      }
-    }
-
-    if (lastJob) {
-      return lastJob;
-    }
-
-    throw new Error('Generation job was created but could not be loaded.');
-  }
-
-  private async waitForCollectionItem(itemId: string): Promise<CollectionItem | null> {
-    for (let attempt = 1; attempt <= GENERATION_ITEM_LOOKUP_MAX_ATTEMPTS; attempt += 1) {
-      const item = await this.getById(itemId);
-      if (item) {
-        return item;
-      }
-
-      if (attempt < GENERATION_ITEM_LOOKUP_MAX_ATTEMPTS) {
-        await sleep(LOOKUP_DELAY_MS);
-      }
-    }
-
-    return null;
-  }
-
-  private createGeneratingFallbackItem(params: {
-    itemId: string;
-    jobId: string;
-    projectId: string;
-    collectionId: string;
-    prompt: string;
-  }): CollectionItem {
-    return {
-      id: params.itemId,
-      projectId: params.projectId,
-      collectionId: params.collectionId,
-      jobId: params.jobId,
-      mediaType: 'image',
-      status: 'GENERATING',
-      name: 'Generating image',
-      description: params.prompt,
-      url: null,
-      metadata: {
-        width: 0,
-        height: 0,
-        format: 'png',
-        thumbnailUrl: '',
-      },
-      generationErrorMessage: null,
-    };
   }
 
   async getContentsByCollectionId(collectionId: string): Promise<CollectionContents> {
@@ -435,7 +392,9 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
     return mappedCreated;
   }
 
-  async generateWithAI(params: CollectionItemGenerationParams): Promise<CollectionItem> {
+  async generateWithAI(
+    params: CollectionItemGenerationParams,
+  ): Promise<GenerationRunSubmitResponse> {
     const referenceUrls = (params.referenceImages ?? [])
       .map((url) => url.trim())
       .filter((url) => /^https?:\/\//i.test(url));
@@ -452,10 +411,11 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
         aspectRatio: params.aspectRatio,
         operation,
       }),
+      outputCount: params.outputCount,
     };
 
-    const submitResponse = await backendApiRequest<ApiGenerationSubmitResponse>(
-      `/api/v1/collections/${params.collectionId}/items/generate`,
+    const submitResponse = await backendApiRequest<ApiGenerationRunSubmitResponse>(
+      `/api/v1/collections/${params.collectionId}/generation-runs`,
       {
         method: 'POST',
         headers: {
@@ -464,33 +424,25 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
         body: JSON.stringify(requestBody),
       },
     );
-    const job = await this.waitForGenerationJob(submitResponse.jobId);
-    const itemId = job.itemId?.trim();
 
-    if (!itemId) {
-      throw new Error(
-        'Generation started but placeholder item is not available yet. Please refresh shortly.',
-      );
-    }
-
-    const generatedPlaceholder = await this.waitForCollectionItem(itemId);
-    if (generatedPlaceholder) {
-      return generatedPlaceholder;
-    }
-
-    const fallbackItem = this.createGeneratingFallbackItem({
-      itemId,
-      jobId: submitResponse.jobId,
-      projectId: params.projectId,
-      collectionId: params.collectionId,
-      prompt: params.prompt,
-    });
-    this.cache.set(fallbackItem.id, fallbackItem);
-    return fallbackItem;
+    return {
+      runId: submitResponse.runId,
+      status: submitResponse.status,
+      modelKey: submitResponse.modelKey,
+      operationKey: submitResponse.operationKey,
+      outputs: Array.isArray(submitResponse.outputs)
+        ? submitResponse.outputs.map((output) => ({
+            outputId: output.outputId,
+            outputIndex: output.outputIndex,
+            status: output.status,
+            collectionItemId: output.collectionItemId,
+          }))
+        : [],
+    };
   }
 
-  async getGenerationJob(jobId: string): Promise<GenerationJob> {
-    const response = await backendApiRequest<ApiGenerationJob>(`/api/v1/generation-jobs/${jobId}`);
-    return mapApiGenerationJob(response);
+  async getGenerationRun(runId: string): Promise<GenerationRun> {
+    const response = await backendApiRequest<ApiGenerationRun>(`/api/v1/generation-runs/${runId}`);
+    return mapApiGenerationRun(response);
   }
 }

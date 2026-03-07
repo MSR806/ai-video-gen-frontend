@@ -5,7 +5,7 @@ import { GenerateCollectionItemUseCase } from './generate-collection-item.use-ca
 import { GetCollectionContentsUseCase } from './get-collection-contents.use-case';
 import { GetCollectionItemByIdUseCase } from './get-collection-item-by-id.use-case';
 import { GetCollectionItemsUseCase } from './get-collection-items.use-case';
-import { GetGenerationJobUseCase } from './get-generation-job.use-case';
+import { GetGenerationRunUseCase } from './get-generation-run.use-case';
 import { UploadCollectionItemUseCase } from './upload-collection-item.use-case';
 import type {
   CollectionContents,
@@ -14,14 +14,16 @@ import type {
   CollectionItemGenerationParams,
   CollectionItemRepository,
   CollectionItemUploadPayload,
-  GenerationJob,
+  GenerationRun,
+  GenerationRunSubmitResponse,
 } from '../index';
 
 const sampleCollectionItem: CollectionItem = {
   id: 'item-1',
   projectId: 'project-1',
   collectionId: 'collection-1',
-  jobId: null,
+  runId: null,
+  generationRunOutputId: null,
   mediaType: 'image',
   status: 'READY',
   name: 'Hero image',
@@ -70,6 +72,7 @@ const sampleGenerationPayload: CollectionItemGenerationParams = {
   collectionId: 'collection-1',
   prompt: 'cinematic portrait',
   aspectRatio: 'PORTRAIT',
+  outputCount: 2,
   referenceImages: ['https://example.com/ref.png'],
 };
 
@@ -81,17 +84,50 @@ const sampleUploadPayload: CollectionItemUploadPayload = {
   file: new File(['image-bytes'], 'image.png', { type: 'image/png' }),
 };
 
-const sampleGenerationJob: GenerationJob = {
-  id: 'job-1',
+const sampleGenerationRunSubmit: GenerationRunSubmitResponse = {
+  runId: 'run-1',
+  status: 'IN_PROGRESS',
+  modelKey: 'model',
+  operationKey: 'text_to_image',
+  outputs: [
+    {
+      outputId: 'output-0',
+      outputIndex: 0,
+      status: 'QUEUED',
+      collectionItemId: 'item-1',
+    },
+    {
+      outputId: 'output-1',
+      outputIndex: 1,
+      status: 'QUEUED',
+      collectionItemId: 'item-2',
+    },
+  ],
+};
+
+const sampleGenerationRun: GenerationRun = {
+  runId: 'run-1',
   status: 'IN_PROGRESS',
   operationKey: 'text_to_image',
   provider: 'provider',
   modelKey: 'model',
   endpointId: null,
   projectId: 'project-1',
-  collectionId: 'collection-1',
-  itemId: 'item-1',
-  outputs: [],
+  requestedOutputCount: 2,
+  outputs: [
+    {
+      outputId: 'output-0',
+      outputIndex: 0,
+      status: 'QUEUED',
+      collectionItemId: 'item-1',
+    },
+    {
+      outputId: 'output-1',
+      outputIndex: 1,
+      status: 'QUEUED',
+      collectionItemId: 'item-2',
+    },
+  ],
   error: null,
   createdAt: '2025-01-01T00:00:00.000Z',
   updatedAt: '2025-01-01T00:00:00.000Z',
@@ -109,8 +145,8 @@ function createRepository(
     create: async () => sampleCollectionItem,
     delete: async () => undefined,
     upload: async () => sampleCollectionItem,
-    generateWithAI: async () => sampleCollectionItem,
-    getGenerationJob: async () => sampleGenerationJob,
+    generateWithAI: async () => sampleGenerationRunSubmit,
+    getGenerationRun: async () => sampleGenerationRun,
     ...overrides,
   };
 }
@@ -151,7 +187,7 @@ describe('collection-item use cases', () => {
     const repository = createRepository({
       generateWithAI: async (params) => {
         calls.push(params);
-        return sampleCollectionItem;
+        return sampleGenerationRunSubmit;
       },
     });
 
@@ -159,7 +195,7 @@ describe('collection-item use cases', () => {
     const result = await useCase.execute(sampleGenerationPayload);
 
     expect(calls).toEqual([sampleGenerationPayload]);
-    expect(result).toEqual(sampleCollectionItem);
+    expect(result).toEqual(sampleGenerationRunSubmit);
   });
 
   it('GetCollectionContentsUseCase delegates collection id and returns collection contents', async () => {
@@ -210,20 +246,20 @@ describe('collection-item use cases', () => {
     expect(result).toEqual(sampleCollectionItem);
   });
 
-  it('GetGenerationJobUseCase delegates job id and returns generation job', async () => {
+  it('GetGenerationRunUseCase delegates run id and returns generation run', async () => {
     const calls: string[] = [];
     const repository = createRepository({
-      getGenerationJob: async (jobId) => {
-        calls.push(jobId);
-        return sampleGenerationJob;
+      getGenerationRun: async (runId) => {
+        calls.push(runId);
+        return sampleGenerationRun;
       },
     });
 
-    const useCase = new GetGenerationJobUseCase(repository);
-    const result = await useCase.execute('job-1');
+    const useCase = new GetGenerationRunUseCase(repository);
+    const result = await useCase.execute('run-1');
 
-    expect(calls).toEqual(['job-1']);
-    expect(result).toEqual(sampleGenerationJob);
+    expect(calls).toEqual(['run-1']);
+    expect(result).toEqual(sampleGenerationRun);
   });
 
   it('UploadCollectionItemUseCase delegates payload and returns uploaded item', async () => {
@@ -263,7 +299,7 @@ describe('collection-item use cases', () => {
       getById: async () => {
         throw failure;
       },
-      getGenerationJob: async () => {
+      getGenerationRun: async () => {
         throw failure;
       },
       upload: async () => {
@@ -289,7 +325,7 @@ describe('collection-item use cases', () => {
     await expect(new GetCollectionItemByIdUseCase(failingRepo).execute('item-1')).rejects.toBe(
       failure,
     );
-    await expect(new GetGenerationJobUseCase(failingRepo).execute('job-1')).rejects.toBe(failure);
+    await expect(new GetGenerationRunUseCase(failingRepo).execute('run-1')).rejects.toBe(failure);
     await expect(
       new UploadCollectionItemUseCase(failingRepo).execute(sampleUploadPayload),
     ).rejects.toBe(failure);

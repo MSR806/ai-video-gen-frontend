@@ -28,17 +28,28 @@ const readyItem: CollectionItem = {
     format: 'png',
     thumbnailUrl: 'https://assets.example.com/item-1-thumb.png',
   },
-  jobId: null,
+  runId: null,
+  generationRunOutputId: null,
   generationErrorMessage: null,
 };
 
 describe('GenerationControlBar', () => {
   it('extracts dropped URLs, dedupes references, and submits via Ctrl+Enter', () => {
-    const onGenerate = (prompt: string, referenceImages: string[], aspectRatio: string) => {
-      callLog.push({ prompt, referenceImages, aspectRatio });
+    const onGenerate = (
+      prompt: string,
+      referenceImages: string[],
+      aspectRatio: string,
+      outputCount: number,
+    ) => {
+      callLog.push({ prompt, referenceImages, aspectRatio, outputCount });
     };
 
-    const callLog: Array<{ prompt: string; referenceImages: string[]; aspectRatio: string }> = [];
+    const callLog: Array<{
+      prompt: string;
+      referenceImages: string[];
+      aspectRatio: string;
+      outputCount: number;
+    }> = [];
 
     const { container } = render(
       <GenerationControlBar
@@ -85,6 +96,7 @@ describe('GenerationControlBar', () => {
         'https://assets.example.com/reference-b.png',
       ],
       aspectRatio: 'PORTRAIT',
+      outputCount: 1,
     });
 
     const chips = container.querySelectorAll('[class*="referenceChip"]');
@@ -96,7 +108,9 @@ describe('GenerationControlBar', () => {
 
     render(
       <GenerationControlBar
-        onGenerate={(prompt, refs, ratio) => onGenerateCalls.push({ prompt, refs, ratio })}
+        onGenerate={(prompt, refs, ratio, outputCount) =>
+          onGenerateCalls.push({ prompt, refs, ratio, outputCount })
+        }
         isGenerating={false}
         collections={[baseCollection]}
         selectedCollectionId="collection-1"
@@ -117,7 +131,9 @@ describe('GenerationControlBar', () => {
 
     render(
       <GenerationControlBar
-        onGenerate={(prompt, refs, ratio) => onGenerateCalls.push({ prompt, refs, ratio })}
+        onGenerate={(prompt, refs, ratio, outputCount) =>
+          onGenerateCalls.push({ prompt, refs, ratio, outputCount })
+        }
         isGenerating={true}
         collections={[baseCollection]}
         selectedCollectionId="collection-1"

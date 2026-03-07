@@ -13,6 +13,7 @@ interface GenerationControlBarProps {
     prompt: string,
     referenceImages: string[],
     aspectRatio: GenerationAspectRatio,
+    outputCount: number,
   ) => void;
   isGenerating: boolean;
   collections: Collection[];
@@ -29,6 +30,7 @@ const ASPECT_RATIO_OPTIONS: Array<{ value: GenerationAspectRatio; label: string 
   { value: 'SQUARE', label: 'Square (1:1)' },
   { value: 'LANDSCAPE', label: 'Landscape (16:9)' },
 ];
+const OUTPUT_COUNT_OPTIONS = [1, 2, 3, 4];
 
 const isHttpUrl = (value: string): boolean => {
   try {
@@ -55,6 +57,7 @@ export function GenerationControlBar({
   const [prompt, setPrompt] = useState('');
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const [aspectRatio, setAspectRatio] = useState<GenerationAspectRatio>('PORTRAIT');
+  const [outputCount, setOutputCount] = useState<number>(1);
   const [isDropActive, setIsDropActive] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [pickerCollectionId, setPickerCollectionId] = useState<string | null>(null);
@@ -142,7 +145,7 @@ export function GenerationControlBar({
 
   const handleGenerate = () => {
     if (!prompt.trim() || isGenerating) return;
-    onGenerate(prompt.trim(), referenceImages, aspectRatio);
+    onGenerate(prompt.trim(), referenceImages, aspectRatio, outputCount);
     setPrompt('');
     setReferenceImages([]);
     setIsDropActive(false);
@@ -364,7 +367,22 @@ export function GenerationControlBar({
               </select>
             </label>
 
-            <div className={styles.modelBadge}>Nano Banana Pro x1</div>
+            <label className={styles.aspectRatioSelectWrap} aria-label="Output count">
+              <select
+                className={styles.aspectRatioSelect}
+                value={outputCount}
+                onChange={(event) => setOutputCount(Number(event.target.value))}
+                disabled={isGenerating}
+              >
+                {OUTPUT_COUNT_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option} output{option > 1 ? 's' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className={styles.modelBadge}>{`Nano Banana Pro x${outputCount}`}</div>
 
             <button
               type="button"

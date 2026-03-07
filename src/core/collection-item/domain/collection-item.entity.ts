@@ -32,7 +32,8 @@ export interface CollectionItem {
   id: string;
   projectId: string;
   collectionId: string;
-  jobId?: string | null;
+  runId?: string | null;
+  generationRunOutputId?: string | null;
   mediaType: 'image' | 'video';
   status: CollectionItemStatus;
   name: string;
@@ -80,31 +81,61 @@ export interface CollectionItemGenerationParams {
   prompt: string;
   referenceImages?: string[];
   aspectRatio: GenerationAspectRatio;
+  outputCount: number;
   projectId: string;
   collectionId: string;
 }
 
-export type GenerationJobStatus = 'QUEUED' | 'IN_PROGRESS' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+export type GenerationRunStatus =
+  | 'QUEUED'
+  | 'IN_PROGRESS'
+  | 'SUCCEEDED'
+  | 'PARTIAL_FAILED'
+  | 'FAILED'
+  | 'CANCELLED';
 
-export interface GenerationJobError {
+export interface GenerationRunError {
   code?: string | null;
   message?: string | null;
 }
 
-export interface GenerationJob {
-  id: string;
-  status: GenerationJobStatus;
+export interface GenerationRunOutput {
+  outputId: string;
+  outputIndex: number;
+  status: 'QUEUED' | 'READY' | 'FAILED';
+  collectionItemId: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  providerOutput?: Record<string, unknown> | null;
+  storedOutput?: Record<string, unknown> | null;
+}
+
+export interface GenerationRun {
+  runId: string;
+  status: GenerationRunStatus;
   operationKey: string;
   provider: string;
   modelKey: string;
   endpointId?: string | null;
   projectId: string;
-  collectionId: string;
-  itemId: string | null;
-  outputs?: Array<Record<string, unknown>>;
-  error?: GenerationJobError | null;
+  requestedOutputCount: number;
+  outputs: GenerationRunOutput[];
+  error?: GenerationRunError | null;
   createdAt: string;
   updatedAt: string;
   submittedAt?: string | null;
   completedAt?: string | null;
+}
+
+export interface GenerationRunSubmitResponse {
+  runId: string;
+  status: GenerationRunStatus;
+  modelKey: string;
+  operationKey: string;
+  outputs: Array<{
+    outputId: string;
+    outputIndex: number;
+    status: 'QUEUED' | 'READY' | 'FAILED';
+    collectionItemId: string;
+  }>;
 }
