@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { Collection } from '@core/collection';
 import type {
   CollectionContents,
@@ -26,14 +26,27 @@ interface GenerationControlBarProps {
   loadCollectionContentsForPicker: (collectionId: string) => Promise<CollectionContents | null>;
 }
 
-interface ReferenceFieldTarget {
+interface MediaFieldDescriptor {
   key: string;
+  label: string;
+  compactLabel: string;
+  description: string | null;
   mode: 'single' | 'multiple';
 }
 
+interface MediaGroupDescriptor {
+  groupKey: string;
+  layout: 'single' | 'sequence' | 'gallery';
+  placement: 'top';
+  fields: MediaFieldDescriptor[];
+}
+
+interface MediaFieldTarget {
+  fieldKey: string;
+  index: number | null;
+}
+
 const URL_PATTERN = /https?:\/\/[^\s]+/gi;
-const MAX_REFERENCE_IMAGES = 4;
-const OUTPUT_COUNT_OPTIONS = [1, 2, 3, 4];
 
 const isHttpUrl = (value: string): boolean => {
   try {
@@ -51,7 +64,21 @@ const toLabel = (value: string): string =>
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
-const toOperationLabel = (value: string): string => toLabel(value);
+const toNumericBound = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+};
+
+const getFieldUiGroup = (field: GenerationInputFieldCapability): 'basic' | 'advanced' =>
+  field.uiGroup === 'advanced' ? 'advanced' : 'basic';
 
 const chooseInitialMediaType = (
   capabilities: GenerationCapabilities | null,
@@ -74,70 +101,138 @@ const getModelsByType = (
   return mediaType === 'image' ? capabilities.image : capabilities.video;
 };
 
-const supportsNativeBatch = (operation: GenerationOperationCapability | null): boolean => {
-  if (!operation) {
-    return false;
-  }
+const isUriSingleMediaField = (field: GenerationInputFieldCapability): boolean =>
+  field.type === 'string' && field.format === 'uri';
 
-  return operation.fields.some((field) => field.key === 'num_images' && field.type === 'integer');
-};
+const isUriArrayMediaField = (field: GenerationInputFieldCapability): boolean =>
+  field.type === 'array' && field.itemsType === 'string' && field.key.includes('url');
 
-const isReferenceSingleField = (field: GenerationInputFieldCapability): boolean => {
-  return (
-    field.type === 'string' &&
-    field.format === 'uri' &&
-    (field.key === 'image_url' || (field.key.includes('image') && field.key.includes('url')))
-  );
-};
+const getFieldLabel = (field: GenerationInputFieldCapability): string =>
+  field.title?.trim().length ? field.title : toLabel(field.key);
 
-const isReferenceArrayField = (field: GenerationInputFieldCapability): boolean => {
-  return (
-    field.type === 'array' &&
-    field.itemsType === 'string' &&
-    (field.key === 'image_urls' || (field.key.includes('image') && field.key.includes('url')))
-  );
-};
+const toMediaFieldDescriptor = (
+  field: GenerationInputFieldCapability,
+  compactLabel?: string | null,
+): MediaFieldDescriptor => ({
+  key: field.key,
+  label: getFieldLabel(field),
+  compactLabel: compactLabel?.trim().length
+    ? compactLabel
+    : toCompactLabel(getFieldLabel(field)) || getFieldLabel(field),
+  description: field.description,
+  mode: field.type === 'array' ? 'multiple' : 'single',
+});
 
-const findReferenceFieldTarget = (
+const getFallbackMediaGroups = (
   operation: GenerationOperationCapability | null,
-): ReferenceFieldTarget | null => {
+  excludedFieldKeys: Set<string>,
+): MediaGroupDescriptor[] => {
   if (!operation) {
-    return null;
+    return [];
   }
 
-  const fields = operation.fields;
-  const imageUrlsArray = fields.find(
-    (field) => field.key === 'image_urls' && isReferenceArrayField(field),
-  );
-  if (imageUrlsArray) {
-    return { key: imageUrlsArray.key, mode: 'multiple' };
+  const singleFields: MediaFieldDescriptor[] = [];
+  const galleryGroups: Array<{ index: number; group: MediaGroupDescriptor }> = [];
+  let firstSingleIndex: number | null = null;
+
+  operation.fields.forEach((field, index) => {
+    if (excludedFieldKeys.has(field.key)) {
+      return;
+    }
+
+    if (isUriArrayMediaField(field)) {
+      galleryGroups.push({
+        index,
+        group: {
+          groupKey: `fallback:${field.key}`,
+          layout: 'gallery',
+          placement: 'top',
+          fields: [toMediaFieldDescriptor(field)],
+        },
+      });
+      return;
+    }
+
+    if (isUriSingleMediaField(field)) {
+      if (firstSingleIndex === null) {
+        firstSingleIndex = index;
+      }
+      singleFields.push(toMediaFieldDescriptor(field));
+    }
+  });
+
+  const groups: Array<{ index: number; group: MediaGroupDescriptor }> = [...galleryGroups];
+  if (singleFields.length > 0 && firstSingleIndex !== null) {
+    groups.push({
+      index: firstSingleIndex,
+      group: {
+        groupKey: 'fallback:sequence',
+        layout: singleFields.length === 1 ? 'single' : 'sequence',
+        placement: 'top',
+        fields: singleFields,
+      },
+    });
   }
 
-  const fallbackArray = fields.find(isReferenceArrayField);
-  if (fallbackArray) {
-    return { key: fallbackArray.key, mode: 'multiple' };
-  }
-
-  const imageUrl = fields.find(
-    (field) => field.key === 'image_url' && isReferenceSingleField(field),
-  );
-  if (imageUrl) {
-    return { key: imageUrl.key, mode: 'single' };
-  }
-
-  const fallbackSingle = fields.find(isReferenceSingleField);
-  if (fallbackSingle) {
-    return { key: fallbackSingle.key, mode: 'single' };
-  }
-
-  return null;
+  return groups.sort((left, right) => left.index - right.index).map((entry) => entry.group);
 };
 
-const normalizeReferenceUrls = (urls: string[]): string[] =>
-  urls
-    .map((url) => url.trim())
-    .filter((url) => url.length > 0)
-    .filter(isHttpUrl);
+const getDeclaredMediaGroups = (
+  operation: GenerationOperationCapability | null,
+): MediaGroupDescriptor[] => {
+  if (!operation || !Array.isArray(operation.mediaGroups) || operation.mediaGroups.length === 0) {
+    return [];
+  }
+
+  const fieldsByGroup = new Map<string, MediaFieldDescriptor[]>();
+  operation.mediaGroups.forEach((group) => {
+    fieldsByGroup.set(group.groupKey, []);
+  });
+
+  operation.fields.forEach((field) => {
+    if (!field.mediaGroup) {
+      return;
+    }
+
+    const groupFields = fieldsByGroup.get(field.mediaGroup);
+    if (!groupFields) {
+      return;
+    }
+
+    groupFields.push(toMediaFieldDescriptor(field, field.mediaName));
+  });
+
+  return operation.mediaGroups.map((group) => {
+    const groupFields = fieldsByGroup.get(group.groupKey) ?? [];
+    const orderedFields =
+      group.layout === 'sequence'
+        ? [...groupFields].sort((left, right) => {
+            const leftField = operation.fields.find((field) => field.key === left.key);
+            const rightField = operation.fields.find((field) => field.key === right.key);
+            const leftOrder = leftField?.mediaOrder ?? Number.MAX_SAFE_INTEGER;
+            const rightOrder = rightField?.mediaOrder ?? Number.MAX_SAFE_INTEGER;
+            return leftOrder - rightOrder;
+          })
+        : groupFields;
+
+    return {
+      groupKey: group.groupKey,
+      layout: group.layout,
+      placement: group.placement,
+      fields: orderedFields,
+    };
+  });
+};
+
+const normalizeMediaUrls = (urls: string[]): string[] =>
+  Array.from(
+    new Set(
+      urls
+        .map((url) => url.trim())
+        .filter((url) => url.length > 0)
+        .filter(isHttpUrl),
+    ),
+  );
 
 const pickDefaultFieldValue = (field: GenerationInputFieldCapability): unknown => {
   if (field.default !== undefined && field.default !== null) {
@@ -177,16 +272,13 @@ const resolveOperationFieldValues = (
   return resolvedValues;
 };
 
-const getReferenceValues = (
+const getMediaFieldValues = (
   values: Record<string, unknown>,
-  target: ReferenceFieldTarget | null,
+  field: MediaFieldDescriptor,
 ): string[] => {
-  if (!target) {
-    return [];
-  }
+  const raw = values[field.key];
 
-  const raw = values[target.key];
-  if (target.mode === 'multiple') {
+  if (field.mode === 'multiple') {
     if (!Array.isArray(raw)) {
       return [];
     }
@@ -201,6 +293,21 @@ const getReferenceValues = (
   return isHttpUrl(raw) ? [raw] : [];
 };
 
+const getMediaTargetId = ({ fieldKey, index }: MediaFieldTarget): string =>
+  `${fieldKey}:${index === null ? 'append' : index}`;
+
+const toCompactLabel = (label: string): string => {
+  const trimmed = label.trim();
+  if (trimmed.length === 0) {
+    return '';
+  }
+
+  return trimmed
+    .replace(/\bframe\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 const buildInputsAndErrors = (
   operation: GenerationOperationCapability,
   values: Record<string, unknown>,
@@ -210,10 +317,6 @@ const buildInputsAndErrors = (
   const requiredSet = new Set(operation.required);
 
   operation.fields.forEach((field) => {
-    if (field.key === 'num_images') {
-      return;
-    }
-
     const rawValue = values[field.key];
     const isRequired = field.required || requiredSet.has(field.key);
 
@@ -324,9 +427,13 @@ export function GenerationControlBar({
   const [selectedOperationKey, setSelectedOperationKey] = useState('');
   const [fieldValues, setFieldValues] = useState<Record<string, unknown>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [outputCount, setOutputCount] = useState<number>(1);
-  const [isDropActive, setIsDropActive] = useState(false);
+  const [advancedSettingsSelectionKey, setAdvancedSettingsSelectionKey] = useState<string | null>(
+    null,
+  );
+  const [isIngredientDragActive, setIsIngredientDragActive] = useState(false);
+  const [activeDropTargetId, setActiveDropTargetId] = useState<string | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [activePickerTarget, setActivePickerTarget] = useState<MediaFieldTarget | null>(null);
   const [pickerCollectionId, setPickerCollectionId] = useState<string | null>(null);
   const [lastUsedPickerCollectionId, setLastUsedPickerCollectionId] = useState<string | null>(null);
   const [pickerContentsCache, setPickerContentsCache] = useState<
@@ -387,17 +494,37 @@ export function GenerationControlBar({
     [fieldValues, selectedOperation],
   );
 
-  const referenceTarget = useMemo(
-    () => findReferenceFieldTarget(selectedOperation),
-    [selectedOperation],
+  const mediaGroups = useMemo(() => {
+    const declaredGroups = getDeclaredMediaGroups(selectedOperation);
+    const declaredFieldKeys = new Set(
+      declaredGroups.flatMap((group) => group.fields.map((field) => field.key)),
+    );
+    const fallbackGroups = getFallbackMediaGroups(selectedOperation, declaredFieldKeys);
+    return [...declaredGroups, ...fallbackGroups];
+  }, [selectedOperation]);
+
+  const mediaFields = useMemo(() => mediaGroups.flatMap((group) => group.fields), [mediaGroups]);
+
+  const composerDropTarget = useMemo<MediaFieldTarget | null>(() => {
+    if (mediaFields.length !== 1) {
+      return null;
+    }
+
+    return {
+      fieldKey: mediaFields[0].key,
+      index: null,
+    };
+  }, [mediaFields]);
+
+  const activePickerField = useMemo(
+    () => mediaFields.find((field) => field.key === activePickerTarget?.fieldKey) ?? null,
+    [activePickerTarget, mediaFields],
   );
 
-  const referenceImages = useMemo(
-    () => getReferenceValues(resolvedFieldValues, referenceTarget),
-    [resolvedFieldValues, referenceTarget],
+  const selectedPickerMediaUrls = useMemo(
+    () => (activePickerField ? getMediaFieldValues(resolvedFieldValues, activePickerField) : []),
+    [activePickerField, resolvedFieldValues],
   );
-
-  const supportsBatch = supportsNativeBatch(selectedOperation);
 
   const promptField = selectedOperation?.fields.find((field) => field.key === 'prompt') ?? null;
   const promptValue =
@@ -408,16 +535,29 @@ export function GenerationControlBar({
       return [];
     }
 
+    const mediaFieldKeys = new Set(mediaFields.map((field) => field.key));
     return selectedOperation.fields.filter((field) => {
-      if (field.key === 'prompt' || field.key === 'num_images') {
+      if (field.key === 'prompt') {
         return false;
       }
-      if (referenceTarget && field.key === referenceTarget.key) {
-        return false;
-      }
-      return true;
+
+      return !mediaFieldKeys.has(field.key);
     });
-  }, [referenceTarget, selectedOperation]);
+  }, [mediaFields, selectedOperation]);
+
+  const basicFields = useMemo(
+    () => additionalFields.filter((field) => getFieldUiGroup(field) === 'basic'),
+    [additionalFields],
+  );
+
+  const advancedFields = useMemo(
+    () => additionalFields.filter((field) => getFieldUiGroup(field) === 'advanced'),
+    [additionalFields],
+  );
+
+  const currentSelectionKey = `${selectedModel?.modelKey ?? ''}:${selectedOperation?.operationKey ?? ''}`;
+  const showAdvancedSettings = advancedSettingsSelectionKey === currentSelectionKey;
+  const shouldShowExclusiveDragState = isIngredientDragActive && mediaFields.length > 0;
 
   useEffect(() => {
     if (!isPickerOpen) {
@@ -431,12 +571,14 @@ export function GenerationControlBar({
 
       if (!pickerContainerRef.current.contains(event.target as Node)) {
         setIsPickerOpen(false);
+        setActivePickerTarget(null);
       }
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsPickerOpen(false);
+        setActivePickerTarget(null);
       }
     };
 
@@ -448,6 +590,28 @@ export function GenerationControlBar({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isPickerOpen]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const syncDragState = () => {
+      setIsIngredientDragActive(document.body.classList.contains('is-dragging-ingredient'));
+    };
+
+    syncDragState();
+
+    const observer = new MutationObserver(syncDragState);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   const ensurePickerCollectionLoaded = async (collectionId: string): Promise<void> => {
     if (collectionId === selectedCollectionId) {
@@ -480,64 +644,90 @@ export function GenerationControlBar({
     return collections.some((collection) => collection.id === collectionId);
   };
 
-  const updateReferenceValues = (urls: string[]) => {
-    if (!referenceTarget) {
+  const clearFieldError = (fieldKey: string) => {
+    setFieldErrors((previous) => {
+      if (!previous[fieldKey]) {
+        return previous;
+      }
+
+      const next = { ...previous };
+      delete next[fieldKey];
+      return next;
+    });
+  };
+
+  const updateMediaFieldValues = (target: MediaFieldTarget, urls: string[]) => {
+    const field = mediaFields.find((item) => item.key === target.fieldKey);
+    if (!field) {
       return;
     }
 
-    const normalized = normalizeReferenceUrls(urls);
+    const normalized = normalizeMediaUrls(urls);
     if (normalized.length === 0) {
       return;
     }
 
     setFieldValues((previous) => {
-      if (referenceTarget.mode === 'multiple') {
-        const existing = getReferenceValues(previous, referenceTarget);
+      if (field.mode === 'single') {
+        return {
+          ...previous,
+          [field.key]: normalized[0],
+        };
+      }
+
+      const existing = getMediaFieldValues(previous, field);
+      if (target.index === null) {
         const next = [...existing];
 
         normalized.forEach((url) => {
-          if (!next.includes(url) && next.length < MAX_REFERENCE_IMAGES) {
+          if (!next.includes(url)) {
             next.push(url);
           }
         });
 
         return {
           ...previous,
-          [referenceTarget.key]: next,
+          [field.key]: next,
         };
       }
 
+      if (target.index < 0 || target.index >= existing.length) {
+        return previous;
+      }
+
+      const next = [...existing];
+      next[target.index] = normalized[0];
       return {
         ...previous,
-        [referenceTarget.key]: normalized[0],
+        [field.key]: next,
       };
     });
 
-    setFieldErrors((previous) => {
-      const next = { ...previous };
-      delete next[referenceTarget.key];
-      return next;
-    });
+    clearFieldError(target.fieldKey);
   };
 
-  const handleRemoveReference = (index: number) => {
-    if (!referenceTarget) {
+  const handleRemoveMedia = (fieldKey: string, index: number | null) => {
+    const field = mediaFields.find((item) => item.key === fieldKey);
+    if (!field) {
       return;
     }
 
     setFieldValues((previous) => {
-      if (referenceTarget.mode === 'single') {
+      if (field.mode === 'single') {
         return {
           ...previous,
-          [referenceTarget.key]: '',
+          [field.key]: '',
         };
       }
 
-      const existing = getReferenceValues(previous, referenceTarget);
-      const next = existing.filter((_, itemIndex) => itemIndex !== index);
+      const existing = getMediaFieldValues(previous, field);
+      if (index === null) {
+        return previous;
+      }
+
       return {
         ...previous,
-        [referenceTarget.key]: next,
+        [field.key]: existing.filter((_, itemIndex) => itemIndex !== index),
       };
     });
   };
@@ -570,43 +760,78 @@ export function GenerationControlBar({
     return payloadUrls;
   };
 
-  const handleDropZoneDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    if (!referenceTarget) {
+  const handleComposerDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!composerDropTarget) {
       return;
     }
 
     event.preventDefault();
-    if (!isDropActive) {
-      setIsDropActive(true);
+    const nextTargetId = getMediaTargetId(composerDropTarget);
+    if (activeDropTargetId !== nextTargetId) {
+      setActiveDropTargetId(nextTargetId);
     }
   };
 
-  const handleDropZoneLeave = (event: React.DragEvent<HTMLDivElement>) => {
-    if (!referenceTarget) {
+  const handleComposerDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!composerDropTarget) {
       return;
     }
 
     const nextTarget = event.relatedTarget as Node | null;
     if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
-      setIsDropActive(false);
+      setActiveDropTargetId(null);
     }
   };
 
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    if (!referenceTarget) {
+  const handleComposerDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!composerDropTarget) {
       return;
     }
 
     event.preventDefault();
-    setIsDropActive(false);
-    updateReferenceValues(extractUrlsFromTransfer(event));
+    setActiveDropTargetId(null);
+    updateMediaFieldValues(composerDropTarget, extractUrlsFromTransfer(event));
     promptRef.current?.focus();
   };
 
-  const handleOpenPicker = async () => {
-    if (!referenceTarget) {
+  const handleMediaTargetDragOver =
+    (target: MediaFieldTarget) => (event: React.DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const nextTargetId = getMediaTargetId(target);
+      if (activeDropTargetId !== nextTargetId) {
+        setActiveDropTargetId(nextTargetId);
+      }
+    };
+
+  const handleMediaTargetDragLeave =
+    (target: MediaFieldTarget) => (event: React.DragEvent<HTMLElement>) => {
+      event.stopPropagation();
+      const nextTarget = event.relatedTarget as Node | null;
+      if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
+        const targetId = getMediaTargetId(target);
+        if (activeDropTargetId === targetId) {
+          setActiveDropTargetId(null);
+        }
+      }
+    };
+
+  const handleMediaTargetDrop =
+    (target: MediaFieldTarget) => (event: React.DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setActiveDropTargetId(null);
+      updateMediaFieldValues(target, extractUrlsFromTransfer(event));
+      promptRef.current?.focus();
+    };
+
+  const openPickerForTarget = async (target: MediaFieldTarget) => {
+    const field = mediaFields.find((item) => item.key === target.fieldKey);
+    if (!field) {
       return;
     }
+
+    setActivePickerTarget(target);
 
     let startCollectionId: string | null = null;
 
@@ -634,23 +859,16 @@ export function GenerationControlBar({
     setPickerErrorMessage(null);
   };
 
-  const handleSelectPickerReference = (item: CollectionItem) => {
+  const handleSelectPickerItem = (item: CollectionItem) => {
     const mediaUrl = item.url?.trim() ?? '';
-    if (!isHttpUrl(mediaUrl) || !referenceTarget) {
+    if (!isHttpUrl(mediaUrl) || !activePickerTarget) {
       return;
     }
 
-    if (
-      referenceTarget.mode === 'multiple' &&
-      referenceImages.length >= MAX_REFERENCE_IMAGES &&
-      !referenceImages.includes(mediaUrl)
-    ) {
-      return;
-    }
-
-    updateReferenceValues([mediaUrl]);
+    updateMediaFieldValues(activePickerTarget, [mediaUrl]);
     setLastUsedPickerCollectionId(item.collectionId);
     setIsPickerOpen(false);
+    setActivePickerTarget(null);
     promptRef.current?.focus();
   };
 
@@ -678,6 +896,16 @@ export function GenerationControlBar({
       return;
     }
 
+    const requestedOutputCount = selectedOperation.fields.some(
+      (field) => field.key === 'num_images' && field.type === 'integer',
+    )
+      ? typeof inputs.num_images === 'number' &&
+        Number.isInteger(inputs.num_images) &&
+        inputs.num_images > 0
+        ? inputs.num_images
+        : 1
+      : 1;
+
     onGenerate({
       projectId,
       collectionId: selectedCollectionId,
@@ -685,14 +913,14 @@ export function GenerationControlBar({
       modelKey: selectedModel.modelKey,
       operationKey: selectedOperation.operationKey,
       inputs,
-      outputCount: supportsBatch ? outputCount : 1,
+      outputCount: requestedOutputCount,
     });
 
     setFieldValues({});
     setFieldErrors({});
-    setOutputCount(1);
-    setIsDropActive(false);
+    setActiveDropTargetId(null);
     setIsPickerOpen(false);
+    setActivePickerTarget(null);
 
     if (promptRef.current) {
       promptRef.current.style.height = '44px';
@@ -725,316 +953,670 @@ export function GenerationControlBar({
     !!selectedOperation &&
     (!promptField || promptValue.trim().length > 0);
 
+  const renderAdditionalField = (field: GenerationInputFieldCapability) => {
+    const fieldValue = resolvedFieldValues[field.key];
+    const fieldError = fieldErrors[field.key];
+    const label = field.title?.trim().length ? field.title : toLabel(field.key);
+    const selectEnum = Array.isArray(field.enum) && field.enum.length > 0;
+
+    if (field.type === 'boolean') {
+      return (
+        <label key={field.key} className={styles.checkboxField}>
+          <input
+            type="checkbox"
+            checked={fieldValue === true}
+            onChange={(event) =>
+              setFieldValues((previous) => ({
+                ...previous,
+                [field.key]: event.target.checked,
+              }))
+            }
+            disabled={isGenerating}
+          />
+          <span>{label}</span>
+        </label>
+      );
+    }
+
+    if (field.type === 'integer' || field.type === 'number') {
+      const minimum = toNumericBound(field.minimum);
+      const maximum = toNumericBound(field.maximum);
+      return (
+        <label key={field.key} className={styles.inlineField}>
+          <span className={styles.inlineFieldLabel}>{label}</span>
+          <input
+            className={`${styles.inlineInput} ${fieldError ? styles.inlineInputError : ''}`}
+            type="number"
+            inputMode="numeric"
+            min={minimum}
+            max={maximum}
+            value={typeof fieldValue === 'number' ? fieldValue : String(fieldValue ?? '')}
+            onChange={(event) => {
+              const value = event.target.value;
+              setFieldValues((previous) => ({
+                ...previous,
+                [field.key]: value,
+              }));
+            }}
+            disabled={isGenerating}
+          />
+        </label>
+      );
+    }
+
+    if (selectEnum) {
+      return (
+        <label key={field.key} className={styles.inlineField}>
+          <span className={styles.inlineFieldLabel}>{label}</span>
+          <select
+            className={`${styles.inlineSelect} ${fieldError ? styles.inlineInputError : ''}`}
+            value={typeof fieldValue === 'string' ? fieldValue : String(fieldValue ?? '')}
+            onChange={(event) =>
+              setFieldValues((previous) => ({
+                ...previous,
+                [field.key]: event.target.value,
+              }))
+            }
+            disabled={isGenerating}
+          >
+            {field.enum?.map((option) => {
+              const optionValue = String(option);
+              return (
+                <option key={optionValue} value={optionValue}>
+                  {optionValue}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+      );
+    }
+
+    return (
+      <label key={field.key} className={styles.inlineField}>
+        <span className={styles.inlineFieldLabel}>{label}</span>
+        <input
+          className={`${styles.inlineInput} ${fieldError ? styles.inlineInputError : ''}`}
+          type="text"
+          value={typeof fieldValue === 'string' ? fieldValue : String(fieldValue ?? '')}
+          onChange={(event) =>
+            setFieldValues((previous) => ({
+              ...previous,
+              [field.key]: event.target.value,
+            }))
+          }
+          disabled={isGenerating}
+          placeholder={field.description ?? ''}
+        />
+      </label>
+    );
+  };
+
+  const renderSingleMediaField = (
+    field: MediaFieldDescriptor,
+    options: { showMeta?: boolean; fullWidth?: boolean } = {},
+  ) => {
+    const values = getMediaFieldValues(resolvedFieldValues, field);
+    const mediaUrl = values[0] ?? '';
+    const fieldError = fieldErrors[field.key];
+    const target: MediaFieldTarget = { fieldKey: field.key, index: null };
+    const isDropActive = activeDropTargetId === getMediaTargetId(target);
+    const showMeta = options.showMeta ?? true;
+    const fullWidth = options.fullWidth ?? false;
+    const actionLabel = !showMeta && field.compactLabel ? field.compactLabel : field.label;
+
+    return (
+      <div
+        key={field.key}
+        className={`${styles.mediaFieldBlock} ${fullWidth ? styles.mediaFieldBlockFull : ''}`}
+      >
+        {showMeta ? (
+          <div className={styles.mediaFieldHeader}>
+            <span className={styles.mediaFieldLabel}>{field.label}</span>
+          </div>
+        ) : null}
+        <div className={styles.mediaCardWrap}>
+          <button
+            type="button"
+            className={`${styles.mediaCard} ${mediaUrl ? styles.mediaCardFilled : ''} ${isDropActive ? styles.mediaCardActive : ''}`}
+            onClick={() => void openPickerForTarget(target)}
+            onDragOver={handleMediaTargetDragOver(target)}
+            onDragLeave={handleMediaTargetDragLeave(target)}
+            onDrop={handleMediaTargetDrop(target)}
+            aria-label={mediaUrl ? `Replace ${actionLabel}` : `Add ${actionLabel}`}
+            data-testid={`media-target-${field.key}`}
+          >
+            {mediaUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={mediaUrl} alt={field.label} className={styles.mediaCardImage} />
+                <span className={styles.mediaCardBadge}>{actionLabel}</span>
+              </>
+            ) : (
+              <span className={styles.mediaCardAdd}>
+                <span className={styles.mediaCardAddIcon}>+</span>
+                <span
+                  className={styles.mediaCardAddLabel}
+                >{`Add ${actionLabel.toLowerCase()}`}</span>
+              </span>
+            )}
+          </button>
+          {mediaUrl && (
+            <button
+              type="button"
+              className={styles.mediaCardRemove}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleRemoveMedia(field.key, null);
+              }}
+              aria-label={`Remove ${field.label}`}
+            >
+              ×
+            </button>
+          )}
+        </div>
+        {showMeta && field.description?.trim().length ? (
+          <p className={styles.mediaFieldDescription}>{field.description}</p>
+        ) : null}
+        {showMeta && fieldError ? <p className={styles.mediaFieldError}>{fieldError}</p> : null}
+      </div>
+    );
+  };
+
+  const renderMultipleMediaField = (
+    field: MediaFieldDescriptor,
+    options: { showMeta?: boolean; fullWidth?: boolean } = {},
+  ) => {
+    const values = getMediaFieldValues(resolvedFieldValues, field);
+    const fieldError = fieldErrors[field.key];
+    const appendTarget: MediaFieldTarget = { fieldKey: field.key, index: null };
+    const isAppendDropActive = activeDropTargetId === getMediaTargetId(appendTarget);
+    const showMeta = options.showMeta ?? true;
+    const fullWidth = options.fullWidth ?? false;
+    const shouldRenderFullWidthAddTarget = fullWidth && values.length === 0;
+    const actionLabel = !showMeta && field.compactLabel ? field.compactLabel : field.label;
+
+    return (
+      <div
+        key={field.key}
+        className={`${styles.mediaFieldBlock} ${fullWidth ? styles.mediaFieldBlockFull : ''}`}
+      >
+        {showMeta ? (
+          <div className={styles.mediaFieldHeader}>
+            <span className={styles.mediaFieldLabel}>{field.label}</span>
+          </div>
+        ) : null}
+        {shouldRenderFullWidthAddTarget ? (
+          <div className={styles.mediaCardWrap}>
+            <button
+              type="button"
+              className={`${styles.mediaCard} ${isAppendDropActive ? styles.mediaCardActive : ''}`}
+              onClick={() => void openPickerForTarget(appendTarget)}
+              onDragOver={handleMediaTargetDragOver(appendTarget)}
+              onDragLeave={handleMediaTargetDragLeave(appendTarget)}
+              onDrop={handleMediaTargetDrop(appendTarget)}
+              aria-label={`Add ${actionLabel}`}
+              data-testid={`media-target-${field.key}`}
+            >
+              <span className={styles.mediaCardAdd}>
+                <span className={styles.mediaCardAddIcon}>+</span>
+                <span
+                  className={styles.mediaCardAddLabel}
+                >{`Add ${actionLabel.toLowerCase()}`}</span>
+              </span>
+            </button>
+          </div>
+        ) : (
+          <div className={styles.mediaGallery}>
+            {values.map((mediaUrl, index) => {
+              const replaceTarget: MediaFieldTarget = { fieldKey: field.key, index };
+              const isCardDropActive = activeDropTargetId === getMediaTargetId(replaceTarget);
+
+              return (
+                <div
+                  key={`${mediaUrl}-${index}`}
+                  className={`${styles.mediaThumbnailWrap} ${isCardDropActive ? styles.mediaThumbnailWrapActive : ''}`}
+                >
+                  <button
+                    type="button"
+                    className={`${styles.mediaThumbnailCard} ${isCardDropActive ? styles.mediaCardActive : ''}`}
+                    onClick={() => void openPickerForTarget(replaceTarget)}
+                    onDragOver={handleMediaTargetDragOver(replaceTarget)}
+                    onDragLeave={handleMediaTargetDragLeave(replaceTarget)}
+                    onDrop={handleMediaTargetDrop(replaceTarget)}
+                    aria-label={`Replace ${field.label} ${index + 1}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={mediaUrl}
+                      alt={`${field.label} ${index + 1}`}
+                      className={styles.mediaThumbnailImage}
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.mediaCardRemove}
+                    onClick={() => handleRemoveMedia(field.key, index)}
+                    aria-label={`Remove ${field.label} ${index + 1}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+
+            <button
+              type="button"
+              className={`${styles.mediaAddCard} ${isAppendDropActive ? styles.mediaCardActive : ''}`}
+              onClick={() => void openPickerForTarget(appendTarget)}
+              onDragOver={handleMediaTargetDragOver(appendTarget)}
+              onDragLeave={handleMediaTargetDragLeave(appendTarget)}
+              onDrop={handleMediaTargetDrop(appendTarget)}
+              aria-label={`Add ${actionLabel}`}
+              data-testid={`media-target-${field.key}`}
+            >
+              <span className={styles.mediaCardAdd}>
+                <span className={styles.mediaCardAddIcon}>+</span>
+                <span
+                  className={styles.mediaCardAddLabel}
+                >{`Add ${actionLabel.toLowerCase()}`}</span>
+              </span>
+            </button>
+          </div>
+        )}
+        {showMeta && field.description?.trim().length ? (
+          <p className={styles.mediaFieldDescription}>{field.description}</p>
+        ) : null}
+        {showMeta && fieldError ? <p className={styles.mediaFieldError}>{fieldError}</p> : null}
+      </div>
+    );
+  };
+
+  const renderCompactSingleMediaField = (field: MediaFieldDescriptor) => {
+    const values = getMediaFieldValues(resolvedFieldValues, field);
+    const mediaUrl = values[0] ?? '';
+    const fieldError = fieldErrors[field.key];
+    const target: MediaFieldTarget = { fieldKey: field.key, index: null };
+    const isDropActive = activeDropTargetId === getMediaTargetId(target);
+    const compactLabel = field.compactLabel;
+
+    return (
+      <div key={field.key} className={styles.compactMediaItem}>
+        <button
+          type="button"
+          className={`${styles.compactMediaButton} ${mediaUrl ? styles.compactMediaButtonFilled : ''} ${isDropActive ? styles.compactMediaButtonActive : ''}`}
+          onClick={() => void openPickerForTarget(target)}
+          onDragOver={handleMediaTargetDragOver(target)}
+          onDragLeave={handleMediaTargetDragLeave(target)}
+          onDrop={handleMediaTargetDrop(target)}
+          aria-label={mediaUrl ? `Replace ${field.label}` : `Add ${field.label}`}
+          data-testid={`compact-media-target-${field.key}`}
+        >
+          {mediaUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={mediaUrl} alt={field.label} className={styles.compactMediaThumb} />
+              <span className={styles.compactMediaLabelFilled}>{compactLabel || field.label}</span>
+            </>
+          ) : (
+            <span className={styles.compactMediaLabel}>{compactLabel || field.label}</span>
+          )}
+        </button>
+        {mediaUrl ? (
+          <button
+            type="button"
+            className={styles.compactMediaRemove}
+            onClick={() => handleRemoveMedia(field.key, null)}
+            aria-label={`Remove ${field.label}`}
+          >
+            ×
+          </button>
+        ) : null}
+        {fieldError ? <p className={styles.compactMediaError}>{fieldError}</p> : null}
+      </div>
+    );
+  };
+
+  const renderCompactMultipleMediaField = (field: MediaFieldDescriptor) => {
+    const values = getMediaFieldValues(resolvedFieldValues, field);
+    const fieldError = fieldErrors[field.key];
+    const appendTarget: MediaFieldTarget = { fieldKey: field.key, index: null };
+    const isDropActive = activeDropTargetId === getMediaTargetId(appendTarget);
+
+    return (
+      <div key={field.key} className={styles.compactArrayField}>
+        <div className={styles.compactArrayHeader}>
+          <span className={styles.compactArrayLabel}>{field.label}</span>
+        </div>
+        <div className={styles.compactArrayItems}>
+          {values.map((mediaUrl, index) => {
+            const replaceTarget: MediaFieldTarget = { fieldKey: field.key, index };
+            const isCardDropActive = activeDropTargetId === getMediaTargetId(replaceTarget);
+
+            return (
+              <div key={`${mediaUrl}-${index}`} className={styles.compactArrayThumbWrap}>
+                <button
+                  type="button"
+                  className={`${styles.compactArrayThumbButton} ${isCardDropActive ? styles.compactMediaButtonActive : ''}`}
+                  onClick={() => void openPickerForTarget(replaceTarget)}
+                  onDragOver={handleMediaTargetDragOver(replaceTarget)}
+                  onDragLeave={handleMediaTargetDragLeave(replaceTarget)}
+                  onDrop={handleMediaTargetDrop(replaceTarget)}
+                  aria-label={`Replace ${field.label} ${index + 1}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={mediaUrl}
+                    alt={`${field.label} ${index + 1}`}
+                    className={styles.compactArrayThumb}
+                  />
+                </button>
+                <button
+                  type="button"
+                  className={styles.compactArrayRemove}
+                  onClick={() => handleRemoveMedia(field.key, index)}
+                  aria-label={`Remove ${field.label} ${index + 1}`}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            className={`${styles.compactArrayAddButton} ${isDropActive ? styles.compactMediaButtonActive : ''}`}
+            onClick={() => void openPickerForTarget(appendTarget)}
+            onDragOver={handleMediaTargetDragOver(appendTarget)}
+            onDragLeave={handleMediaTargetDragLeave(appendTarget)}
+            onDrop={handleMediaTargetDrop(appendTarget)}
+            aria-label={`Add ${field.label}`}
+            data-testid={`compact-media-target-${field.key}`}
+          >
+            + Add
+          </button>
+        </div>
+        {fieldError ? <p className={styles.compactMediaError}>{fieldError}</p> : null}
+      </div>
+    );
+  };
+
+  const renderCompactMediaGroup = (group: MediaGroupDescriptor) => {
+    if (group.layout === 'gallery') {
+      return renderCompactMultipleMediaField(group.fields[0]);
+    }
+
+    if (group.layout === 'single') {
+      return renderCompactSingleMediaField(group.fields[0]);
+    }
+
+    return (
+      <div key={group.groupKey} className={styles.compactMediaRow}>
+        {group.fields.map((field, index) => (
+          <Fragment key={field.key}>
+            {index > 0 ? (
+              <span className={styles.compactMediaConnector} aria-hidden="true">
+                ↔
+              </span>
+            ) : null}
+            {renderCompactSingleMediaField(field)}
+          </Fragment>
+        ))}
+      </div>
+    );
+  };
+
+  const renderDragMediaGroup = (group: MediaGroupDescriptor) => {
+    if (group.layout === 'gallery') {
+      return renderMultipleMediaField(group.fields[0], {
+        showMeta: false,
+        fullWidth: true,
+      });
+    }
+
+    if (group.layout === 'single') {
+      return renderSingleMediaField(group.fields[0], {
+        showMeta: false,
+        fullWidth: true,
+      });
+    }
+
+    return (
+      <div key={group.groupKey} className={styles.mediaSequenceRow}>
+        {group.fields.map((field, index) => (
+          <Fragment key={field.key}>
+            {index > 0 ? (
+              <span className={styles.mediaSequenceConnector} aria-hidden="true">
+                ↔
+              </span>
+            ) : null}
+            {renderSingleMediaField(field, { showMeta: false })}
+          </Fragment>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.composerWrap} ref={pickerContainerRef}>
-        {isPickerOpen && (
+        {isPickerOpen && activePickerField && (
           <ReferencePickerPopover
             collections={collections}
             currentCollectionId={pickerCollectionId}
             currentContents={pickerCurrentContents}
             isLoading={isPickerLoadingActiveCollection}
             errorMessage={pickerErrorMessage}
-            selectedReferenceImages={referenceImages}
-            maxReferenceImages={MAX_REFERENCE_IMAGES}
-            onClose={() => setIsPickerOpen(false)}
+            selectedMediaUrls={selectedPickerMediaUrls}
+            onClose={() => {
+              setIsPickerOpen(false);
+              setActivePickerTarget(null);
+            }}
             onNavigateRoot={handleNavigatePickerRoot}
             onNavigateCollection={handleNavigatePickerCollection}
-            onSelectReferenceItem={handleSelectPickerReference}
+            onSelectItem={handleSelectPickerItem}
           />
         )}
 
         <div
-          className={`${styles.composer} ${isDropActive ? styles.dropActive : ''}`}
-          onDragOver={handleDropZoneDragOver}
-          onDragLeave={handleDropZoneLeave}
-          onDrop={handleDrop}
+          className={`${styles.composer} ${activeDropTargetId && composerDropTarget ? styles.dropActive : ''}`}
+          onDragOver={handleComposerDragOver}
+          onDragLeave={handleComposerDragLeave}
+          onDrop={handleComposerDrop}
         >
-          {referenceTarget && <div className={styles.dropZoneOverlay}>+ Add Reference</div>}
-
-          <div className={styles.modelRow}>
-            <div className={styles.mediaToggle}>
-              <button
-                type="button"
-                className={`${styles.mediaButton} ${resolvedMediaType === 'image' ? styles.mediaButtonActive : ''}`}
-                onClick={() => {
-                  setSelectedMediaType('image');
-                  setSelectedModelKey('');
-                  setSelectedOperationKey('');
-                  setFieldErrors({});
-                }}
-                disabled={isGenerating || (generationCapabilities?.image.length ?? 0) === 0}
-              >
-                Image
-              </button>
-              <button
-                type="button"
-                className={`${styles.mediaButton} ${resolvedMediaType === 'video' ? styles.mediaButtonActive : ''}`}
-                onClick={() => {
-                  setSelectedMediaType('video');
-                  setSelectedModelKey('');
-                  setSelectedOperationKey('');
-                  setFieldErrors({});
-                }}
-                disabled={isGenerating || (generationCapabilities?.video.length ?? 0) === 0}
-              >
-                Video
-              </button>
+          {shouldShowExclusiveDragState ? (
+            <div className={styles.dragOnlySection}>
+              {mediaGroups.map((group) => renderDragMediaGroup(group))}
             </div>
+          ) : (
+            <>
+              {mediaGroups.length > 0 && (
+                <div className={styles.topMediaSection}>
+                  <div className={styles.compactMediaSection}>
+                    {mediaGroups.map((group) => renderCompactMediaGroup(group))}
+                  </div>
+                </div>
+              )}
 
-            <label className={styles.selectWrap} aria-label="Model">
-              <select
-                className={styles.select}
-                value={selectedModel?.modelKey ?? ''}
-                onChange={(event) => {
-                  setSelectedModelKey(event.target.value);
-                  setSelectedOperationKey('');
-                  setFieldErrors({});
-                }}
-                disabled={isGenerating || isCapabilitiesLoading || mediaTypeModels.length === 0}
-              >
-                {mediaTypeModels.length === 0 ? (
-                  <option value="">No models</option>
-                ) : (
-                  mediaTypeModels.map((model) => (
-                    <option key={model.modelKey} value={model.modelKey}>
-                      {model.model}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-
-            <label className={styles.selectWrap} aria-label="Operation">
-              <select
-                className={styles.select}
-                value={selectedOperation?.operationKey ?? ''}
-                onChange={(event) => {
-                  setSelectedOperationKey(event.target.value);
-                  setFieldErrors({});
-                }}
-                disabled={isGenerating || !selectedModel || selectedModel.operations.length === 0}
-              >
-                {!selectedModel || selectedModel.operations.length === 0 ? (
-                  <option value="">No operations</option>
-                ) : (
-                  selectedModel.operations.map((operation) => (
-                    <option key={operation.operationKey} value={operation.operationKey}>
-                      {toOperationLabel(operation.operationKey)}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-          </div>
-
-          {referenceImages.length > 0 && (
-            <div className={styles.referenceChips}>
-              {referenceImages.map((img, index) => (
-                <div key={`${img}-${index}`} className={styles.referenceChip}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt={`Reference ${index + 1}`} className={styles.referenceThumb} />
+              <div className={styles.modelRow}>
+                <div className={styles.mediaToggle}>
                   <button
                     type="button"
-                    className={styles.removeChip}
-                    onClick={() => handleRemoveReference(index)}
-                    aria-label="Remove reference"
+                    className={`${styles.mediaButton} ${resolvedMediaType === 'image' ? styles.mediaButtonActive : ''}`}
+                    onClick={() => {
+                      setSelectedMediaType('image');
+                      setSelectedModelKey('');
+                      setSelectedOperationKey('');
+                      setFieldErrors({});
+                      setActiveDropTargetId(null);
+                      setIsPickerOpen(false);
+                      setActivePickerTarget(null);
+                    }}
+                    disabled={isGenerating || (generationCapabilities?.image.length ?? 0) === 0}
                   >
-                    ×
+                    Image
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.mediaButton} ${resolvedMediaType === 'video' ? styles.mediaButtonActive : ''}`}
+                    onClick={() => {
+                      setSelectedMediaType('video');
+                      setSelectedModelKey('');
+                      setSelectedOperationKey('');
+                      setFieldErrors({});
+                      setActiveDropTargetId(null);
+                      setIsPickerOpen(false);
+                      setActivePickerTarget(null);
+                    }}
+                    disabled={isGenerating || (generationCapabilities?.video.length ?? 0) === 0}
+                  >
+                    Video
                   </button>
                 </div>
-              ))}
-            </div>
-          )}
 
-          {additionalFields.length > 0 && (
-            <div className={styles.optionsRow}>
-              {additionalFields.map((field) => {
-                const fieldValue = resolvedFieldValues[field.key];
-                const fieldError = fieldErrors[field.key];
-                const label = toLabel(field.key);
-                const selectEnum = Array.isArray(field.enum) && field.enum.length > 0;
+                <label className={styles.selectWrap} aria-label="Model">
+                  <select
+                    className={styles.select}
+                    value={selectedModel?.modelKey ?? ''}
+                    onChange={(event) => {
+                      setSelectedModelKey(event.target.value);
+                      setSelectedOperationKey('');
+                      setFieldErrors({});
+                      setActiveDropTargetId(null);
+                      setIsPickerOpen(false);
+                      setActivePickerTarget(null);
+                    }}
+                    disabled={isGenerating || isCapabilitiesLoading || mediaTypeModels.length === 0}
+                  >
+                    {mediaTypeModels.length === 0 ? (
+                      <option value="">No models</option>
+                    ) : (
+                      mediaTypeModels.map((model) => (
+                        <option key={model.modelKey} value={model.modelKey}>
+                          {model.model}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </label>
 
-                if (field.type === 'boolean') {
-                  return (
-                    <label key={field.key} className={styles.checkboxField}>
-                      <input
-                        type="checkbox"
-                        checked={fieldValue === true}
-                        onChange={(event) =>
-                          setFieldValues((previous) => ({
-                            ...previous,
-                            [field.key]: event.target.checked,
-                          }))
-                        }
-                        disabled={isGenerating}
-                      />
-                      <span>{label}</span>
-                    </label>
-                  );
-                }
+                <label className={styles.selectWrap} aria-label="Operation">
+                  <select
+                    className={styles.select}
+                    value={selectedOperation?.operationKey ?? ''}
+                    onChange={(event) => {
+                      setSelectedOperationKey(event.target.value);
+                      setFieldErrors({});
+                      setActiveDropTargetId(null);
+                      setIsPickerOpen(false);
+                      setActivePickerTarget(null);
+                    }}
+                    disabled={
+                      isGenerating || !selectedModel || selectedModel.operations.length === 0
+                    }
+                  >
+                    {!selectedModel || selectedModel.operations.length === 0 ? (
+                      <option value="">No operations</option>
+                    ) : (
+                      selectedModel.operations.map((operation) => (
+                        <option key={operation.operationKey} value={operation.operationKey}>
+                          {operation.operationName}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </label>
+              </div>
 
-                if (field.type === 'integer' || field.type === 'number') {
-                  return (
-                    <label key={field.key} className={styles.inlineField}>
-                      <span className={styles.inlineFieldLabel}>{label}</span>
-                      <input
-                        className={`${styles.inlineInput} ${fieldError ? styles.inlineInputError : ''}`}
-                        type="number"
-                        inputMode="numeric"
-                        value={
-                          typeof fieldValue === 'number' ? fieldValue : String(fieldValue ?? '')
-                        }
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          setFieldValues((previous) => ({
-                            ...previous,
-                            [field.key]: value,
-                          }));
-                        }}
-                        disabled={isGenerating}
-                      />
-                    </label>
-                  );
-                }
-
-                if (selectEnum) {
-                  return (
-                    <label key={field.key} className={styles.inlineField}>
-                      <span className={styles.inlineFieldLabel}>{label}</span>
-                      <select
-                        className={`${styles.inlineSelect} ${fieldError ? styles.inlineInputError : ''}`}
-                        value={
-                          typeof fieldValue === 'string' ? fieldValue : String(fieldValue ?? '')
-                        }
-                        onChange={(event) =>
-                          setFieldValues((previous) => ({
-                            ...previous,
-                            [field.key]: event.target.value,
-                          }))
-                        }
-                        disabled={isGenerating}
-                      >
-                        {field.enum?.map((option) => {
-                          const optionValue = String(option);
-                          return (
-                            <option key={optionValue} value={optionValue}>
-                              {optionValue}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </label>
-                  );
-                }
-
-                return (
-                  <label key={field.key} className={styles.inlineField}>
-                    <span className={styles.inlineFieldLabel}>{label}</span>
-                    <input
-                      className={`${styles.inlineInput} ${fieldError ? styles.inlineInputError : ''}`}
-                      type="text"
-                      value={typeof fieldValue === 'string' ? fieldValue : String(fieldValue ?? '')}
-                      onChange={(event) =>
-                        setFieldValues((previous) => ({
-                          ...previous,
-                          [field.key]: event.target.value,
-                        }))
-                      }
-                      disabled={isGenerating}
-                      placeholder={field.description ?? ''}
-                    />
-                  </label>
-                );
-              })}
-            </div>
-          )}
-
-          <textarea
-            ref={promptRef}
-            className={`${styles.promptInput} ${fieldErrors.prompt ? styles.promptInputError : ''}`}
-            value={promptValue}
-            onChange={(event) => handlePromptChange(event.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              promptField?.description?.trim().length
-                ? promptField.description
-                : 'Describe what you want to generate'
-            }
-            rows={1}
-            style={{ height: 'auto', minHeight: '44px', maxHeight: '120px' }}
-            onInput={(event) => {
-              const target = event.target as HTMLTextAreaElement;
-              target.style.height = 'auto';
-              target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
-            }}
-          />
-          {fieldErrors.prompt && <p className={styles.fieldError}>{fieldErrors.prompt}</p>}
-
-          <div className={styles.bottomRow}>
-            {referenceTarget ? (
-              <button
-                type="button"
-                className={styles.plusButton}
-                onClick={() => void handleOpenPicker()}
-                aria-label="Open reference picker"
-                aria-expanded={isPickerOpen}
-              >
-                +
-              </button>
-            ) : (
-              <span className={styles.plusButtonSpacer} />
-            )}
-
-            <label className={styles.selectWrap} aria-label="Output count">
-              <select
-                className={styles.select}
-                value={supportsBatch ? outputCount : 1}
-                onChange={(event) => setOutputCount(Number(event.target.value))}
-                disabled={isGenerating || !supportsBatch}
-              >
-                {OUTPUT_COUNT_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option} output{option > 1 ? 's' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <button
-              type="button"
-              className={styles.generateButton}
-              onClick={handleGenerate}
-              disabled={!canGenerate}
-            >
-              {isGenerating ? (
-                '…'
-              ) : (
-                <svg
-                  className={styles.generateIcon}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M21.5 2.5L10.5 13.5"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M21.5 2.5L14.5 21.5L10.5 13.5L2.5 9.5L21.5 2.5Z"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+              {basicFields.length > 0 && (
+                <div className={styles.optionsRow}>{basicFields.map(renderAdditionalField)}</div>
               )}
-            </button>
-          </div>
+
+              {advancedFields.length > 0 && (
+                <div className={styles.advancedWrap}>
+                  <button
+                    type="button"
+                    className={styles.advancedToggle}
+                    onClick={() =>
+                      setAdvancedSettingsSelectionKey((previous) =>
+                        previous === currentSelectionKey ? null : currentSelectionKey,
+                      )
+                    }
+                    disabled={isGenerating}
+                    aria-expanded={showAdvancedSettings}
+                  >
+                    {showAdvancedSettings ? 'Hide advanced settings' : 'Show advanced settings'}
+                  </button>
+
+                  {showAdvancedSettings && (
+                    <div className={styles.optionsRow}>
+                      {advancedFields.map(renderAdditionalField)}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className={styles.promptShell}>
+                <textarea
+                  ref={promptRef}
+                  className={`${styles.promptInput} ${fieldErrors.prompt ? styles.promptInputError : ''}`}
+                  value={promptValue}
+                  onChange={(event) => handlePromptChange(event.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    promptField?.description?.trim().length
+                      ? promptField.description
+                      : 'Describe what you want to generate'
+                  }
+                  rows={1}
+                  style={{ height: 'auto', minHeight: '44px', maxHeight: '120px' }}
+                  onInput={(event) => {
+                    const target = event.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
+                  }}
+                />
+              </div>
+              {fieldErrors.prompt && <p className={styles.fieldError}>{fieldErrors.prompt}</p>}
+
+              <div className={styles.bottomRow}>
+                <span className={styles.plusButtonSpacer} />
+
+                <button
+                  type="button"
+                  className={styles.generateButton}
+                  onClick={handleGenerate}
+                  disabled={!canGenerate}
+                >
+                  {isGenerating ? (
+                    '…'
+                  ) : (
+                    <svg
+                      className={styles.generateIcon}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M21.5 2.5L10.5 13.5"
+                        stroke="currentColor"
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M21.5 2.5L14.5 21.5L10.5 13.5L2.5 9.5L21.5 2.5Z"
+                        stroke="currentColor"
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

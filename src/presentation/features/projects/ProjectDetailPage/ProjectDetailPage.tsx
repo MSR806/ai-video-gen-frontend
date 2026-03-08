@@ -340,12 +340,15 @@ export function ProjectDetailPage({
           ...(generationCapabilities?.video ?? []),
         ];
         const selectedModel = modelCatalog.find((model) => model.modelKey === params.modelKey);
+        const selectedOperation = selectedModel?.operations.find(
+          (operation) => operation.operationKey === params.operationKey,
+        );
         const mediaType = selectedModel?.mediaType ?? params.mediaType;
         const promptValue = params.inputs.prompt;
         const description =
           typeof promptValue === 'string' && promptValue.trim().length > 0
             ? promptValue.trim()
-            : `Running ${params.operationKey}`;
+            : `Running ${selectedOperation?.operationName ?? params.operationKey}`;
         const metadata =
           mediaType === 'video'
             ? ({

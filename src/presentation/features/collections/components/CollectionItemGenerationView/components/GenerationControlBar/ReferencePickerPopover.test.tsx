@@ -79,12 +79,11 @@ const renderPopover = (overrides: Partial<ComponentProps<typeof ReferencePickerP
       currentContents={currentContents}
       isLoading={false}
       errorMessage={null}
-      selectedReferenceImages={[]}
-      maxReferenceImages={2}
+      selectedMediaUrls={[]}
       onClose={onClose}
       onNavigateRoot={onNavigateRoot}
       onNavigateCollection={onNavigateCollection}
-      onSelectReferenceItem={onSelectReferenceItem}
+      onSelectItem={onSelectReferenceItem}
       {...overrides}
     />,
   );
@@ -110,20 +109,19 @@ describe('ReferencePickerPopover', () => {
     expect(calls).toEqual(['root', 'root-1', 'child-1', 'close']);
   });
 
-  it('shows only eligible image items and enforces max-selection disable state', () => {
+  it('shows only eligible image items and keeps selected items clickable', () => {
     const selected: string[] = [];
 
     renderPopover({
-      selectedReferenceImages: [
+      selectedMediaUrls: [
         'https://assets.example.com/already-picked-a.png',
         'https://assets.example.com/already-picked-b.png',
       ],
-      maxReferenceImages: 2,
-      onSelectReferenceItem: (item) => selected.push(item.id),
+      onSelectItem: (item) => selected.push(item.id),
     });
 
     const readyButton = screen.getByRole('button', { name: 'Use Ready Asset as reference' });
-    expect(readyButton).toBeDisabled();
+    expect(readyButton).not.toBeDisabled();
 
     expect(
       screen.queryByRole('button', { name: 'Use Not ready as reference' }),
@@ -136,7 +134,7 @@ describe('ReferencePickerPopover', () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(readyButton);
-    expect(selected).toEqual([]);
+    expect(selected).toEqual(['item-1']);
   });
 
   it('renders loading and error states for item section', () => {
@@ -151,12 +149,11 @@ describe('ReferencePickerPopover', () => {
         currentContents={{ childCollections: [], items: [] }}
         isLoading={false}
         errorMessage="Failed to load assets"
-        selectedReferenceImages={[]}
-        maxReferenceImages={3}
+        selectedMediaUrls={[]}
         onClose={() => {}}
         onNavigateRoot={() => {}}
         onNavigateCollection={() => {}}
-        onSelectReferenceItem={() => {}}
+        onSelectItem={() => {}}
       />,
     );
 

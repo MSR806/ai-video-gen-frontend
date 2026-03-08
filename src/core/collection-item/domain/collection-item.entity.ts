@@ -99,18 +99,34 @@ export interface GenerationInputFieldCapability {
   key: string;
   type: GenerationInputFieldType;
   required: boolean;
+  uiGroup?: string | null;
+  title?: string | null;
   description: string | null;
   default?: unknown;
   enum?: unknown[] | null;
   format?: string | null;
   itemsType?: string | null;
+  minimum?: number | string | null;
+  maximum?: number | string | null;
+  mediaGroup?: string | null;
+  mediaOrder?: number | null;
+  mediaName?: string | null;
+}
+
+export interface GenerationMediaGroupCapability {
+  groupKey: string;
+  layout: 'single' | 'sequence' | 'gallery';
+  placement: 'top';
 }
 
 export interface GenerationOperationCapability {
   operationKey: string;
+  operationType: string;
+  operationName: string;
   endpointId: string;
   required: string[];
   fields: GenerationInputFieldCapability[];
+  mediaGroups?: GenerationMediaGroupCapability[] | null;
 }
 
 export interface GenerationModelCapability {

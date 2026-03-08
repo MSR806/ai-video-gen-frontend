@@ -10,12 +10,11 @@ interface ReferencePickerPopoverProps {
   currentContents: CollectionContents | null;
   isLoading: boolean;
   errorMessage: string | null;
-  selectedReferenceImages: string[];
-  maxReferenceImages: number;
+  selectedMediaUrls: string[];
   onClose: () => void;
   onNavigateRoot: () => void;
   onNavigateCollection: (collectionId: string) => void;
-  onSelectReferenceItem: (item: CollectionItem) => void;
+  onSelectItem: (item: CollectionItem) => void;
 }
 
 const buildBreadcrumb = (
@@ -76,12 +75,11 @@ export function ReferencePickerPopover({
   currentContents,
   isLoading,
   errorMessage,
-  selectedReferenceImages,
-  maxReferenceImages,
+  selectedMediaUrls,
   onClose,
   onNavigateRoot,
   onNavigateCollection,
-  onSelectReferenceItem,
+  onSelectItem,
 }: ReferencePickerPopoverProps) {
   const [loadedAspectRatios, setLoadedAspectRatios] = useState<Record<string, number>>({});
   const [hoveredItem, setHoveredItem] = useState<CollectionItem | null>(null);
@@ -212,21 +210,18 @@ export function ReferencePickerPopover({
           {eligibleItems.map((item) => {
             const mediaUrl = item.url?.trim() ?? '';
             const previewSource = getItemPreviewSource(item);
-            const isAlreadySelected = selectedReferenceImages.includes(mediaUrl);
-            const disableForLimit =
-              !isAlreadySelected && selectedReferenceImages.length >= maxReferenceImages;
+            const isAlreadySelected = selectedMediaUrls.includes(mediaUrl);
 
             return (
               <button
                 key={item.id}
                 type="button"
                 className={`${styles.assetButton} ${isAlreadySelected ? styles.assetButtonSelected : ''}`}
-                onClick={() => onSelectReferenceItem(item)}
+                onClick={() => onSelectItem(item)}
                 onMouseEnter={(event) => handleItemMouseEnter(item, event)}
                 onMouseLeave={clearHoverPreview}
-                disabled={disableForLimit}
                 aria-label={`Use ${item.name} as reference`}
-                title={disableForLimit ? 'Max references reached' : item.name}
+                title={item.name}
                 style={{ '--asset-aspect-ratio': getResolvedAspectRatio(item) } as CSSProperties}
               >
                 <span className={styles.assetFrame}>
@@ -308,9 +303,7 @@ export function ReferencePickerPopover({
       </div>
 
       <div className={styles.metaRow}>
-        <span
-          className={styles.metaLabel}
-        >{`${selectedReferenceImages.length}/${maxReferenceImages} selected`}</span>
+        <span className={styles.metaLabel}>{`${selectedMediaUrls.length} selected`}</span>
       </div>
 
       <div className={styles.body}>

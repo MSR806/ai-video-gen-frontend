@@ -93,6 +93,8 @@ const sampleGenerationCapabilities: GenerationCapabilities = {
       operations: [
         {
           operationKey: 'text_to_image',
+          operationType: 'text_to_image',
+          operationName: 'Text to Image',
           endpointId: 'fal-ai/nano-banana',
           required: ['prompt'],
           fields: [

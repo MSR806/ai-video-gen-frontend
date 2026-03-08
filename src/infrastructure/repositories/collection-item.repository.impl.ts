@@ -75,20 +75,36 @@ interface ApiGenerationModelCapability {
 
 interface ApiGenerationOperationCapability {
   operationKey: string;
+  operationType: string;
+  operationName: string;
   endpointId: string;
   required: string[];
   fields: ApiGenerationInputFieldCapability[];
+  mediaGroups?: ApiGenerationMediaGroupCapability[];
 }
 
 interface ApiGenerationInputFieldCapability {
   key: string;
   type: string;
   required: boolean;
+  uiGroup?: string | null;
+  title?: string | null;
   description: string | null;
   default?: unknown;
   enum?: unknown[] | null;
   format?: string | null;
   itemsType?: string | null;
+  minimum?: number | string | null;
+  maximum?: number | string | null;
+  mediaGroup?: string | null;
+  mediaOrder?: number | null;
+  mediaName?: string | null;
+}
+
+interface ApiGenerationMediaGroupCapability {
+  groupKey: string;
+  layout: 'single' | 'sequence' | 'gallery';
+  placement: 'top';
 }
 
 interface ApiGenerationRunError {
@@ -222,6 +238,8 @@ const mapApiGenerationOperations = (
   Array.isArray(operations)
     ? operations.map((operation) => ({
         operationKey: operation.operationKey,
+        operationType: operation.operationType,
+        operationName: operation.operationName,
         endpointId: operation.endpointId,
         required: Array.isArray(operation.required) ? operation.required : [],
         fields: Array.isArray(operation.fields)
@@ -229,11 +247,25 @@ const mapApiGenerationOperations = (
               key: field.key,
               type: field.type as GenerationInputFieldType,
               required: field.required,
+              uiGroup: field.uiGroup ?? null,
+              title: field.title ?? null,
               description: field.description,
               default: field.default,
               enum: field.enum ?? null,
               format: field.format ?? null,
               itemsType: field.itemsType ?? null,
+              minimum: field.minimum ?? null,
+              maximum: field.maximum ?? null,
+              mediaGroup: field.mediaGroup ?? null,
+              mediaOrder: field.mediaOrder ?? null,
+              mediaName: field.mediaName ?? null,
+            }))
+          : [],
+        mediaGroups: Array.isArray(operation.mediaGroups)
+          ? operation.mediaGroups.map((group) => ({
+              groupKey: group.groupKey,
+              layout: group.layout,
+              placement: group.placement,
             }))
           : [],
       }))

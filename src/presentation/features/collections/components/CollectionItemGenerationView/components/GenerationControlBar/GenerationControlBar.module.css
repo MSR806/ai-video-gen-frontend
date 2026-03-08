@@ -31,44 +31,401 @@
     background var(--transition-fast);
 }
 
-.dropZoneOverlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--bg-raised) 85%, var(--bg-elevated) 15%);
-  border: 1px solid var(--border-default);
-  border-radius: 20px;
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  font-weight: 500;
-  opacity: 0;
-  pointer-events: none;
-  z-index: 10;
-  transition: opacity var(--transition-fast);
-}
-
-.composer.dropActive .dropZoneOverlay {
-  border-color: var(--accent-primary);
-  background: color-mix(in srgb, var(--bg-raised) 85%, var(--accent-primary) 15%);
-}
-
-:global(.is-dragging-ingredient) .dropZoneOverlay {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-:global(.is-dragging-ingredient) .composer > *:not(.dropZoneOverlay) {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .modelRow {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
+}
+
+.topMediaSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.mediaSection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.mediaSequenceRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.mediaSequenceConnector {
+  color: var(--text-muted);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.dragOnlySection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mediaFieldBlock {
+  display: flex;
+  flex: 1 1 220px;
+  min-width: min(100%, 220px);
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mediaFieldBlockFull {
+  flex-basis: 100%;
+  min-width: 100%;
+}
+
+.mediaFieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.mediaFieldLabel {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+}
+
+.mediaFieldDescription,
+.mediaFieldError {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.mediaFieldDescription {
+  color: var(--text-muted);
+}
+
+.mediaFieldError {
+  color: #ffb0b0;
+}
+
+.promptShell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-elevated) 52%, black 48%);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 78%, transparent 22%);
+  padding: 0.45rem 0.45rem 0.25rem;
+}
+
+.compactMediaSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.compactMediaRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.compactMediaItem {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.compactMediaButton {
+  width: 76px;
+  height: 76px;
+  border-radius: 20px;
+  border: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, black 30%);
+  color: var(--text-secondary);
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.compactMediaButtonFilled {
+  background: color-mix(in srgb, var(--bg-raised) 48%, black 52%);
+}
+
+.compactMediaButtonActive {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 60%, transparent 40%);
+  transform: translateY(-1px);
+}
+
+.compactMediaThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.compactMediaLabel,
+.compactMediaLabelFilled {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.compactMediaLabelFilled {
+  inset: auto 0 0 0;
+  min-height: 28px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72));
+  color: white;
+  font-size: 0.68rem;
+  padding: 0.25rem 0.35rem 0.35rem;
+  align-items: flex-end;
+}
+
+.compactMediaConnector {
+  color: var(--text-muted);
+  font-size: 2rem;
+  line-height: 1;
+  transform: translateY(-2px);
+}
+
+.compactMediaRemove {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.compactMediaError {
+  margin: 0;
+  color: #ffb0b0;
+  font-size: 0.7rem;
+}
+
+.compactArrayField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.compactArrayHeader {
+  display: flex;
+  align-items: center;
+}
+
+.compactArrayLabel {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.compactArrayItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.compactArrayThumbWrap {
+  position: relative;
+}
+
+.compactArrayThumbButton,
+.compactArrayAddButton {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, black 30%);
+  overflow: hidden;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.compactArrayAddButton {
+  width: auto;
+  min-width: 74px;
+  padding: 0 0.8rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.compactArrayThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.compactArrayRemove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  color: white;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mediaCardWrap,
+.mediaThumbnailWrap {
+  position: relative;
+}
+
+.mediaCard,
+.mediaAddCard,
+.mediaThumbnailCard {
+  border: 1px solid var(--border-default);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--bg-elevated) 78%, #1c1c1f 22%),
+    color-mix(in srgb, var(--bg-raised) 70%, #060606 30%)
+  );
+  color: var(--text-primary);
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.mediaCard,
+.mediaAddCard {
+  width: 100%;
+}
+
+.mediaCard {
+  position: relative;
+  min-height: 132px;
+  border-radius: 26px;
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+}
+
+.mediaCardFilled {
+  background: color-mix(in srgb, var(--bg-elevated) 72%, black 28%);
+}
+
+.mediaCardActive,
+.mediaThumbnailWrapActive .mediaThumbnailCard {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 55%, transparent 45%);
+  transform: translateY(-1px);
+}
+
+.mediaCardAdd {
+  min-height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  padding: 1.2rem;
+  text-align: center;
+}
+
+.mediaCardAddIcon {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.mediaCardAddLabel {
+  font-size: clamp(0.92rem, 2vw, 1.08rem);
+  color: var(--text-primary);
+}
+
+.mediaCardImage {
+  width: 100%;
+  height: 132px;
+  object-fit: cover;
+  display: block;
+}
+
+.mediaCardBadge {
+  position: absolute;
+  left: 0.85rem;
+  bottom: 0.85rem;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  background: rgba(0, 0, 0, 0.58);
+  color: white;
+  font-size: 0.72rem;
+}
+
+.mediaCardRemove {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  color: white;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.mediaCardRemove:hover {
+  background: rgba(239, 68, 68, 0.92);
+}
+
+.mediaGallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.mediaThumbnailCard,
+.mediaAddCard {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  border-radius: 22px;
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+}
+
+.mediaThumbnailImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .mediaToggle {
@@ -127,61 +484,43 @@
   pointer-events: none;
 }
 
-.referenceChips {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  min-height: 0;
-}
-
-.referenceChip {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid var(--border-default);
-  box-shadow: var(--shadow-sm);
-}
-
-.referenceThumb {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.removeChip {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 20px;
-  height: 20px;
-  background: rgba(0, 0, 0, 0.72);
-  border: none;
-  border-radius: 50%;
-  color: white;
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-}
-
-.referenceChip:hover .removeChip {
-  opacity: 1;
-}
-
-.removeChip:hover {
-  background: rgba(239, 68, 68, 0.9);
-}
-
 .optionsRow {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.advancedWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.advancedToggle {
+  align-self: flex-start;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-elevated) 70%, black 30%);
+  color: var(--text-secondary);
+  padding: 0.38rem 0.75rem;
+  font-size: 0.76rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.advancedToggle:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--bg-elevated) 55%, var(--accent-primary) 45%);
+}
+
+.advancedToggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .inlineField {
@@ -238,7 +577,7 @@
   background: transparent;
   border: none;
   border-radius: 0;
-  padding: 0.5rem 0.8rem 0.45rem;
+  padding: 0.2rem 0.3rem 0.15rem;
   color: var(--text-primary);
   font-size: 1rem;
   font-family: inherit;
@@ -270,28 +609,6 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-}
-
-.plusButton {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  font-size: 1.6rem;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-}
-
-.plusButton:hover {
-  color: var(--accent-primary);
-  border-color: var(--accent-primary);
-  background: var(--accent-primary-muted);
 }
 
 .plusButtonSpacer {
@@ -340,14 +657,15 @@
     font-size: 0.88rem;
   }
 
-  .plusButton,
+  .compactMediaButton {
+    width: 68px;
+    height: 68px;
+    border-radius: 18px;
+  }
+
   .plusButtonSpacer {
     width: 34px;
     height: 34px;
-  }
-
-  .plusButton {
-    font-size: 1.4rem;
   }
 
   .select {
@@ -380,6 +698,24 @@
   .modelRow,
   .bottomRow,
   .optionsRow {
+    flex-wrap: wrap;
+  }
+
+  .mediaFieldBlock {
+    min-width: 100%;
+  }
+
+  .mediaCard {
+    min-height: 108px;
+  }
+
+  .mediaCardAdd,
+  .mediaCardImage {
+    min-height: 108px;
+    height: 108px;
+  }
+
+  .compactMediaRow {
     flex-wrap: wrap;
   }
 }

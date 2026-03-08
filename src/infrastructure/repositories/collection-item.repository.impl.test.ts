@@ -94,16 +94,36 @@ describe('CollectionItemRepositoryImpl', () => {
                 operations: [
                   {
                     operationKey: 'text_to_image',
+                    operationType: 'text_to_image',
+                    operationName: 'Text to Image',
                     endpointId: 'text-endpoint',
                     required: ['prompt'],
+                    mediaGroups: [
+                      {
+                        groupKey: 'references',
+                        layout: 'gallery',
+                        placement: 'top',
+                      },
+                    ],
                     fields: [
                       { key: 'prompt', type: 'string', required: true, description: null },
                       {
                         key: 'aspect_ratio',
+                        uiGroup: 'basic',
+                        title: 'Aspect Ratio',
                         type: 'string',
                         required: false,
                         description: null,
                         enum: ['1:1', '9:16', '16:9'],
+                      },
+                      {
+                        key: 'image_urls',
+                        type: 'array',
+                        required: false,
+                        description: 'Reference images',
+                        itemsType: 'string',
+                        mediaGroup: 'references',
+                        mediaName: 'Reference Images',
                       },
                     ],
                   },
@@ -118,6 +138,8 @@ describe('CollectionItemRepositoryImpl', () => {
                 operations: [
                   {
                     operationKey: 'text_to_video',
+                    operationType: 'text_to_video',
+                    operationName: 'Text to Video',
                     endpointId: 'video-endpoint',
                     required: ['prompt'],
                     fields: [{ key: 'prompt', type: 'string', required: true, description: null }],
@@ -144,6 +166,34 @@ describe('CollectionItemRepositoryImpl', () => {
       expect.objectContaining({
         modelKey: 'nano-banana-pro',
         mediaType: 'image',
+      }),
+    );
+    expect(capabilities.image[0].operations[0]).toEqual(
+      expect.objectContaining({
+        operationKey: 'text_to_image',
+        operationType: 'text_to_image',
+        operationName: 'Text to Image',
+        mediaGroups: [
+          {
+            groupKey: 'references',
+            layout: 'gallery',
+            placement: 'top',
+          },
+        ],
+      }),
+    );
+    expect(capabilities.image[0].operations[0].fields[1]).toEqual(
+      expect.objectContaining({
+        key: 'aspect_ratio',
+        uiGroup: 'basic',
+        title: 'Aspect Ratio',
+      }),
+    );
+    expect(capabilities.image[0].operations[0].fields[2]).toEqual(
+      expect.objectContaining({
+        key: 'image_urls',
+        mediaGroup: 'references',
+        mediaName: 'Reference Images',
       }),
     );
     expect(capabilities.video).toHaveLength(1);
