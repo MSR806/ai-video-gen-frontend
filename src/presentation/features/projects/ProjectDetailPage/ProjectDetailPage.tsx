@@ -109,7 +109,7 @@ const ITEM_TERMINAL_REFRESH_MAX_RETRIES = 5;
  * Orchestrates the project workspace layout:
  * - Tab navigation (Collections/Scenes/Shots)
  * - Root collection cards or selected collection drill-down workspace
- * - Collection item grid with inline generation controls
+ * - Collection item grid with generation controls docked in the right sidebar
  */
 export function ProjectDetailPage({
   projectId,
@@ -1109,92 +1109,99 @@ export function ProjectDetailPage({
           <div>Shots Storyboard Placeholder</div>
         </div>
       ) : (
-        <div
-          className={`${styles.collectionsWorkspaceArea} ${selectedCollectionId ? styles.collectionsWorkspaceAreaExpanded : ''}`}
-        >
-          <div className={styles.collectionsPathBar}>
-            <button
-              type="button"
-              className={styles.pathBackButton}
-              onClick={handleNavigateToParent}
-              disabled={!selectedItem}
-            >
-              Back
-            </button>
-            <button type="button" className={styles.pathCrumbButton} onClick={handleNavigateToRoot}>
-              Collections
-            </button>
-            {breadcrumb.map((collection, index) => {
-              const isLast = index === breadcrumb.length - 1;
-              return (
-                <span key={collection.id} className={styles.pathCrumbGroup}>
-                  <span className={styles.pathSeparator}>/</span>
-                  {isLast ? (
-                    <span className={styles.pathCurrent}>{collection.name}</span>
-                  ) : (
-                    <button
-                      type="button"
-                      className={styles.pathCrumbButton}
-                      onClick={() => handleCollectionSelect(collection.id)}
-                    >
-                      {collection.name}
-                    </button>
-                  )}
-                </span>
-              );
-            })}
-            <div className={styles.pathActions}>
-              {canCreateCollectionItems ? (
-                <Dropdown
-                  trigger={
-                    <button
-                      type="button"
-                      className={styles.pathAddButton}
-                      aria-label="Add options"
-                      disabled={isUploadingCollectionItems}
-                    >
-                      +
-                    </button>
-                  }
-                >
-                  <DropdownItem
-                    icon="+"
-                    label="New collection"
-                    onClick={handleCreateCollectionClick}
-                  />
-                  <DropdownItem icon="↑" label="Upload media" onClick={handleUploadClick} />
-                </Dropdown>
-              ) : null}
+        <div className={styles.collectionsDetailLayout}>
+          <div className={styles.collectionsWorkspaceArea}>
+            <div className={styles.collectionsPathBar}>
+              <button
+                type="button"
+                className={styles.pathBackButton}
+                onClick={handleNavigateToParent}
+                disabled={!selectedItem}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                className={styles.pathCrumbButton}
+                onClick={handleNavigateToRoot}
+              >
+                Collections
+              </button>
+              {breadcrumb.map((collection, index) => {
+                const isLast = index === breadcrumb.length - 1;
+                return (
+                  <span key={collection.id} className={styles.pathCrumbGroup}>
+                    <span className={styles.pathSeparator}>/</span>
+                    {isLast ? (
+                      <span className={styles.pathCurrent}>{collection.name}</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.pathCrumbButton}
+                        onClick={() => handleCollectionSelect(collection.id)}
+                      >
+                        {collection.name}
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
+              <div className={styles.pathActions}>
+                {canCreateCollectionItems ? (
+                  <Dropdown
+                    trigger={
+                      <button
+                        type="button"
+                        className={styles.pathAddButton}
+                        aria-label="Add options"
+                        disabled={isUploadingCollectionItems}
+                      >
+                        +
+                      </button>
+                    }
+                  >
+                    <DropdownItem
+                      icon="+"
+                      label="New collection"
+                      onClick={handleCreateCollectionClick}
+                    />
+                    <DropdownItem icon="↑" label="Upload media" onClick={handleUploadClick} />
+                  </Dropdown>
+                ) : null}
+              </div>
+            </div>
+
+            <div className={styles.collectionItemsPane}>
+              <CollectionItemGrid
+                key={itemRefreshKey}
+                items={selectedCollectionItems}
+                childCollections={loadedSelectedChildCollections}
+                onChildCollectionClick={handleCollectionSelect}
+                onItemClick={setLightboxItem}
+                onItemCopy={handleCopyCollectionItem}
+                onItemDownload={handleDownloadCollectionItem}
+                onItemDelete={canCreateCollectionItems ? handleDeleteRequest : undefined}
+                deletingItemIds={deletingItemIds}
+                emptyMessage={emptyMessage}
+              />
             </div>
           </div>
 
-          <div className={styles.collectionItemsPane}>
-            <CollectionItemGrid
-              key={itemRefreshKey}
-              items={selectedCollectionItems}
-              childCollections={loadedSelectedChildCollections}
-              onChildCollectionClick={handleCollectionSelect}
-              onItemClick={setLightboxItem}
-              onItemCopy={handleCopyCollectionItem}
-              onItemDownload={handleDownloadCollectionItem}
-              onItemDelete={canCreateCollectionItems ? handleDeleteRequest : undefined}
-              deletingItemIds={deletingItemIds}
-              emptyMessage={emptyMessage}
-            />
-          </div>
           {canCreateCollectionItems && (
-            <GenerationControlBar
-              onGenerate={handleGenerateCollectionItem}
-              isGenerating={isGeneratingCollectionItem}
-              projectId={projectId}
-              collections={loadedCollections}
-              selectedCollectionId={selectedCollectionId}
-              selectedCollectionItems={selectedCollectionItems}
-              selectedCollectionChildCollections={loadedSelectedChildCollections}
-              loadCollectionContentsForPicker={loadCollectionContentsForPicker}
-              generationCapabilities={generationCapabilities}
-              isCapabilitiesLoading={isLoadingGenerationCapabilities}
-            />
+            <aside className={styles.generationSidebar} aria-label="Generation controls">
+              <GenerationControlBar
+                onGenerate={handleGenerateCollectionItem}
+                isGenerating={isGeneratingCollectionItem}
+                projectId={projectId}
+                collections={loadedCollections}
+                selectedCollectionId={selectedCollectionId}
+                selectedCollectionItems={selectedCollectionItems}
+                selectedCollectionChildCollections={loadedSelectedChildCollections}
+                loadCollectionContentsForPicker={loadCollectionContentsForPicker}
+                generationCapabilities={generationCapabilities}
+                isCapabilitiesLoading={isLoadingGenerationCapabilities}
+              />
+            </aside>
           )}
         </div>
       )}

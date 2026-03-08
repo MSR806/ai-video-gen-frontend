@@ -251,7 +251,7 @@ describe('GenerationControlBar', () => {
     expect(screen.queryByText('Seed')).toBeNull();
     expect(addButton).toBeTruthy();
     expect(
-      addButton.compareDocumentPosition(modelSelect) & Node.DOCUMENT_POSITION_FOLLOWING,
+      modelSelect.compareDocumentPosition(addButton) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
 
     fireEvent.drop(promptInput, {

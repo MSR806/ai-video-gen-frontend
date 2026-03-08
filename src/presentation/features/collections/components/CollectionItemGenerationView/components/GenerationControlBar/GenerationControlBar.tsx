@@ -32,6 +32,7 @@ interface MediaFieldDescriptor {
   compactLabel: string;
   description: string | null;
   mode: 'single' | 'multiple';
+  required: boolean;
 }
 
 interface MediaGroupDescriptor {
@@ -113,6 +114,7 @@ const getFieldLabel = (field: GenerationInputFieldCapability): string =>
 const toMediaFieldDescriptor = (
   field: GenerationInputFieldCapability,
   compactLabel?: string | null,
+  isRequired = false,
 ): MediaFieldDescriptor => ({
   key: field.key,
   label: getFieldLabel(field),
@@ -121,6 +123,7 @@ const toMediaFieldDescriptor = (
     : toCompactLabel(getFieldLabel(field)) || getFieldLabel(field),
   description: field.description,
   mode: field.type === 'array' ? 'multiple' : 'single',
+  required: isRequired,
 });
 
 const getFallbackMediaGroups = (
@@ -136,6 +139,7 @@ const getFallbackMediaGroups = (
   let firstSingleIndex: number | null = null;
 
   operation.fields.forEach((field, index) => {
+    const isRequired = field.required || operation.required.includes(field.key);
     if (excludedFieldKeys.has(field.key)) {
       return;
     }
@@ -147,7 +151,7 @@ const getFallbackMediaGroups = (
           groupKey: `fallback:${field.key}`,
           layout: 'gallery',
           placement: 'top',
-          fields: [toMediaFieldDescriptor(field)],
+          fields: [toMediaFieldDescriptor(field, null, isRequired)],
         },
       });
       return;
@@ -157,7 +161,7 @@ const getFallbackMediaGroups = (
       if (firstSingleIndex === null) {
         firstSingleIndex = index;
       }
-      singleFields.push(toMediaFieldDescriptor(field));
+      singleFields.push(toMediaFieldDescriptor(field, null, isRequired));
     }
   });
 
@@ -199,7 +203,8 @@ const getDeclaredMediaGroups = (
       return;
     }
 
-    groupFields.push(toMediaFieldDescriptor(field, field.mediaName));
+    const isRequired = field.required || operation.required.includes(field.key);
+    groupFields.push(toMediaFieldDescriptor(field, field.mediaName, isRequired));
   });
 
   return operation.mediaGroups.map((group) => {
@@ -529,6 +534,12 @@ export function GenerationControlBar({
   const promptField = selectedOperation?.fields.find((field) => field.key === 'prompt') ?? null;
   const promptValue =
     typeof resolvedFieldValues.prompt === 'string' ? resolvedFieldValues.prompt : '';
+  const requiredFieldKeys = useMemo(
+    () => new Set(selectedOperation?.required ?? []),
+    [selectedOperation],
+  );
+  const promptIsRequired =
+    (promptField?.required ?? false) || requiredFieldKeys.has(promptField?.key ?? '');
 
   const additionalFields = useMemo(() => {
     if (!selectedOperation) {
@@ -923,7 +934,20 @@ export function GenerationControlBar({
     setActivePickerTarget(null);
 
     if (promptRef.current) {
-      promptRef.current.style.height = '44px';
+      promptRef.current.style.height = '180px';
+    }
+  };
+
+  const handleReset = () => {
+    setFieldValues({});
+    setFieldErrors({});
+    setActiveDropTargetId(null);
+    setIsPickerOpen(false);
+    setActivePickerTarget(null);
+    setAdvancedSettingsSelectionKey(null);
+
+    if (promptRef.current) {
+      promptRef.current.style.height = '180px';
     }
   };
 
@@ -953,11 +977,20 @@ export function GenerationControlBar({
     !!selectedOperation &&
     (!promptField || promptValue.trim().length > 0);
 
+  const mediaSectionTitle =
+    mediaFields.length === 1
+      ? mediaFields[0].label
+      : resolvedMediaType === 'video'
+        ? 'Reference Frames'
+        : 'Reference Images';
+  const mediaSectionHasRequired = mediaFields.some((field) => field.required);
+
   const renderAdditionalField = (field: GenerationInputFieldCapability) => {
     const fieldValue = resolvedFieldValues[field.key];
     const fieldError = fieldErrors[field.key];
     const label = field.title?.trim().length ? field.title : toLabel(field.key);
     const selectEnum = Array.isArray(field.enum) && field.enum.length > 0;
+    const isRequired = field.required || requiredFieldKeys.has(field.key);
 
     if (field.type === 'boolean') {
       return (
@@ -973,7 +1006,7 @@ export function GenerationControlBar({
             }
             disabled={isGenerating}
           />
-          <span>{label}</span>
+          <span className={isRequired ? styles.requiredLabel : undefined}>{label}</span>
         </label>
       );
     }
@@ -983,7 +1016,9 @@ export function GenerationControlBar({
       const maximum = toNumericBound(field.maximum);
       return (
         <label key={field.key} className={styles.inlineField}>
-          <span className={styles.inlineFieldLabel}>{label}</span>
+          <span className={`${styles.inlineFieldLabel} ${isRequired ? styles.requiredLabel : ''}`}>
+            {label}
+          </span>
           <input
             className={`${styles.inlineInput} ${fieldError ? styles.inlineInputError : ''}`}
             type="number"
@@ -1007,7 +1042,9 @@ export function GenerationControlBar({
     if (selectEnum) {
       return (
         <label key={field.key} className={styles.inlineField}>
-          <span className={styles.inlineFieldLabel}>{label}</span>
+          <span className={`${styles.inlineFieldLabel} ${isRequired ? styles.requiredLabel : ''}`}>
+            {label}
+          </span>
           <select
             className={`${styles.inlineSelect} ${fieldError ? styles.inlineInputError : ''}`}
             value={typeof fieldValue === 'string' ? fieldValue : String(fieldValue ?? '')}
@@ -1034,7 +1071,9 @@ export function GenerationControlBar({
 
     return (
       <label key={field.key} className={styles.inlineField}>
-        <span className={styles.inlineFieldLabel}>{label}</span>
+        <span className={`${styles.inlineFieldLabel} ${isRequired ? styles.requiredLabel : ''}`}>
+          {label}
+        </span>
         <input
           className={`${styles.inlineInput} ${fieldError ? styles.inlineInputError : ''}`}
           type="text"
@@ -1054,7 +1093,7 @@ export function GenerationControlBar({
 
   const renderSingleMediaField = (
     field: MediaFieldDescriptor,
-    options: { showMeta?: boolean; fullWidth?: boolean } = {},
+    options: { showMeta?: boolean; fullWidth?: boolean; dragFill?: boolean } = {},
   ) => {
     const values = getMediaFieldValues(resolvedFieldValues, field);
     const mediaUrl = values[0] ?? '';
@@ -1063,22 +1102,23 @@ export function GenerationControlBar({
     const isDropActive = activeDropTargetId === getMediaTargetId(target);
     const showMeta = options.showMeta ?? true;
     const fullWidth = options.fullWidth ?? false;
+    const dragFill = options.dragFill ?? false;
     const actionLabel = !showMeta && field.compactLabel ? field.compactLabel : field.label;
 
     return (
       <div
         key={field.key}
-        className={`${styles.mediaFieldBlock} ${fullWidth ? styles.mediaFieldBlockFull : ''}`}
+        className={`${styles.mediaFieldBlock} ${fullWidth ? styles.mediaFieldBlockFull : ''} ${dragFill ? styles.mediaFieldBlockDragFill : ''}`}
       >
         {showMeta ? (
           <div className={styles.mediaFieldHeader}>
             <span className={styles.mediaFieldLabel}>{field.label}</span>
           </div>
         ) : null}
-        <div className={styles.mediaCardWrap}>
+        <div className={`${styles.mediaCardWrap} ${dragFill ? styles.mediaCardWrapDragFill : ''}`}>
           <button
             type="button"
-            className={`${styles.mediaCard} ${mediaUrl ? styles.mediaCardFilled : ''} ${isDropActive ? styles.mediaCardActive : ''}`}
+            className={`${styles.mediaCard} ${mediaUrl ? styles.mediaCardFilled : ''} ${isDropActive ? styles.mediaCardActive : ''} ${dragFill ? styles.mediaCardDragFill : ''}`}
             onClick={() => void openPickerForTarget(target)}
             onDragOver={handleMediaTargetDragOver(target)}
             onDragLeave={handleMediaTargetDragLeave(target)}
@@ -1086,14 +1126,18 @@ export function GenerationControlBar({
             aria-label={mediaUrl ? `Replace ${actionLabel}` : `Add ${actionLabel}`}
             data-testid={`media-target-${field.key}`}
           >
-            {mediaUrl ? (
+            {mediaUrl && !dragFill ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={mediaUrl} alt={field.label} className={styles.mediaCardImage} />
+                <img
+                  src={mediaUrl}
+                  alt={field.label}
+                  className={`${styles.mediaCardImage} ${dragFill ? styles.mediaCardImageDragFill : ''}`}
+                />
                 <span className={styles.mediaCardBadge}>{actionLabel}</span>
               </>
             ) : (
-              <span className={styles.mediaCardAdd}>
+              <span className={`${styles.mediaCardAdd} ${dragFill ? styles.mediaCardAddFill : ''}`}>
                 <span className={styles.mediaCardAddIcon}>+</span>
                 <span
                   className={styles.mediaCardAddLabel}
@@ -1125,7 +1169,7 @@ export function GenerationControlBar({
 
   const renderMultipleMediaField = (
     field: MediaFieldDescriptor,
-    options: { showMeta?: boolean; fullWidth?: boolean } = {},
+    options: { showMeta?: boolean; fullWidth?: boolean; dragFill?: boolean } = {},
   ) => {
     const values = getMediaFieldValues(resolvedFieldValues, field);
     const fieldError = fieldErrors[field.key];
@@ -1133,13 +1177,15 @@ export function GenerationControlBar({
     const isAppendDropActive = activeDropTargetId === getMediaTargetId(appendTarget);
     const showMeta = options.showMeta ?? true;
     const fullWidth = options.fullWidth ?? false;
-    const shouldRenderFullWidthAddTarget = fullWidth && values.length === 0;
+    const dragFill = options.dragFill ?? false;
+    const shouldRenderFullWidthAddTarget = fullWidth && (values.length === 0 || dragFill);
+    const shouldStretchAddTarget = shouldRenderFullWidthAddTarget && dragFill;
     const actionLabel = !showMeta && field.compactLabel ? field.compactLabel : field.label;
 
     return (
       <div
         key={field.key}
-        className={`${styles.mediaFieldBlock} ${fullWidth ? styles.mediaFieldBlockFull : ''}`}
+        className={`${styles.mediaFieldBlock} ${fullWidth ? styles.mediaFieldBlockFull : ''} ${shouldStretchAddTarget ? styles.mediaFieldBlockDragFill : ''}`}
       >
         {showMeta ? (
           <div className={styles.mediaFieldHeader}>
@@ -1147,10 +1193,12 @@ export function GenerationControlBar({
           </div>
         ) : null}
         {shouldRenderFullWidthAddTarget ? (
-          <div className={styles.mediaCardWrap}>
+          <div
+            className={`${styles.mediaCardWrap} ${shouldStretchAddTarget ? styles.mediaCardWrapDragFill : ''}`}
+          >
             <button
               type="button"
-              className={`${styles.mediaCard} ${isAppendDropActive ? styles.mediaCardActive : ''}`}
+              className={`${styles.mediaCard} ${isAppendDropActive ? styles.mediaCardActive : ''} ${shouldStretchAddTarget ? styles.mediaCardDragFill : ''}`}
               onClick={() => void openPickerForTarget(appendTarget)}
               onDragOver={handleMediaTargetDragOver(appendTarget)}
               onDragLeave={handleMediaTargetDragLeave(appendTarget)}
@@ -1158,7 +1206,9 @@ export function GenerationControlBar({
               aria-label={`Add ${actionLabel}`}
               data-testid={`media-target-${field.key}`}
             >
-              <span className={styles.mediaCardAdd}>
+              <span
+                className={`${styles.mediaCardAdd} ${shouldStretchAddTarget ? styles.mediaCardAddFill : ''}`}
+              >
                 <span className={styles.mediaCardAddIcon}>+</span>
                 <span
                   className={styles.mediaCardAddLabel}
@@ -1256,10 +1306,18 @@ export function GenerationControlBar({
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={mediaUrl} alt={field.label} className={styles.compactMediaThumb} />
-              <span className={styles.compactMediaLabelFilled}>{compactLabel || field.label}</span>
+              <span
+                className={`${styles.compactMediaLabelFilled} ${field.required ? styles.requiredLabel : ''}`}
+              >
+                {compactLabel || field.label}
+              </span>
             </>
           ) : (
-            <span className={styles.compactMediaLabel}>{compactLabel || field.label}</span>
+            <span
+              className={`${styles.compactMediaLabel} ${field.required ? styles.requiredLabel : ''}`}
+            >
+              {compactLabel || field.label}
+            </span>
           )}
         </button>
         {mediaUrl ? (
@@ -1286,7 +1344,11 @@ export function GenerationControlBar({
     return (
       <div key={field.key} className={styles.compactArrayField}>
         <div className={styles.compactArrayHeader}>
-          <span className={styles.compactArrayLabel}>{field.label}</span>
+          <span
+            className={`${styles.compactArrayLabel} ${field.required ? styles.requiredLabel : ''}`}
+          >
+            {field.label}
+          </span>
         </div>
         <div className={styles.compactArrayItems}>
           {values.map((mediaUrl, index) => {
@@ -1367,31 +1429,38 @@ export function GenerationControlBar({
 
   const renderDragMediaGroup = (group: MediaGroupDescriptor) => {
     if (group.layout === 'gallery') {
-      return renderMultipleMediaField(group.fields[0], {
-        showMeta: false,
-        fullWidth: true,
-      });
+      return (
+        <div key={group.groupKey} className={styles.dragGroup}>
+          {renderMultipleMediaField(group.fields[0], {
+            showMeta: false,
+            fullWidth: true,
+            dragFill: true,
+          })}
+        </div>
+      );
     }
 
     if (group.layout === 'single') {
-      return renderSingleMediaField(group.fields[0], {
-        showMeta: false,
-        fullWidth: true,
-      });
+      return (
+        <div key={group.groupKey} className={styles.dragGroup}>
+          {renderSingleMediaField(group.fields[0], {
+            showMeta: false,
+            fullWidth: true,
+            dragFill: true,
+          })}
+        </div>
+      );
     }
 
     return (
-      <div key={group.groupKey} className={styles.mediaSequenceRow}>
-        {group.fields.map((field, index) => (
-          <Fragment key={field.key}>
-            {index > 0 ? (
-              <span className={styles.mediaSequenceConnector} aria-hidden="true">
-                ↔
-              </span>
-            ) : null}
-            {renderSingleMediaField(field, { showMeta: false })}
-          </Fragment>
-        ))}
+      <div key={group.groupKey} className={`${styles.dragGroup} ${styles.dragSequenceStack}`}>
+        {group.fields.map((field) =>
+          renderSingleMediaField(field, {
+            showMeta: false,
+            fullWidth: true,
+            dragFill: true,
+          }),
+        )}
       </div>
     );
   };
@@ -1424,195 +1493,205 @@ export function GenerationControlBar({
           onDrop={handleComposerDrop}
         >
           {shouldShowExclusiveDragState ? (
-            <div className={styles.dragOnlySection}>
+            <div
+              className={`${styles.dragOnlySection} ${mediaGroups.length > 1 ? styles.dragOnlySectionSplit : ''}`}
+            >
               {mediaGroups.map((group) => renderDragMediaGroup(group))}
             </div>
           ) : (
             <>
-              {mediaGroups.length > 0 && (
-                <div className={styles.topMediaSection}>
-                  <div className={styles.compactMediaSection}>
-                    {mediaGroups.map((group) => renderCompactMediaGroup(group))}
-                  </div>
-                </div>
-              )}
-
-              <div className={styles.modelRow}>
-                <div className={styles.mediaToggle}>
-                  <button
-                    type="button"
-                    className={`${styles.mediaButton} ${resolvedMediaType === 'image' ? styles.mediaButtonActive : ''}`}
-                    onClick={() => {
-                      setSelectedMediaType('image');
-                      setSelectedModelKey('');
-                      setSelectedOperationKey('');
-                      setFieldErrors({});
-                      setActiveDropTargetId(null);
-                      setIsPickerOpen(false);
-                      setActivePickerTarget(null);
-                    }}
-                    disabled={isGenerating || (generationCapabilities?.image.length ?? 0) === 0}
-                  >
-                    Image
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.mediaButton} ${resolvedMediaType === 'video' ? styles.mediaButtonActive : ''}`}
-                    onClick={() => {
-                      setSelectedMediaType('video');
-                      setSelectedModelKey('');
-                      setSelectedOperationKey('');
-                      setFieldErrors({});
-                      setActiveDropTargetId(null);
-                      setIsPickerOpen(false);
-                      setActivePickerTarget(null);
-                    }}
-                    disabled={isGenerating || (generationCapabilities?.video.length ?? 0) === 0}
-                  >
-                    Video
-                  </button>
-                </div>
-
-                <label className={styles.selectWrap} aria-label="Model">
-                  <select
-                    className={styles.select}
-                    value={selectedModel?.modelKey ?? ''}
-                    onChange={(event) => {
-                      setSelectedModelKey(event.target.value);
-                      setSelectedOperationKey('');
-                      setFieldErrors({});
-                      setActiveDropTargetId(null);
-                      setIsPickerOpen(false);
-                      setActivePickerTarget(null);
-                    }}
-                    disabled={isGenerating || isCapabilitiesLoading || mediaTypeModels.length === 0}
-                  >
-                    {mediaTypeModels.length === 0 ? (
-                      <option value="">No models</option>
-                    ) : (
-                      mediaTypeModels.map((model) => (
-                        <option key={model.modelKey} value={model.modelKey}>
-                          {model.model}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </label>
-
-                <label className={styles.selectWrap} aria-label="Operation">
-                  <select
-                    className={styles.select}
-                    value={selectedOperation?.operationKey ?? ''}
-                    onChange={(event) => {
-                      setSelectedOperationKey(event.target.value);
-                      setFieldErrors({});
-                      setActiveDropTargetId(null);
-                      setIsPickerOpen(false);
-                      setActivePickerTarget(null);
-                    }}
-                    disabled={
-                      isGenerating || !selectedModel || selectedModel.operations.length === 0
-                    }
-                  >
-                    {!selectedModel || selectedModel.operations.length === 0 ? (
-                      <option value="">No operations</option>
-                    ) : (
-                      selectedModel.operations.map((operation) => (
-                        <option key={operation.operationKey} value={operation.operationKey}>
-                          {operation.operationName}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </label>
-              </div>
-
-              {basicFields.length > 0 && (
-                <div className={styles.optionsRow}>{basicFields.map(renderAdditionalField)}</div>
-              )}
-
-              {advancedFields.length > 0 && (
-                <div className={styles.advancedWrap}>
-                  <button
-                    type="button"
-                    className={styles.advancedToggle}
-                    onClick={() =>
-                      setAdvancedSettingsSelectionKey((previous) =>
-                        previous === currentSelectionKey ? null : currentSelectionKey,
-                      )
-                    }
-                    disabled={isGenerating}
-                    aria-expanded={showAdvancedSettings}
-                  >
-                    {showAdvancedSettings ? 'Hide advanced settings' : 'Show advanced settings'}
-                  </button>
-
-                  {showAdvancedSettings && (
-                    <div className={styles.optionsRow}>
-                      {advancedFields.map(renderAdditionalField)}
+              <div className={styles.formBody}>
+                <section className={styles.formSection}>
+                  <div className={styles.modeSwitchRow}>
+                    <div className={styles.mediaToggle}>
+                      <button
+                        type="button"
+                        className={`${styles.mediaButton} ${resolvedMediaType === 'image' ? styles.mediaButtonActive : ''}`}
+                        onClick={() => {
+                          setSelectedMediaType('image');
+                          setSelectedModelKey('');
+                          setSelectedOperationKey('');
+                          setFieldErrors({});
+                          setActiveDropTargetId(null);
+                          setIsPickerOpen(false);
+                          setActivePickerTarget(null);
+                        }}
+                        disabled={isGenerating || (generationCapabilities?.image.length ?? 0) === 0}
+                      >
+                        Image
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.mediaButton} ${resolvedMediaType === 'video' ? styles.mediaButtonActive : ''}`}
+                        onClick={() => {
+                          setSelectedMediaType('video');
+                          setSelectedModelKey('');
+                          setSelectedOperationKey('');
+                          setFieldErrors({});
+                          setActiveDropTargetId(null);
+                          setIsPickerOpen(false);
+                          setActivePickerTarget(null);
+                        }}
+                        disabled={isGenerating || (generationCapabilities?.video.length ?? 0) === 0}
+                      >
+                        Video
+                      </button>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
 
-              <div className={styles.promptShell}>
-                <textarea
-                  ref={promptRef}
-                  className={`${styles.promptInput} ${fieldErrors.prompt ? styles.promptInputError : ''}`}
-                  value={promptValue}
-                  onChange={(event) => handlePromptChange(event.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={
-                    promptField?.description?.trim().length
-                      ? promptField.description
-                      : 'Describe what you want to generate'
-                  }
-                  rows={1}
-                  style={{ height: 'auto', minHeight: '44px', maxHeight: '120px' }}
-                  onInput={(event) => {
-                    const target = event.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
-                  }}
-                />
+                  <div className={styles.modelSelectStack}>
+                    <label className={styles.selectWrap} aria-label="Model">
+                      <select
+                        className={styles.select}
+                        value={selectedModel?.modelKey ?? ''}
+                        onChange={(event) => {
+                          setSelectedModelKey(event.target.value);
+                          setSelectedOperationKey('');
+                          setFieldErrors({});
+                          setActiveDropTargetId(null);
+                          setIsPickerOpen(false);
+                          setActivePickerTarget(null);
+                        }}
+                        disabled={
+                          isGenerating || isCapabilitiesLoading || mediaTypeModels.length === 0
+                        }
+                      >
+                        {mediaTypeModels.length === 0 ? (
+                          <option value="">No models</option>
+                        ) : (
+                          mediaTypeModels.map((model) => (
+                            <option key={model.modelKey} value={model.modelKey}>
+                              {model.model}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </label>
+
+                    {!!selectedModel && selectedModel.operations.length > 1 && (
+                      <label className={styles.selectWrap} aria-label="Operation">
+                        <select
+                          className={styles.select}
+                          value={selectedOperation?.operationKey ?? ''}
+                          onChange={(event) => {
+                            setSelectedOperationKey(event.target.value);
+                            setFieldErrors({});
+                            setActiveDropTargetId(null);
+                            setIsPickerOpen(false);
+                            setActivePickerTarget(null);
+                          }}
+                          disabled={isGenerating || selectedModel.operations.length === 0}
+                        >
+                          {selectedModel.operations.map((operation) => (
+                            <option key={operation.operationKey} value={operation.operationKey}>
+                              {operation.operationName}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                  </div>
+                </section>
+
+                {mediaGroups.length > 0 && (
+                  <section className={styles.formSection}>
+                    <label
+                      className={`${styles.formLabel} ${mediaSectionHasRequired ? styles.requiredLabel : ''}`}
+                    >
+                      {mediaSectionTitle}
+                    </label>
+                    <div className={styles.topMediaSection}>
+                      <div className={styles.compactMediaSection}>
+                        {mediaGroups.map((group) => renderCompactMediaGroup(group))}
+                      </div>
+                    </div>
+                    <p className={styles.mediaHint}>
+                      Hint: drag and drop collection images, or click Add to select references.
+                    </p>
+                  </section>
+                )}
+
+                <section className={styles.formSection}>
+                  <label
+                    className={`${styles.formLabel} ${promptIsRequired ? styles.requiredLabel : ''}`}
+                  >
+                    Prompt
+                  </label>
+                  <div className={styles.promptShell}>
+                    <textarea
+                      ref={promptRef}
+                      className={`${styles.promptInput} ${fieldErrors.prompt ? styles.promptInputError : ''}`}
+                      value={promptValue}
+                      onChange={(event) => handlePromptChange(event.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder={
+                        promptField?.description?.trim().length
+                          ? promptField.description
+                          : 'Describe what you want to generate'
+                      }
+                      rows={6}
+                      style={{ height: 'auto', minHeight: '180px', maxHeight: '360px' }}
+                      onInput={(event) => {
+                        const target = event.target as HTMLTextAreaElement;
+                        target.style.height = 'auto';
+                        target.style.height = `${Math.min(target.scrollHeight, 360)}px`;
+                      }}
+                    />
+                  </div>
+                  {fieldErrors.prompt && <p className={styles.fieldError}>{fieldErrors.prompt}</p>}
+                </section>
+
+                {basicFields.length > 0 && (
+                  <section className={styles.formSection}>
+                    <div className={styles.optionsRow}>
+                      {basicFields.map(renderAdditionalField)}
+                    </div>
+                  </section>
+                )}
+
+                {advancedFields.length > 0 && (
+                  <div className={styles.advancedWrap}>
+                    <button
+                      type="button"
+                      className={styles.advancedToggle}
+                      onClick={() =>
+                        setAdvancedSettingsSelectionKey((previous) =>
+                          previous === currentSelectionKey ? null : currentSelectionKey,
+                        )
+                      }
+                      disabled={isGenerating}
+                      aria-expanded={showAdvancedSettings}
+                    >
+                      {showAdvancedSettings ? 'Hide advanced settings' : 'Show advanced settings'}
+                    </button>
+
+                    {showAdvancedSettings && (
+                      <section className={styles.formSection}>
+                        <div className={styles.optionsRow}>
+                          {advancedFields.map(renderAdditionalField)}
+                        </div>
+                      </section>
+                    )}
+                  </div>
+                )}
               </div>
-              {fieldErrors.prompt && <p className={styles.fieldError}>{fieldErrors.prompt}</p>}
 
               <div className={styles.bottomRow}>
-                <span className={styles.plusButtonSpacer} />
-
+                <button
+                  type="button"
+                  className={styles.resetButton}
+                  onClick={handleReset}
+                  disabled={isGenerating}
+                >
+                  Reset
+                </button>
                 <button
                   type="button"
                   className={styles.generateButton}
                   onClick={handleGenerate}
                   disabled={!canGenerate}
                 >
-                  {isGenerating ? (
-                    '…'
-                  ) : (
-                    <svg
-                      className={styles.generateIcon}
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M21.5 2.5L10.5 13.5"
-                        stroke="currentColor"
-                        strokeWidth="1.9"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M21.5 2.5L14.5 21.5L10.5 13.5L2.5 9.5L21.5 2.5Z"
-                        stroke="currentColor"
-                        strokeWidth="1.9"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
+                  {isGenerating ? 'Running...' : 'Run'}
                 </button>
               </div>
             </>
