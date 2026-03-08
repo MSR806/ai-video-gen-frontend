@@ -10,6 +10,7 @@ interface CollectionItemCardProps {
   onDownload: (item: CollectionItem) => void;
   onDelete?: (item: CollectionItem) => void;
   isDeleting?: boolean;
+  onAspectRatioResolved?: (ratio: number) => void;
 }
 
 export function CollectionItemCard({
@@ -19,6 +20,7 @@ export function CollectionItemCard({
   onDownload,
   onDelete,
   isDeleting = false,
+  onAspectRatioResolved,
 }: CollectionItemCardProps) {
   const handleClick = () => {
     onClick(item);
@@ -38,6 +40,9 @@ export function CollectionItemCard({
     const resolvedAspectRatio = width / height;
     if (Math.abs(resolvedAspectRatio - cardAspectRatio) > 0.01) {
       setCardAspectRatio(resolvedAspectRatio);
+    }
+    if (onAspectRatioResolved && Math.abs(resolvedAspectRatio - defaultAspectRatio) > 0.01) {
+      onAspectRatioResolved(resolvedAspectRatio);
     }
   };
 
@@ -83,8 +88,14 @@ export function CollectionItemCard({
   };
 
   const [failedThumbnailKey, setFailedThumbnailKey] = useState<string | null>(null);
+  const [isMediaLoaded, setIsMediaLoaded] = useState(false);
 
   const renderMedia = () => {
+    // Show shimmering skeleton continuously if generating
+    if (isGenerating) {
+      return <div className={styles.skeleton} />;
+    }
+
     const thumbnailFailed = failedThumbnailKey === mediaKey;
     if (!thumbnailFailed) {
       const imageSource =
@@ -99,15 +110,20 @@ export function CollectionItemCard({
 
       return (
         <>
+          <div className={`${styles.skeleton} ${isMediaLoaded ? styles.skeletonHidden : ''}`} />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageSource}
             alt={item.name}
-            className={styles.thumbnail}
+            className={`${styles.thumbnail} ${isMediaLoaded ? styles.imageLoaded : styles.imageUnloaded}`}
             loading="lazy"
-            onLoad={(event) =>
-              updateAspectRatio(event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)
-            }
+            onLoad={(event) => {
+              updateAspectRatio(
+                event.currentTarget.naturalWidth,
+                event.currentTarget.naturalHeight,
+              );
+              setIsMediaLoaded(true);
+            }}
             onError={() => setFailedThumbnailKey(mediaKey)}
           />
         </>

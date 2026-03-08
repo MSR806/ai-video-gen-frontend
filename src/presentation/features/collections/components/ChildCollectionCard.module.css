@@ -1,6 +1,7 @@
 .cardShell {
   position: relative;
-  flex: 0 0 auto;
+  width: 100%;
+  height: 100%;
 }
 
 .card {
@@ -10,9 +11,8 @@
   cursor: pointer;
   transition: all var(--transition-normal);
   display: block;
-  height: 400px;
-  width: auto;
-  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
   padding: 0;
   background:
     radial-gradient(
