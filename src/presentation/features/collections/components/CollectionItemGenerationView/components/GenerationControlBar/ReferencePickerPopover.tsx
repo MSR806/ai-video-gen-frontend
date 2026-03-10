@@ -69,6 +69,11 @@ const getAssetAspectRatio = (item: CollectionItem): number => {
   return 1;
 };
 
+const FLOATING_PREVIEW_MAX_WIDTH = 480;
+const FLOATING_PREVIEW_MAX_HEIGHT = 420;
+const FLOATING_PREVIEW_GAP = 10;
+const FLOATING_PREVIEW_VIEWPORT_PADDING = 12;
+
 export function ReferencePickerPopover({
   collections,
   currentCollectionId,
@@ -164,10 +169,37 @@ export function ReferencePickerPopover({
 
       hoverTimerRef.current = setTimeout(() => {
         const rect = target.getBoundingClientRect();
-        // Center horizontally on the thumbnail
-        const left = rect.left + rect.width / 2;
-        // Place above the thumbnail with a small gap
-        const top = rect.top - 10;
+        const previewWidth = Math.min(
+          FLOATING_PREVIEW_MAX_WIDTH,
+          Math.max(180, window.innerWidth - FLOATING_PREVIEW_VIEWPORT_PADDING * 2),
+        );
+        const previewHeight = Math.min(
+          FLOATING_PREVIEW_MAX_HEIGHT,
+          Math.max(160, window.innerHeight - FLOATING_PREVIEW_VIEWPORT_PADDING * 2),
+        );
+
+        const idealLeft = rect.left + rect.width / 2 - previewWidth / 2;
+        const left = Math.min(
+          Math.max(idealLeft, FLOATING_PREVIEW_VIEWPORT_PADDING),
+          Math.max(
+            FLOATING_PREVIEW_VIEWPORT_PADDING,
+            window.innerWidth - previewWidth - FLOATING_PREVIEW_VIEWPORT_PADDING,
+          ),
+        );
+
+        const aboveTop = rect.top - previewHeight - FLOATING_PREVIEW_GAP;
+        const belowTop = rect.bottom + FLOATING_PREVIEW_GAP;
+        const top =
+          aboveTop >= FLOATING_PREVIEW_VIEWPORT_PADDING
+            ? aboveTop
+            : Math.min(
+                belowTop,
+                Math.max(
+                  FLOATING_PREVIEW_VIEWPORT_PADDING,
+                  window.innerHeight - previewHeight - FLOATING_PREVIEW_VIEWPORT_PADDING,
+                ),
+              );
+
         setPreviewPosition({ top, left });
         setHoveredItem(item);
       }, 400);

@@ -72,8 +72,20 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  width: min(70vw, 680px);
+  width: min(78vw, 980px);
   height: min(88vh, 980px);
+}
+
+.mediaStageLandscape {
+  width: min(92vw, 1520px);
+}
+
+.mediaStagePortrait {
+  width: min(62vw, 760px);
+}
+
+.mediaStageSquare {
+  width: min(76vw, 920px);
 }
 
 .media {
@@ -131,7 +143,13 @@
 
 @media (max-width: 980px) {
   .mediaStage {
-    width: min(85vw, 560px);
+    width: min(92vw, 860px);
+  }
+
+  .mediaStageLandscape,
+  .mediaStagePortrait,
+  .mediaStageSquare {
+    width: min(92vw, 860px);
   }
 
   .selectionDock {

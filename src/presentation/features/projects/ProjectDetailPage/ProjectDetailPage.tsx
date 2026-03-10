@@ -97,6 +97,9 @@ const fetchMediaResponse = async (mediaUrl: string): Promise<Response> => {
   return fetch(mediaUrl);
 };
 
+const isClipboardPermissionError = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === 'NotAllowedError';
+
 const ACTIVE_GENERATION_RUNS_POLL_INTERVAL_MS = 3000;
 const ACTIVE_GENERATION_RUNS_MAX_POLL_ATTEMPTS = 240;
 const MISSING_RUN_FALLBACK_REFRESH_INTERVAL_MS = 15000;
@@ -559,6 +562,11 @@ export function ProjectDetailPage({
         return;
       }
 
+      if (typeof document !== 'undefined' && !document.hasFocus()) {
+        addToast('Click back into the page, then try copying again.', 'info');
+        return;
+      }
+
       try {
         const response = await fetchMediaResponse(mediaUrl);
         if (!response.ok) {
@@ -581,6 +589,11 @@ export function ProjectDetailPage({
 
         addToast('Image copied to clipboard.', 'success');
       } catch (error) {
+        if (isClipboardPermissionError(error)) {
+          addToast('Clipboard access was blocked. Click the page and try again.', 'info');
+          return;
+        }
+
         console.error('Error copying collection item image:', error);
         addToast('Failed to copy image. Please try again.', 'error');
       }

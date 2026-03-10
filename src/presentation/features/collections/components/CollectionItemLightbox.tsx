@@ -43,6 +43,16 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
   const previewText = item.description?.trim() || item.name;
   const mediaUrl = item.url?.trim() ?? '';
   const thumbnailUrl = item.metadata.thumbnailUrl?.trim() ?? '';
+  const mediaAspectRatio =
+    item.metadata.width > 0 && item.metadata.height > 0
+      ? item.metadata.width / item.metadata.height
+      : null;
+  const mediaStageOrientationClassName =
+    mediaAspectRatio !== null && mediaAspectRatio >= 1.1
+      ? styles.mediaStageLandscape
+      : mediaAspectRatio !== null && mediaAspectRatio <= 0.9
+        ? styles.mediaStagePortrait
+        : styles.mediaStageSquare;
   const previewKey = `${item.id}:${thumbnailUrl}:${mediaUrl}`;
   const selectionPreviewFailed = failedSelectionPreviewKey === previewKey;
   const hasUsableVideoThumbnail =
@@ -57,7 +67,7 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
       </button>
 
       <div className={styles.viewer} onClick={handleContentClick}>
-        <div className={styles.mediaStage}>
+        <div className={`${styles.mediaStage} ${mediaStageOrientationClassName}`}>
           {!canRenderMedia ? (
             <div className={styles.selectionThumbFallback}>Media is still processing...</div>
           ) : item.mediaType === 'image' ? (

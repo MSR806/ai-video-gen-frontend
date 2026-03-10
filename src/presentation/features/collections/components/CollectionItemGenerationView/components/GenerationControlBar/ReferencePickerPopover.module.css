@@ -253,7 +253,6 @@
 .floatingPreview {
   position: fixed;
   z-index: 9999;
-  transform: translate(-50%, -100%);
   pointer-events: none;
   border-radius: 10px;
   overflow: hidden;
@@ -272,8 +271,8 @@
 
 .floatingPreviewImage {
   display: block;
-  max-width: 480px;
-  max-height: 420px;
+  max-width: min(480px, calc(100vw - 24px));
+  max-height: min(420px, calc(100vh - 24px));
   width: auto;
   height: auto;
   object-fit: contain;
