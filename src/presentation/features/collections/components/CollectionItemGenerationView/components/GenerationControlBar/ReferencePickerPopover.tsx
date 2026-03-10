@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { Collection } from '@core/collection';
 import type { CollectionContents, CollectionItem } from '@core/collection-item';
@@ -81,6 +81,28 @@ export function ReferencePickerPopover({
   onNavigateCollection,
   onSelectItem,
 }: ReferencePickerPopoverProps) {
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [onClose]);
+
   const [loadedAspectRatios, setLoadedAspectRatios] = useState<Record<string, number>>({});
   const [hoveredItem, setHoveredItem] = useState<CollectionItem | null>(null);
   const [previewPosition, setPreviewPosition] = useState<{ top: number; left: number } | null>(
@@ -264,61 +286,74 @@ export function ReferencePickerPopover({
     );
   };
 
-  return (
-    <div className={styles.popover} role="dialog" aria-label="Reference picker">
-      <div className={styles.header}>
-        <div className={styles.breadcrumb}>
-          <button type="button" className={styles.breadcrumbButton} onClick={onNavigateRoot}>
-            Collections
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(
+    <div className={styles.backdrop} onClick={onClose}>
+      <div
+        className={styles.popover}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Reference picker"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className={styles.header}>
+          <div className={styles.breadcrumb}>
+            <button type="button" className={styles.breadcrumbButton} onClick={onNavigateRoot}>
+              Collections
+            </button>
+            {breadcrumb.map((collection, index) => {
+              const isLast = index === breadcrumb.length - 1;
+              return (
+                <span key={collection.id} className={styles.crumbGroup}>
+                  <span className={styles.crumbDivider}>/</span>
+                  {isLast ? (
+                    <span className={styles.crumbCurrent}>{collection.name}</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.breadcrumbButton}
+                      onClick={() => onNavigateCollection(collection.id)}
+                    >
+                      {collection.name}
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            className={styles.closeButton}
+            onClick={onClose}
+            aria-label="Close picker"
+          >
+            ×
           </button>
-          {breadcrumb.map((collection, index) => {
-            const isLast = index === breadcrumb.length - 1;
-            return (
-              <span key={collection.id} className={styles.crumbGroup}>
-                <span className={styles.crumbDivider}>/</span>
-                {isLast ? (
-                  <span className={styles.crumbCurrent}>{collection.name}</span>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.breadcrumbButton}
-                    onClick={() => onNavigateCollection(collection.id)}
-                  >
-                    {collection.name}
-                  </button>
-                )}
-              </span>
-            );
-          })}
         </div>
 
-        <button
-          type="button"
-          className={styles.closeButton}
-          onClick={onClose}
-          aria-label="Close picker"
-        >
-          ×
-        </button>
-      </div>
+        <div className={styles.metaRow}>
+          <span className={styles.metaLabel}>{`${selectedMediaUrls.length} selected`}</span>
+        </div>
 
-      <div className={styles.metaRow}>
-        <span className={styles.metaLabel}>{`${selectedMediaUrls.length} selected`}</span>
-      </div>
+        <div className={styles.body}>
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>
+              {currentCollectionId === null ? 'Collections' : 'Subcollections'}
+            </h3>
+            {renderCollectionList()}
+          </section>
 
-      <div className={styles.body}>
-        <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>
-            {currentCollectionId === null ? 'Collections' : 'Subcollections'}
-          </h3>
-          {renderCollectionList()}
-        </section>
-
-        <section className={`${styles.section} ${styles.imageSection}`}>
-          <h3 className={styles.sectionTitle}>Reference Images</h3>
-          {renderItems()}
-        </section>
+          <section className={`${styles.section} ${styles.imageSection}`}>
+            <h3 className={styles.sectionTitle}>Reference Images</h3>
+            {renderItems()}
+          </section>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

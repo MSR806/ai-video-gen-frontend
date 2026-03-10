@@ -447,7 +447,6 @@ export function GenerationControlBar({
   const [pickerLoadingCollectionId, setPickerLoadingCollectionId] = useState<string | null>(null);
   const [pickerErrorMessage, setPickerErrorMessage] = useState<string | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
-  const pickerContainerRef = useRef<HTMLDivElement>(null);
 
   const resolvedMediaType: GenerationMediaType = useMemo(() => {
     if (!generationCapabilities) {
@@ -569,38 +568,6 @@ export function GenerationControlBar({
   const currentSelectionKey = `${selectedModel?.modelKey ?? ''}:${selectedOperation?.operationKey ?? ''}`;
   const showAdvancedSettings = advancedSettingsSelectionKey === currentSelectionKey;
   const shouldShowExclusiveDragState = isIngredientDragActive && mediaFields.length > 0;
-
-  useEffect(() => {
-    if (!isPickerOpen) {
-      return;
-    }
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!pickerContainerRef.current) {
-        return;
-      }
-
-      if (!pickerContainerRef.current.contains(event.target as Node)) {
-        setIsPickerOpen(false);
-        setActivePickerTarget(null);
-      }
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsPickerOpen(false);
-        setActivePickerTarget(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isPickerOpen]);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -1467,7 +1434,7 @@ export function GenerationControlBar({
 
   return (
     <div className={styles.container}>
-      <div className={styles.composerWrap} ref={pickerContainerRef}>
+      <div className={styles.composerWrap}>
         {isPickerOpen && activePickerField && (
           <ReferencePickerPopover
             collections={collections}

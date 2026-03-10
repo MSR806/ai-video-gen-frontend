@@ -304,6 +304,22 @@ describe('GenerationControlBar', () => {
     expect(screen.queryByAltText('Reference Images 1')).toBeNull();
   });
 
+  it('opens the picker modal and selects references from collections', async () => {
+    renderControlBar(arrayCapabilities);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Reference Images' }));
+    expect(screen.getByRole('dialog', { name: 'Reference picker' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open collection Collection One' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use Reference as reference' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Reference picker' })).toBeNull();
+    });
+
+    expect(screen.getByAltText('Reference Images 1')).toBeTruthy();
+  });
+
   it('requires explicit field targeting when multiple URI media fields exist', () => {
     renderControlBar(pairedFrameCapabilities);
 
