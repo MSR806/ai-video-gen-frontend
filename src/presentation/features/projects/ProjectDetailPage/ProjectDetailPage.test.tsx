@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from 'bun:test';
-import { act, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import type { Collection } from '@core/collection';
 import type { CollectionItem, GenerationCapabilities } from '@core/collection-item';
 
@@ -120,13 +120,8 @@ describe('ProjectDetailPage', () => {
       />,
     );
 
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    const sidebar = screen.getByLabelText('Generation controls');
-    const promptInput = within(sidebar).getByRole('textbox');
+    const sidebar = await screen.findByLabelText('Generation controls');
+    const promptInput = await within(sidebar).findByRole('textbox');
 
     expect(promptInput.closest('aside')).toBe(sidebar);
     expect(screen.getAllByRole('textbox')).toHaveLength(1);

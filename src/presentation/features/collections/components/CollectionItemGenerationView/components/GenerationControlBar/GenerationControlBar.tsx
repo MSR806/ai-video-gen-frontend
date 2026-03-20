@@ -47,7 +47,50 @@ interface MediaFieldTarget {
   index: number | null;
 }
 
+interface GenerationControlBarCache {
+  selectedMediaType: GenerationMediaType;
+  selectedModelKey: string;
+  selectedOperationKey: string;
+  fieldValues: Record<string, unknown>;
+}
+
 const URL_PATTERN = /https?:\/\/[^\s]+/gi;
+const GENERATION_CONTROL_CACHE_KEY_PREFIX = 'ai-video-gen:generation-control-cache';
+
+const getGenerationControlCacheKey = (projectId: string, collectionId: string): string =>
+  `${GENERATION_CONTROL_CACHE_KEY_PREFIX}:${projectId}:${collectionId}`;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const parseGenerationControlBarCache = (raw: string): GenerationControlBarCache | null => {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed)) {
+      return null;
+    }
+
+    const selectedMediaType = parsed.selectedMediaType;
+    if (selectedMediaType !== 'image' && selectedMediaType !== 'video') {
+      return null;
+    }
+
+    const selectedModelKey =
+      typeof parsed.selectedModelKey === 'string' ? parsed.selectedModelKey : '';
+    const selectedOperationKey =
+      typeof parsed.selectedOperationKey === 'string' ? parsed.selectedOperationKey : '';
+    const fieldValues = isRecord(parsed.fieldValues) ? parsed.fieldValues : {};
+
+    return {
+      selectedMediaType,
+      selectedModelKey,
+      selectedOperationKey,
+      fieldValues,
+    };
+  } catch {
+    return null;
+  }
+};
 
 const isHttpUrl = (value: string): boolean => {
   try {
@@ -425,6 +468,9 @@ export function GenerationControlBar({
   selectedCollectionChildCollections,
   loadCollectionContentsForPicker,
 }: GenerationControlBarProps) {
+  const skipNextCachePersistRef = useRef(false);
+  const isCollectionStateHydratingRef = useRef(false);
+  const previousCollectionIdRef = useRef(selectedCollectionId);
   const [selectedMediaType, setSelectedMediaType] = useState<GenerationMediaType>(
     chooseInitialMediaType(generationCapabilities),
   );
@@ -508,6 +554,28 @@ export function GenerationControlBar({
   }, [selectedOperation]);
 
   const mediaFields = useMemo(() => mediaGroups.flatMap((group) => group.fields), [mediaGroups]);
+  const cacheTransientFieldKeys = useMemo(() => {
+    const keys = new Set<string>(['prompt']);
+
+    if (!generationCapabilities) {
+      mediaFields.forEach((field) => {
+        keys.add(field.key);
+      });
+      return keys;
+    }
+
+    [...generationCapabilities.image, ...generationCapabilities.video].forEach((model) => {
+      model.operations.forEach((operation) => {
+        operation.fields.forEach((field) => {
+          if (isUriSingleMediaField(field) || isUriArrayMediaField(field)) {
+            keys.add(field.key);
+          }
+        });
+      });
+    });
+
+    return keys;
+  }, [generationCapabilities, mediaFields]);
 
   const composerDropTarget = useMemo<MediaFieldTarget | null>(() => {
     if (mediaFields.length !== 1) {
@@ -590,6 +658,89 @@ export function GenerationControlBar({
       observer.disconnect();
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const cacheKey = getGenerationControlCacheKey(projectId, selectedCollectionId);
+    let raw: string | null = null;
+    try {
+      raw = window.localStorage.getItem(cacheKey);
+    } catch {
+      raw = null;
+    }
+    const cache = raw ? parseGenerationControlBarCache(raw) : null;
+    const isCollectionSwitch = previousCollectionIdRef.current !== selectedCollectionId;
+
+    skipNextCachePersistRef.current = true;
+    isCollectionStateHydratingRef.current = isCollectionSwitch;
+    previousCollectionIdRef.current = selectedCollectionId;
+
+    const timeoutId = window.setTimeout(() => {
+      if (!cache) {
+        setSelectedMediaType('image');
+        setSelectedModelKey('');
+        setSelectedOperationKey('');
+        setFieldValues({});
+      } else {
+        setSelectedMediaType(cache.selectedMediaType);
+        setSelectedModelKey(cache.selectedModelKey);
+        setSelectedOperationKey(cache.selectedOperationKey);
+        setFieldValues(cache.fieldValues);
+      }
+
+      setFieldErrors({});
+      setAdvancedSettingsSelectionKey(null);
+      setActiveDropTargetId(null);
+      setIsPickerOpen(false);
+      setActivePickerTarget(null);
+      isCollectionStateHydratingRef.current = false;
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [projectId, selectedCollectionId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (skipNextCachePersistRef.current) {
+      skipNextCachePersistRef.current = false;
+      return;
+    }
+
+    const cacheKey = getGenerationControlCacheKey(projectId, selectedCollectionId);
+    const persistedFieldValues = Object.fromEntries(
+      Object.entries(fieldValues).filter(([fieldKey]) => !cacheTransientFieldKeys.has(fieldKey)),
+    );
+    const cache: GenerationControlBarCache = {
+      selectedMediaType,
+      selectedModelKey: selectedModel?.modelKey ?? selectedModelKey,
+      selectedOperationKey: selectedOperation?.operationKey ?? selectedOperationKey,
+      fieldValues: persistedFieldValues,
+    };
+
+    try {
+      window.localStorage.setItem(cacheKey, JSON.stringify(cache));
+    } catch {
+      // Ignore cache write failures (storage disabled/full).
+    }
+  }, [
+    fieldValues,
+    projectId,
+    selectedCollectionId,
+    selectedModelKey,
+    selectedOperationKey,
+    selectedMediaType,
+    selectedModel,
+    selectedOperation,
+    cacheTransientFieldKeys,
+  ]);
 
   const ensurePickerCollectionLoaded = async (collectionId: string): Promise<void> => {
     if (collectionId === selectedCollectionId) {
@@ -864,7 +1015,13 @@ export function GenerationControlBar({
   };
 
   const handleGenerate = () => {
-    if (!selectedModel || !selectedOperation || isGenerating || isCapabilitiesLoading) {
+    if (
+      !selectedModel ||
+      !selectedOperation ||
+      isGenerating ||
+      isCapabilitiesLoading ||
+      isCollectionStateHydratingRef.current
+    ) {
       return;
     }
 
@@ -894,7 +1051,13 @@ export function GenerationControlBar({
       outputCount: requestedOutputCount,
     });
 
-    setFieldValues({});
+    setFieldValues((previous) => {
+      const next = { ...previous };
+      cacheTransientFieldKeys.forEach((fieldKey) => {
+        delete next[fieldKey];
+      });
+      return next;
+    });
     setFieldErrors({});
     setActiveDropTargetId(null);
     setIsPickerOpen(false);
