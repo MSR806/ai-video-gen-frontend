@@ -552,14 +552,6 @@ export function GenerationControlBar({
   }, [selectedOperation]);
 
   const mediaFields = useMemo(() => mediaGroups.flatMap((group) => group.fields), [mediaGroups]);
-  const transientFieldKeys = useMemo(() => {
-    const keys = new Set<string>(['prompt']);
-    mediaFields.forEach((field) => {
-      keys.add(field.key);
-    });
-    return keys;
-  }, [mediaFields]);
-
   const cacheTransientFieldKeys = useMemo(() => {
     const keys = new Set<string>(['prompt']);
 
@@ -671,7 +663,12 @@ export function GenerationControlBar({
     }
 
     const cacheKey = getGenerationControlCacheKey(projectId, selectedCollectionId);
-    const raw = window.localStorage.getItem(cacheKey);
+    let raw: string | null = null;
+    try {
+      raw = window.localStorage.getItem(cacheKey);
+    } catch {
+      raw = null;
+    }
     const cache = raw ? parseGenerationControlBarCache(raw) : null;
 
     skipNextCachePersistRef.current = true;
@@ -1044,7 +1041,7 @@ export function GenerationControlBar({
 
     setFieldValues((previous) => {
       const next = { ...previous };
-      transientFieldKeys.forEach((fieldKey) => {
+      cacheTransientFieldKeys.forEach((fieldKey) => {
         delete next[fieldKey];
       });
       return next;
