@@ -560,6 +560,29 @@ export function GenerationControlBar({
     return keys;
   }, [mediaFields]);
 
+  const cacheTransientFieldKeys = useMemo(() => {
+    const keys = new Set<string>(['prompt']);
+
+    if (!generationCapabilities) {
+      mediaFields.forEach((field) => {
+        keys.add(field.key);
+      });
+      return keys;
+    }
+
+    [...generationCapabilities.image, ...generationCapabilities.video].forEach((model) => {
+      model.operations.forEach((operation) => {
+        operation.fields.forEach((field) => {
+          if (isUriSingleMediaField(field) || isUriArrayMediaField(field)) {
+            keys.add(field.key);
+          }
+        });
+      });
+    });
+
+    return keys;
+  }, [generationCapabilities, mediaFields]);
+
   const composerDropTarget = useMemo<MediaFieldTarget | null>(() => {
     if (mediaFields.length !== 1) {
       return null;
@@ -690,12 +713,12 @@ export function GenerationControlBar({
 
     const cacheKey = getGenerationControlCacheKey(projectId, selectedCollectionId);
     const persistedFieldValues = Object.fromEntries(
-      Object.entries(fieldValues).filter(([fieldKey]) => !transientFieldKeys.has(fieldKey)),
+      Object.entries(fieldValues).filter(([fieldKey]) => !cacheTransientFieldKeys.has(fieldKey)),
     );
     const cache: GenerationControlBarCache = {
       selectedMediaType,
-      selectedModelKey: selectedModel?.modelKey ?? '',
-      selectedOperationKey: selectedOperation?.operationKey ?? '',
+      selectedModelKey: selectedModel?.modelKey ?? selectedModelKey,
+      selectedOperationKey: selectedOperation?.operationKey ?? selectedOperationKey,
       fieldValues: persistedFieldValues,
     };
 
@@ -708,10 +731,12 @@ export function GenerationControlBar({
     fieldValues,
     projectId,
     selectedCollectionId,
+    selectedModelKey,
+    selectedOperationKey,
     selectedMediaType,
     selectedModel,
     selectedOperation,
-    transientFieldKeys,
+    cacheTransientFieldKeys,
   ]);
 
   const ensurePickerCollectionLoaded = async (collectionId: string): Promise<void> => {
