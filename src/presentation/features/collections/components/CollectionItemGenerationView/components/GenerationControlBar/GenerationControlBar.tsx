@@ -469,6 +469,8 @@ export function GenerationControlBar({
   loadCollectionContentsForPicker,
 }: GenerationControlBarProps) {
   const skipNextCachePersistRef = useRef(false);
+  const isCollectionStateHydratingRef = useRef(false);
+  const previousCollectionIdRef = useRef(selectedCollectionId);
   const [selectedMediaType, setSelectedMediaType] = useState<GenerationMediaType>(
     chooseInitialMediaType(generationCapabilities),
   );
@@ -670,8 +672,11 @@ export function GenerationControlBar({
       raw = null;
     }
     const cache = raw ? parseGenerationControlBarCache(raw) : null;
+    const isCollectionSwitch = previousCollectionIdRef.current !== selectedCollectionId;
 
     skipNextCachePersistRef.current = true;
+    isCollectionStateHydratingRef.current = isCollectionSwitch;
+    previousCollectionIdRef.current = selectedCollectionId;
 
     const timeoutId = window.setTimeout(() => {
       if (!cache) {
@@ -691,6 +696,7 @@ export function GenerationControlBar({
       setActiveDropTargetId(null);
       setIsPickerOpen(false);
       setActivePickerTarget(null);
+      isCollectionStateHydratingRef.current = false;
     }, 0);
 
     return () => {
@@ -1009,7 +1015,13 @@ export function GenerationControlBar({
   };
 
   const handleGenerate = () => {
-    if (!selectedModel || !selectedOperation || isGenerating || isCapabilitiesLoading) {
+    if (
+      !selectedModel ||
+      !selectedOperation ||
+      isGenerating ||
+      isCapabilitiesLoading ||
+      isCollectionStateHydratingRef.current
+    ) {
       return;
     }
 
