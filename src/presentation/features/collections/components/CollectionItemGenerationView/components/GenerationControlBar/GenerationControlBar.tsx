@@ -651,9 +651,9 @@ export function GenerationControlBar({
     const raw = window.localStorage.getItem(cacheKey);
     const cache = raw ? parseGenerationControlBarCache(raw) : null;
 
-    const timeoutId = window.setTimeout(() => {
-      skipNextCachePersistRef.current = true;
+    skipNextCachePersistRef.current = true;
 
+    const timeoutId = window.setTimeout(() => {
       if (!cache) {
         setSelectedMediaType('image');
         setSelectedModelKey('');
