@@ -1,8 +1,12 @@
-import { describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { GenerationControlBar } from './GenerationControlBar';
 import type { Collection } from '@core/collection';
-import type { CollectionItem, GenerationCapabilities } from '@core/collection-item';
+import type {
+  CollectionItem,
+  CollectionItemGenerationParams,
+  GenerationCapabilities,
+} from '@core/collection-item';
 
 const baseCollection: Collection = {
   id: 'collection-1',
@@ -220,7 +224,7 @@ const nonBatchCapabilities: GenerationCapabilities = {
 
 const renderControlBar = (
   generationCapabilities: GenerationCapabilities,
-  onGenerate = () => undefined,
+  onGenerate: (params: CollectionItemGenerationParams) => void = () => undefined,
 ) =>
   render(
     <GenerationControlBar
@@ -238,10 +242,16 @@ const renderControlBar = (
   );
 
 describe('GenerationControlBar', () => {
-  it('renders URI-array media fields at the top, dedupes dropped URLs, and submits them in inputs', () => {
-    const callLog: Array<Record<string, unknown>> = [];
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
 
-    renderControlBar(arrayCapabilities, (params) => callLog.push(params));
+  it('renders URI-array media fields at the top, dedupes dropped URLs, and submits them in inputs', () => {
+    const callLog: CollectionItemGenerationParams[] = [];
+
+    renderControlBar(arrayCapabilities, (params) => {
+      callLog.push(params);
+    });
 
     const promptInput = screen.getByPlaceholderText('Prompt');
     const addButton = screen.getByRole('button', { name: 'Add Reference Images' });
@@ -469,5 +479,48 @@ describe('GenerationControlBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show advanced settings' }));
     expect(screen.getByText('Seed')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Hide advanced settings' })).toBeTruthy();
+  });
+
+  it('persists non-transient field settings while clearing prompt and references after run', async () => {
+    const { unmount } = renderControlBar(arrayCapabilities);
+
+    const promptInput = screen.getByPlaceholderText('Prompt');
+    const aspectRatioLabel = screen.getByText('Aspect Ratio');
+    const aspectRatioSelect = aspectRatioLabel.parentElement?.querySelector('select');
+    expect(aspectRatioSelect).toBeTruthy();
+
+    fireEvent.change(aspectRatioSelect as HTMLSelectElement, { target: { value: '16:9' } });
+    fireEvent.drop(promptInput, {
+      dataTransfer: {
+        getData(type: string) {
+          if (type === 'application/x-ai-video-gen-item-url') {
+            return 'https://assets.example.com/reference-a.png';
+          }
+
+          return '';
+        },
+      },
+    });
+    fireEvent.change(promptInput, { target: { value: 'Reuse settings' } });
+    fireEvent.keyDown(promptInput, { key: 'Enter', ctrlKey: true });
+
+    expect((promptInput as HTMLTextAreaElement).value).toBe('');
+    expect(screen.queryByAltText('Reference Images 1')).toBeNull();
+    expect((aspectRatioSelect as HTMLSelectElement).value).toBe('16:9');
+
+    unmount();
+    renderControlBar(arrayCapabilities);
+
+    const restoredAspectRatioLabel = screen.getByText('Aspect Ratio');
+    const restoredAspectRatioSelect =
+      restoredAspectRatioLabel.parentElement?.querySelector('select');
+    const restoredPromptInput = screen.getByPlaceholderText('Prompt');
+
+    expect(restoredAspectRatioSelect).toBeTruthy();
+    await waitFor(() => {
+      expect((restoredAspectRatioSelect as HTMLSelectElement).value).toBe('16:9');
+    });
+    expect((restoredPromptInput as HTMLTextAreaElement).value).toBe('');
+    expect(screen.queryByAltText('Reference Images 1')).toBeNull();
   });
 });
