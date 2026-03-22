@@ -6,7 +6,7 @@ export interface JustifiedItem {
   aspectRatio: number; // width / height
 }
 
-export interface JustifiedCell {
+interface JustifiedCell {
   id: string;
   width: number;
   height: number;
