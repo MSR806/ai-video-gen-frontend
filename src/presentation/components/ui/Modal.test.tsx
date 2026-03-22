@@ -32,10 +32,7 @@ describe('Modal', () => {
     fireEvent.click(screen.getByLabelText('Close'));
     expect(closes).toBe(1);
 
-    fireEvent.click(
-      screen.getByRole('heading', { name: 'Example' }).closest('div')?.parentElement
-        ?.parentElement as HTMLElement,
-    );
+    fireEvent.mouseDown(screen.getByRole('dialog').parentElement as HTMLElement);
     expect(closes).toBe(2);
   });
 

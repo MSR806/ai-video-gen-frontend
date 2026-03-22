@@ -73,6 +73,9 @@ export function CollectionCreateModal({
           </label>
           <input
             id="collection-name"
+            name="collectionName"
+            type="text"
+            autoComplete="off"
             className={styles.input}
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -86,6 +89,9 @@ export function CollectionCreateModal({
           </label>
           <input
             id="collection-tag"
+            name="collectionTag"
+            type="text"
+            autoComplete="off"
             className={styles.input}
             value={tag}
             onChange={(event) => setTag(event.target.value)}
@@ -99,6 +105,8 @@ export function CollectionCreateModal({
           </label>
           <textarea
             id="collection-description"
+            name="collectionDescription"
+            autoComplete="off"
             className={styles.textarea}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
@@ -107,7 +115,11 @@ export function CollectionCreateModal({
           />
         </div>
 
-        {error && <p className={styles.error}>{error}</p>}
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
 
         <div className={styles.actions}>
           <Button variant="secondary" onClick={handleClose} disabled={isSubmitting}>

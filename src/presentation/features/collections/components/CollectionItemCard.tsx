@@ -117,6 +117,8 @@ export function CollectionItemCard({
             alt={item.name}
             className={`${styles.thumbnail} ${isMediaLoaded ? styles.imageLoaded : styles.imageUnloaded}`}
             loading="lazy"
+            width={Math.max(item.metadata.width, 1)}
+            height={Math.max(item.metadata.height, 1)}
             onLoad={(event) => {
               updateAspectRatio(
                 event.currentTarget.naturalWidth,
@@ -158,6 +160,7 @@ export function CollectionItemCard({
             {item.mediaType === 'video' && (
               <div className={styles.mediaTypeBadge}>
                 <svg
+                  aria-hidden="true"
                   width="20"
                   height="20"
                   viewBox="0 0 24 24"
@@ -189,6 +192,7 @@ export function CollectionItemCard({
             <div className={styles.descriptionChip}>
               <span className={styles.descriptionIcon} aria-hidden="true">
                 <svg
+                  aria-hidden="true"
                   width="12"
                   height="12"
                   viewBox="0 0 24 24"
@@ -219,19 +223,17 @@ export function CollectionItemCard({
         <div className={styles.menuContainer}>
           <Dropdown
             menuClassName={styles.actionMenu}
-            trigger={
-              <button
-                type="button"
-                className={styles.menuButton}
-                disabled={isDeleting}
-                aria-label={isDeleting ? `Updating ${item.name}` : `Open menu for ${item.name}`}
-              >
-                ⋮
-              </button>
-            }
+            trigger={<span aria-hidden="true">⋮</span>}
+            triggerClassName={styles.menuButton}
+            triggerAriaLabel={isDeleting ? `Updating ${item.name}` : `Open menu for ${item.name}`}
+            disabled={isDeleting}
           >
             <DropdownItem
-              icon={<span className={styles.menuGlyph}>⧉</span>}
+              icon={
+                <span className={styles.menuGlyph} aria-hidden="true">
+                  ⧉
+                </span>
+              }
               label="Copy"
               className={styles.actionItem}
               onClick={() => {
@@ -243,7 +245,11 @@ export function CollectionItemCard({
               disabled={isDeleting || !canCopyImage}
             />
             <DropdownItem
-              icon={<span className={styles.menuGlyph}>↓</span>}
+              icon={
+                <span className={styles.menuGlyph} aria-hidden="true">
+                  ↓
+                </span>
+              }
               label="Download"
               className={styles.actionItem}
               onClick={() => {
@@ -258,7 +264,11 @@ export function CollectionItemCard({
               <>
                 <div className={styles.menuDivider} />
                 <DropdownItem
-                  icon={<span className={styles.menuGlyph}>⌫</span>}
+                  icon={
+                    <span className={styles.menuGlyph} aria-hidden="true">
+                      ⌫
+                    </span>
+                  }
                   label={isDeleting ? 'Deleting...' : 'Delete'}
                   className={styles.actionItem}
                   danger
@@ -283,6 +293,8 @@ export function CollectionItemCard({
             src={thumbnailUrl.length > 0 ? thumbnailUrl : mediaUrl}
             alt=""
             className={styles.dragPreviewImage}
+            width={Math.max(item.metadata.width, 1)}
+            height={Math.max(item.metadata.height, 1)}
           />
         </div>
       )}

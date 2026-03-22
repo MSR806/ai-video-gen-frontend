@@ -4,6 +4,7 @@ import type { Collection } from '@core/collection';
 import { CollectionItemCard } from './CollectionItemCard';
 import { ChildCollectionCard } from './ChildCollectionCard';
 import { useJustifiedLayout, type JustifiedItem } from './useJustifiedLayout';
+import { getProjectCollectionPath } from '@presentation/features/projects/routes';
 import styles from './CollectionItemGrid.module.css';
 
 // Layout constants
@@ -14,9 +15,9 @@ const MAX_ROW_HEIGHT = 520;
 const CONTAINER_PADDING_X = 12; // matches var(--space-3) ≈ 12px
 
 interface CollectionItemGridProps {
+  projectId: string;
   items: CollectionItem[];
   childCollections?: Collection[];
-  onChildCollectionClick?: (collectionId: string) => void;
   onItemClick: (item: CollectionItem) => void;
   onItemCopy: (item: CollectionItem) => void | Promise<void>;
   onItemDownload: (item: CollectionItem) => void;
@@ -28,6 +29,14 @@ interface CollectionItemGridProps {
 // Default aspect ratio for child collection cards (square)
 const CHILD_COLLECTION_ASPECT = 1;
 
+const getScrollBehavior = (): ScrollBehavior => {
+  if (typeof window === 'undefined') {
+    return 'smooth';
+  }
+
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+};
+
 // Helper: resolve aspect ratio from a collection item
 function getItemAspectRatio(item: CollectionItem): number {
   if (item.metadata.width > 0 && item.metadata.height > 0) {
@@ -37,9 +46,9 @@ function getItemAspectRatio(item: CollectionItem): number {
 }
 
 export function CollectionItemGrid({
+  projectId,
   items,
   childCollections = [],
-  onChildCollectionClick,
   onItemClick,
   onItemCopy,
   onItemDownload,
@@ -71,7 +80,7 @@ export function CollectionItemGrid({
         setTimeout(() => {
           scrollContainerRef.current?.scrollTo({
             top: scrollContainerRef.current.scrollHeight,
-            behavior: 'smooth',
+            behavior: getScrollBehavior(),
           });
         }, 100);
       }
@@ -140,8 +149,11 @@ export function CollectionItemGrid({
               ? { width: dims.width, height: dims.height, flex: 'none' }
               : {};
             return (
-              <div key={`child-collection-${collection.id}`} style={style}>
-                <ChildCollectionCard collection={collection} onClick={onChildCollectionClick} />
+              <div key={`child-collection-${collection.id}`} style={style} className={styles.cell}>
+                <ChildCollectionCard
+                  collection={collection}
+                  href={getProjectCollectionPath(projectId, collection.id)}
+                />
               </div>
             );
           })}
@@ -153,7 +165,7 @@ export function CollectionItemGrid({
               ? { width: dims.width, height: dims.height, flex: 'none' }
               : {};
             return (
-              <div key={item.id} style={style}>
+              <div key={item.id} style={style} className={styles.cell}>
                 <CollectionItemCard
                   item={item}
                   onClick={onItemClick}

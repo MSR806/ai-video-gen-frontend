@@ -25,10 +25,17 @@
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
   position: relative;
   text-decoration: none;
   color: var(--text-secondary);
+}
+
+.navButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
 }
 
 .navButton:hover {
@@ -88,8 +95,15 @@
   font-size: 0.875rem;
   text-align: left;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
   margin-bottom: var(--space-1);
+}
+
+.listItem:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .listItem:hover {
@@ -123,11 +137,22 @@
   color: var(--text-secondary);
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
+}
+
+.addButton:focus-visible,
+.pathBackButton:focus-visible,
+.pathCrumbButton:focus-visible,
+.pathAddButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .addButton:hover {

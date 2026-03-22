@@ -285,6 +285,8 @@ export function ReferencePickerPopover({
                     alt={item.name}
                     className={styles.assetThumb}
                     loading="lazy"
+                    width={Math.max(item.metadata.width, 1)}
+                    height={Math.max(item.metadata.height, 1)}
                     onLoad={(event) => handleAssetLoad(item.id, event)}
                   />
                 </span>
@@ -310,6 +312,8 @@ export function ReferencePickerPopover({
                 src={hoveredPreviewSource}
                 alt={hoveredItem.name}
                 className={styles.floatingPreviewImage}
+                width={Math.max(hoveredItem.metadata.width, 1)}
+                height={Math.max(hoveredItem.metadata.height, 1)}
               />
             </div>,
             document.body,
@@ -323,14 +327,15 @@ export function ReferencePickerPopover({
   }
 
   return createPortal(
-    <div className={styles.backdrop} onClick={onClose}>
-      <div
-        className={styles.popover}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Reference picker"
-        onClick={(event) => event.stopPropagation()}
-      >
+    <div
+      className={styles.backdrop}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className={styles.popover} role="dialog" aria-modal="true" aria-label="Reference picker">
         <div className={styles.header}>
           <div className={styles.breadcrumb}>
             <button type="button" className={styles.breadcrumbButton} onClick={onNavigateRoot}>

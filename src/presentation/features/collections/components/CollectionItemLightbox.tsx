@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import type { CollectionItem } from '@core/collection-item';
 import styles from './CollectionItemLightbox.module.css';
 
@@ -9,9 +9,14 @@ interface CollectionItemLightboxProps {
 
 export function CollectionItemLightbox({ item, onClose }: CollectionItemLightboxProps) {
   const [failedSelectionPreviewKey, setFailedSelectionPreviewKey] = useState<string | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!item) return;
+
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
     // Handle ESC key to close
     const handleEscape = (e: KeyboardEvent) => {
@@ -23,21 +28,21 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
     // Prevent body scroll when lightbox is open
     document.body.style.overflow = 'hidden';
     document.addEventListener('keydown', handleEscape);
+    requestAnimationFrame(() => closeButtonRef.current?.focus());
 
     return () => {
       document.body.style.overflow = '';
       document.removeEventListener('keydown', handleEscape);
+      previousFocusRef.current?.focus();
     };
   }, [item, onClose]);
 
   if (!item) return null;
 
-  const handleBackdropClick = () => {
-    onClose();
-  };
-
-  const handleContentClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent backdrop click when clicking content
+  const handleBackdropPointerDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
   };
 
   const previewText = item.description?.trim() || item.name;
@@ -61,18 +66,30 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
   const canRenderMedia = mediaUrl.length > 0 && item.status === 'READY';
 
   return (
-    <div className={styles.backdrop} onClick={handleBackdropClick}>
-      <button className={styles.closeButton} onClick={onClose} aria-label="Close">
+    <div className={styles.backdrop} onMouseDown={handleBackdropPointerDown}>
+      <button
+        ref={closeButtonRef}
+        type="button"
+        className={styles.closeButton}
+        onClick={onClose}
+        aria-label="Close"
+      >
         ×
       </button>
 
-      <div className={styles.viewer} onClick={handleContentClick}>
+      <div className={styles.viewer} role="dialog" aria-modal="true" aria-label="Media viewer">
         <div className={`${styles.mediaStage} ${mediaStageOrientationClassName}`}>
           {!canRenderMedia ? (
             <div className={styles.selectionThumbFallback}>Media is still processing...</div>
           ) : item.mediaType === 'image' ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={mediaUrl} alt={item.name} className={styles.media} />
+            <img
+              src={mediaUrl}
+              alt={item.name}
+              className={styles.media}
+              width={Math.max(item.metadata.width, 1)}
+              height={Math.max(item.metadata.height, 1)}
+            />
           ) : (
             <video src={mediaUrl} controls autoPlay className={styles.media}>
               Your browser does not support video playback.
@@ -86,7 +103,14 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
               hasUsableVideoThumbnail ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={thumbnailUrl} alt={item.name} className={styles.selectionThumb} />
+                  <img
+                    src={thumbnailUrl}
+                    alt={item.name}
+                    className={styles.selectionThumb}
+                    width={Math.max(item.metadata.width, 1)}
+                    height={Math.max(item.metadata.height, 1)}
+                    loading="lazy"
+                  />
                 </>
               ) : !canRenderMedia || selectionPreviewFailed ? (
                 <div className={styles.selectionThumbFallback}>{item.name}</div>
@@ -105,7 +129,14 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
             ) : imageSelectionSrc.length > 0 ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={imageSelectionSrc} alt={item.name} className={styles.selectionThumb} />
+                <img
+                  src={imageSelectionSrc}
+                  alt={item.name}
+                  className={styles.selectionThumb}
+                  width={Math.max(item.metadata.width, 1)}
+                  height={Math.max(item.metadata.height, 1)}
+                  loading="lazy"
+                />
               </>
             ) : (
               <div className={styles.selectionThumbFallback}>{item.name}</div>

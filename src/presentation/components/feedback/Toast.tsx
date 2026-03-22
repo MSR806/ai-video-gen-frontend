@@ -24,9 +24,13 @@ export function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
   }, [duration, onClose]);
 
   return (
-    <div className={`${styles.toast} ${styles[type]}`}>
+    <div
+      className={`${styles.toast} ${styles[type]}`}
+      role={type === 'error' ? 'alert' : 'status'}
+      aria-live={type === 'error' ? 'assertive' : 'polite'}
+    >
       <span className={styles.message}>{message}</span>
-      <button className={styles.closeButton} onClick={onClose} aria-label="Close">
+      <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
         ×
       </button>
     </div>
@@ -46,7 +50,7 @@ export function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
   if (toasts.length === 0) return null;
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} role="region" aria-label="Notifications" aria-live="polite">
       {toasts.map((toast) => (
         <Toast
           key={toast.id}

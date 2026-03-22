@@ -18,6 +18,11 @@
   align-items: flex-start;
 }
 
+.cell {
+  content-visibility: auto;
+  contain-intrinsic-size: 240px 320px;
+}
+
 .empty {
   display: flex;
   align-items: center;

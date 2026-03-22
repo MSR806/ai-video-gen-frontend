@@ -1097,8 +1097,8 @@ export function ProjectDetailPage({
 
       {activeTab === 'collections' && !selectedCollectionId ? (
         <CollectionsCardList
+          projectId={projectId}
           collections={rootCollections}
-          onCollectionSelect={handleCollectionSelect}
           onAddClick={handleCreateCollectionClick}
         />
       ) : activeTab === 'scenes' ? (
@@ -1162,16 +1162,10 @@ export function ProjectDetailPage({
               <div className={styles.pathActions}>
                 {canCreateCollectionItems ? (
                   <Dropdown
-                    trigger={
-                      <button
-                        type="button"
-                        className={styles.pathAddButton}
-                        aria-label="Add options"
-                        disabled={isUploadingCollectionItems}
-                      >
-                        +
-                      </button>
-                    }
+                    trigger={<span aria-hidden="true">+</span>}
+                    triggerClassName={styles.pathAddButton}
+                    triggerAriaLabel="Add options"
+                    disabled={isUploadingCollectionItems}
                   >
                     <DropdownItem
                       icon="+"
@@ -1187,9 +1181,9 @@ export function ProjectDetailPage({
             <div className={styles.collectionItemsPane}>
               <CollectionItemGrid
                 key={itemRefreshKey}
+                projectId={projectId}
                 items={selectedCollectionItems}
                 childCollections={loadedSelectedChildCollections}
-                onChildCollectionClick={handleCollectionSelect}
                 onItemClick={setLightboxItem}
                 onItemCopy={handleCopyCollectionItem}
                 onItemDownload={handleDownloadCollectionItem}
@@ -1231,6 +1225,7 @@ export function ProjectDetailPage({
       />
       <input
         ref={uploadInputRef}
+        name="collectionItemsUpload"
         type="file"
         accept="image/*,video/*"
         multiple

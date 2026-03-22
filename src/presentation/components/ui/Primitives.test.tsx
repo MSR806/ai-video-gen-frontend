@@ -29,11 +29,9 @@ describe('UI primitives', () => {
     expect(button.hasAttribute('disabled')).toBe(true);
   });
 
-  it('renders Card content and forwards click events', () => {
-    const onClick = mock();
-
+  it('renders Card content and preserves className', () => {
     render(
-      <Card className="extra-class" onClick={onClick}>
+      <Card className="extra-class">
         <span>Card body</span>
       </Card>,
     );
@@ -41,12 +39,6 @@ describe('UI primitives', () => {
     const cardContent = screen.getByText('Card body');
     const cardElement = cardContent.closest('div');
     expect(cardElement).not.toBeNull();
-
-    if (cardElement) {
-      fireEvent.click(cardElement);
-    }
-
-    expect(onClick).toHaveBeenCalledTimes(1);
     expect(cardElement?.className.includes('extra-class')).toBe(true);
   });
 

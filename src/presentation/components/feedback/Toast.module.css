@@ -71,10 +71,18 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .closeButton:hover {
   background: var(--bg-elevated);
   color: var(--text-primary);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }

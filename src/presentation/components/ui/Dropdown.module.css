@@ -3,6 +3,19 @@
   display: inline-block;
 }
 
+.trigger {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.trigger:disabled {
+  cursor: not-allowed;
+}
+
 .menu {
   position: absolute;
   top: calc(100% + 8px);
@@ -60,7 +73,9 @@
   font-size: 0.875rem;
   text-align: left;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .item:hover {
@@ -92,4 +107,10 @@
 
 .itemDanger:hover {
   background: var(--status-error-muted);
+}
+
+.item:focus-visible,
+.trigger:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
