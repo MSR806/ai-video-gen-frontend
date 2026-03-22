@@ -16,6 +16,14 @@ type PendingScenePatch = SceneUpdatePayload;
 
 const SAVE_DEBOUNCE_MS = 800;
 
+const getScrollBehavior = (): ScrollBehavior => {
+  if (typeof window === 'undefined') {
+    return 'smooth';
+  }
+
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+};
+
 export function ScenesEditor({
   projectId,
   scenes,
@@ -134,7 +142,7 @@ export function ScenesEditor({
   const handleSceneSelect = (sceneId: string) => {
     setActiveSceneId(sceneId);
     cardRefs.current[sceneId]?.scrollIntoView({
-      behavior: 'smooth',
+      behavior: getScrollBehavior(),
       block: 'start',
       inline: 'nearest',
     });
@@ -218,7 +226,10 @@ export function ScenesEditor({
       applyCanonicalScenes(nextScenes, newSceneId);
 
       requestAnimationFrame(() => {
-        cardRefs.current[newSceneId]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        cardRefs.current[newSceneId]?.scrollIntoView({
+          behavior: getScrollBehavior(),
+          block: 'start',
+        });
       });
     } finally {
       setIsMutating(false);
@@ -249,9 +260,11 @@ export function ScenesEditor({
         <div className={styles.sceneList}>
           {draftScenes.map((scene, index) => (
             <button
+              type="button"
               key={scene.id}
               className={`${styles.sceneListItem} ${activeSceneId === scene.id ? styles.activeSceneListItem : ''}`}
               onClick={() => handleSceneSelect(scene.id)}
+              aria-current={activeSceneId === scene.id ? 'true' : undefined}
             >
               {sceneLabels[index]}
             </button>
@@ -283,6 +296,7 @@ export function ScenesEditor({
                   }
                   placeholder={`Untitled Scene ${index + 1}`}
                   disabled={isMutating}
+                  aria-label={`Scene ${scene.sceneNumber} title`}
                 />
                 <button
                   type="button"
@@ -313,6 +327,7 @@ export function ScenesEditor({
                 placeholder="Write scene text..."
                 rows={1}
                 disabled={isMutating}
+                aria-label={`Scene ${scene.sceneNumber} content`}
               />
             </article>
 
@@ -329,6 +344,7 @@ function InsertRow({ onAdd, disabled }: { onAdd: () => void; disabled: boolean }
     <div className={styles.insertRow}>
       <div className={styles.insertLine}></div>
       <button
+        type="button"
         className={styles.insertButton}
         onClick={onAdd}
         aria-label="Insert scene"

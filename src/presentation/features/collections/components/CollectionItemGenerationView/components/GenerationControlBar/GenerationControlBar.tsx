@@ -1121,11 +1121,14 @@ export function GenerationControlBar({
     const label = field.title?.trim().length ? field.title : toLabel(field.key);
     const selectEnum = Array.isArray(field.enum) && field.enum.length > 0;
     const isRequired = field.required || requiredFieldKeys.has(field.key);
+    const fieldInputId = `generation-field-${field.key}`;
 
     if (field.type === 'boolean') {
       return (
         <label key={field.key} className={styles.checkboxField}>
           <input
+            id={fieldInputId}
+            name={field.key}
             type="checkbox"
             checked={fieldValue === true}
             onChange={(event) =>
@@ -1150,8 +1153,10 @@ export function GenerationControlBar({
             {label}
           </span>
           <input
+            id={fieldInputId}
             className={`${styles.inlineInput} ${fieldError ? styles.inlineInputError : ''}`}
             type="number"
+            name={field.key}
             inputMode="numeric"
             min={minimum}
             max={maximum}
@@ -1164,6 +1169,7 @@ export function GenerationControlBar({
               }));
             }}
             disabled={isGenerating}
+            aria-invalid={fieldError ? 'true' : undefined}
           />
         </label>
       );
@@ -1176,7 +1182,9 @@ export function GenerationControlBar({
             {label}
           </span>
           <select
+            id={fieldInputId}
             className={`${styles.inlineSelect} ${fieldError ? styles.inlineInputError : ''}`}
+            name={field.key}
             value={typeof fieldValue === 'string' ? fieldValue : String(fieldValue ?? '')}
             onChange={(event) =>
               setFieldValues((previous) => ({
@@ -1185,6 +1193,7 @@ export function GenerationControlBar({
               }))
             }
             disabled={isGenerating}
+            aria-invalid={fieldError ? 'true' : undefined}
           >
             {field.enum?.map((option) => {
               const optionValue = String(option);
@@ -1205,8 +1214,10 @@ export function GenerationControlBar({
           {label}
         </span>
         <input
+          id={fieldInputId}
           className={`${styles.inlineInput} ${fieldError ? styles.inlineInputError : ''}`}
           type="text"
+          name={field.key}
           value={typeof fieldValue === 'string' ? fieldValue : String(fieldValue ?? '')}
           onChange={(event) =>
             setFieldValues((previous) => ({
@@ -1216,6 +1227,8 @@ export function GenerationControlBar({
           }
           disabled={isGenerating}
           placeholder={field.description ?? ''}
+          autoComplete="off"
+          aria-invalid={fieldError ? 'true' : undefined}
         />
       </label>
     );
@@ -1670,8 +1683,11 @@ export function GenerationControlBar({
                   </div>
 
                   <div className={styles.modelSelectStack}>
-                    <label className={styles.selectWrap} aria-label="Model">
+                    <label className={styles.selectWrap} htmlFor="generation-model">
                       <select
+                        id="generation-model"
+                        name="generationModel"
+                        aria-label="Model"
                         className={styles.select}
                         value={selectedModel?.modelKey ?? ''}
                         onChange={(event) => {
@@ -1699,8 +1715,11 @@ export function GenerationControlBar({
                     </label>
 
                     {!!selectedModel && selectedModel.operations.length > 1 && (
-                      <label className={styles.selectWrap} aria-label="Operation">
+                      <label className={styles.selectWrap} htmlFor="generation-operation">
                         <select
+                          id="generation-operation"
+                          name="generationOperation"
+                          aria-label="Operation"
                           className={styles.select}
                           value={selectedOperation?.operationKey ?? ''}
                           onChange={(event) => {
@@ -1743,12 +1762,15 @@ export function GenerationControlBar({
 
                 <section className={styles.formSection}>
                   <label
+                    htmlFor="generation-prompt"
                     className={`${styles.formLabel} ${promptIsRequired ? styles.requiredLabel : ''}`}
                   >
                     Prompt
                   </label>
                   <div className={styles.promptShell}>
                     <textarea
+                      id="generation-prompt"
+                      name="generationPrompt"
                       ref={promptRef}
                       className={`${styles.promptInput} ${fieldErrors.prompt ? styles.promptInputError : ''}`}
                       value={promptValue}
@@ -1761,6 +1783,8 @@ export function GenerationControlBar({
                       }
                       rows={6}
                       style={{ height: 'auto', minHeight: '180px', maxHeight: '360px' }}
+                      autoComplete="off"
+                      aria-invalid={fieldErrors.prompt ? 'true' : undefined}
                       onInput={(event) => {
                         const target = event.target as HTMLTextAreaElement;
                         target.style.height = 'auto';

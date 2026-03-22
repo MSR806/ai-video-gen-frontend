@@ -2,6 +2,7 @@ import {
   useState,
   useRef,
   useEffect,
+  useId,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
@@ -12,15 +13,28 @@ interface DropdownProps {
   children: ReactNode;
   direction?: 'up' | 'down';
   menuClassName?: string;
+  triggerClassName?: string;
+  triggerAriaLabel?: string;
+  disabled?: boolean;
 }
 
 /**
  * Dropdown Component
  * Reusable dropdown menu with click-outside-to-close functionality
  */
-export function Dropdown({ trigger, children, direction = 'down', menuClassName }: DropdownProps) {
+export function Dropdown({
+  trigger,
+  children,
+  direction = 'down',
+  menuClassName,
+  triggerClassName,
+  triggerAriaLabel,
+  disabled = false,
+}: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+  const menuOpen = isOpen && !disabled;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -30,14 +44,14 @@ export function Dropdown({ trigger, children, direction = 'down', menuClassName 
       }
     };
 
-    if (isOpen) {
+    if (menuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen]);
+  }, [menuOpen]);
 
   // Close on Escape key
   useEffect(() => {
@@ -47,17 +61,21 @@ export function Dropdown({ trigger, children, direction = 'down', menuClassName 
       }
     };
 
-    if (isOpen) {
+    if (menuOpen) {
       document.addEventListener('keydown', handleEscape);
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen]);
+  }, [menuOpen]);
 
   const handleToggle = () => {
-    setIsOpen(!isOpen);
+    if (disabled) {
+      return;
+    }
+
+    setIsOpen((prev) => !prev);
   };
 
   const handleMenuClick = (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -69,11 +87,25 @@ export function Dropdown({ trigger, children, direction = 'down', menuClassName 
 
   return (
     <div className={styles.dropdown} ref={dropdownRef}>
-      <div onClick={handleToggle}>{trigger}</div>
-      {isOpen && (
+      <button
+        type="button"
+        className={`${styles.trigger} ${triggerClassName || ''}`}
+        onClick={handleToggle}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        aria-controls={menuOpen ? menuId : undefined}
+        aria-label={triggerAriaLabel}
+        disabled={disabled}
+      >
+        {trigger}
+      </button>
+      {menuOpen && (
         <div
+          id={menuId}
           className={`${styles.menu} ${direction === 'up' ? styles.menuUp : ''} ${menuClassName || ''}`}
           onClick={handleMenuClick}
+          role="menu"
+          aria-orientation="vertical"
         >
           {children}
         </div>
@@ -115,8 +147,13 @@ export function DropdownItem({
       onClick={handleClick}
       data-dropdown-item="true"
       disabled={disabled}
+      role="menuitem"
     >
-      {icon && <span className={styles.icon}>{icon}</span>}
+      {icon && (
+        <span className={styles.icon} aria-hidden="true">
+          {icon}
+        </span>
+      )}
       <span className={styles.label}>{label}</span>
     </button>
   );

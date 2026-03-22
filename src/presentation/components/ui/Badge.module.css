@@ -7,7 +7,9 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .draft {

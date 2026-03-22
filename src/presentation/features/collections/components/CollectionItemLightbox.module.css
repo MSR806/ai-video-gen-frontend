@@ -35,10 +35,17 @@
   font-size: 26px;
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
   line-height: 1;
   padding: 0;
   z-index: 1002;
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .closeButton:hover {

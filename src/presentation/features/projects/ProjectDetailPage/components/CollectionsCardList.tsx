@@ -1,16 +1,18 @@
 import type { Collection } from '@core/collection';
+import Link from 'next/link';
 import { Card } from '@presentation/components/ui/Card';
+import { getProjectCollectionPath } from '@presentation/features/projects/routes';
 import styles from './CollectionsCardList.module.css';
 
 interface CollectionsCardListProps {
+  projectId: string;
   collections: Collection[];
-  onCollectionSelect: (collectionId: string) => void;
   onAddClick: () => void;
 }
 
 export function CollectionsCardList({
+  projectId,
   collections,
-  onCollectionSelect,
   onAddClick,
 }: CollectionsCardListProps) {
   return (
@@ -32,18 +34,18 @@ export function CollectionsCardList({
       ) : (
         <div className={styles.grid}>
           {collections.map((collection) => (
-            <button
+            <Link
               key={collection.id}
-              type="button"
-              className={styles.cardButton}
-              onClick={() => onCollectionSelect(collection.id)}
+              className={styles.cardLink}
+              href={getProjectCollectionPath(projectId, collection.id)}
+              aria-label={`Open collection ${collection.name}`}
             >
               <Card className={styles.card}>
                 <p className={styles.cardTag}>{collection.tag}</p>
                 <h3 className={styles.cardTitle}>{collection.name}</h3>
                 <p className={styles.cardDescription}>{collection.description}</p>
               </Card>
-            </button>
+            </Link>
           ))}
         </div>
       )}

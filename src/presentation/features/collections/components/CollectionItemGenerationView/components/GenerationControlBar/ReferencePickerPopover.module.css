@@ -66,6 +66,14 @@
   color: var(--accent-primary);
 }
 
+.breadcrumbButton:focus-visible,
+.closeButton:focus-visible,
+.collectionButton:focus-visible,
+.assetButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
 .crumbCurrent {
   color: var(--text-primary);
   font-size: 0.82rem;

@@ -60,6 +60,9 @@ export function ProjectCreateModal({
           </label>
           <input
             id="project-name"
+            name="projectName"
+            type="text"
+            autoComplete="off"
             className={styles.input}
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -73,6 +76,8 @@ export function ProjectCreateModal({
           </label>
           <textarea
             id="project-description"
+            name="projectDescription"
+            autoComplete="off"
             className={styles.textarea}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
@@ -87,6 +92,7 @@ export function ProjectCreateModal({
           </label>
           <select
             id="project-status"
+            name="projectStatus"
             className={styles.select}
             value={status}
             onChange={(event) => setStatus(event.target.value as ProjectStatus)}
@@ -97,7 +103,11 @@ export function ProjectCreateModal({
           </select>
         </div>
 
-        {error && <p className={styles.error}>{error}</p>}
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
 
         <div className={styles.actions}>
           <Button variant="secondary" onClick={handleClose} disabled={isSubmitting}>

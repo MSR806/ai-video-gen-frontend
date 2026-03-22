@@ -55,7 +55,7 @@
 
 .requiredLabel::after {
   content: '*';
-  color: #ff9b9b;
+  color: var(--status-error);
   margin-left: 0.24rem;
   font-weight: 700;
 }
@@ -186,7 +186,7 @@
 }
 
 .mediaFieldError {
-  color: #ffb0b0;
+  color: var(--status-error);
 }
 
 .promptShell {
@@ -270,8 +270,12 @@
 .compactMediaLabelFilled {
   inset: auto 0 0 0;
   min-height: 28px;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72));
-  color: white;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--bg-base) 72%, transparent)
+  );
+  color: var(--text-primary);
   font-size: 0.68rem;
   padding: 0.25rem 0.35rem 0.35rem;
   align-items: flex-end;
@@ -292,8 +296,8 @@
   height: 24px;
   border: none;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
+  background: color-mix(in srgb, var(--bg-base) 70%, transparent);
+  color: var(--text-primary);
   font-size: 0.95rem;
   line-height: 1;
   cursor: pointer;
@@ -302,7 +306,7 @@
 
 .compactMediaError {
   margin: 0;
-  color: #ffb0b0;
+  color: var(--status-error);
   font-size: 0.7rem;
 }
 
@@ -370,8 +374,8 @@
   height: 18px;
   border: none;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.72);
-  color: white;
+  background: color-mix(in srgb, var(--bg-base) 72%, transparent);
+  color: var(--text-primary);
   font-size: 0.8rem;
   line-height: 1;
   cursor: pointer;
@@ -394,8 +398,8 @@
   border: 1px solid var(--border-default);
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--bg-elevated) 78%, #1c1c1f 22%),
-    color-mix(in srgb, var(--bg-raised) 70%, #060606 30%)
+    color-mix(in srgb, var(--bg-elevated) 78%, var(--bg-raised) 22%),
+    color-mix(in srgb, var(--bg-raised) 70%, var(--bg-base) 30%)
   );
   color: var(--text-primary);
   transition:
@@ -479,8 +483,8 @@
   bottom: 0.85rem;
   border-radius: 999px;
   padding: 0.28rem 0.65rem;
-  background: rgba(0, 0, 0, 0.58);
-  color: white;
+  background: color-mix(in srgb, var(--bg-base) 58%, transparent);
+  color: var(--text-primary);
   font-size: 0.72rem;
 }
 
@@ -492,8 +496,8 @@
   height: 28px;
   border: none;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.72);
-  color: white;
+  background: color-mix(in srgb, var(--bg-base) 72%, transparent);
+  color: var(--text-primary);
   font-size: 1rem;
   line-height: 1;
   display: flex;
@@ -504,7 +508,7 @@
 }
 
 .mediaCardRemove:hover {
-  background: rgba(239, 68, 68, 0.92);
+  background: color-mix(in srgb, var(--status-error) 92%, transparent);
 }
 
 .mediaGallery {
@@ -660,11 +664,13 @@
 
 .inlineInput:focus,
 .inlineSelect:focus {
-  outline: none;
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .inlineInputError {
-  color: #ff9d9d;
+  color: var(--status-error);
 }
 
 .checkboxField {
@@ -695,11 +701,13 @@
 }
 
 .promptInput:focus {
-  outline: none;
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .promptInputError {
-  color: #ffb0b0;
+  color: var(--status-error);
 }
 
 .promptInput::placeholder {
@@ -709,7 +717,7 @@
 
 .fieldError {
   margin: 0;
-  color: #ffb0b0;
+  color: var(--status-error);
   font-size: 0.78rem;
   padding: 0;
 }
@@ -732,7 +740,10 @@
   padding: 0.55rem 0.95rem;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .resetButton:hover:not(:disabled) {
@@ -749,8 +760,12 @@
   height: 40px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, #6f44ff, #4f2ed9);
-  color: #f3f0ff;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-primary) 88%, var(--bg-base) 12%),
+    color-mix(in srgb, var(--accent-primary) 72%, var(--bg-base) 28%)
+  );
+  color: var(--text-primary);
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 1;
@@ -758,7 +773,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
 .generateIcon {
@@ -769,7 +787,25 @@
 
 .generateButton:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(69, 49, 173, 0.35);
+  box-shadow: var(--shadow-md);
+}
+
+.mediaButton:focus-visible,
+.compactMediaButton:focus-visible,
+.compactArrayThumbButton:focus-visible,
+.compactArrayAddButton:focus-visible,
+.mediaCard:focus-visible,
+.mediaAddCard:focus-visible,
+.mediaThumbnailCard:focus-visible,
+.mediaCardRemove:focus-visible,
+.compactMediaRemove:focus-visible,
+.compactArrayRemove:focus-visible,
+.select:focus-visible,
+.advancedToggle:focus-visible,
+.resetButton:focus-visible,
+.generateButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .generateButton:disabled {

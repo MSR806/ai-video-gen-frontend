@@ -1,20 +1,16 @@
 import type { Collection } from '@core/collection';
+import Link from 'next/link';
 import styles from './ChildCollectionCard.module.css';
 
 interface ChildCollectionCardProps {
   collection: Collection;
-  onClick?: (collectionId: string) => void;
+  href: string;
 }
 
-export function ChildCollectionCard({ collection, onClick }: ChildCollectionCardProps) {
+export function ChildCollectionCard({ collection, href }: ChildCollectionCardProps) {
   return (
     <div className={styles.cardShell}>
-      <button
-        type="button"
-        className={styles.card}
-        onClick={() => onClick?.(collection.id)}
-        aria-label={`Open collection ${collection.name}`}
-      >
+      <Link href={href} className={styles.card} aria-label={`Open collection ${collection.name}`}>
         <div className={styles.overlay}>
           <span className={styles.centerGlyph} aria-hidden="true">
             ✿
@@ -23,7 +19,7 @@ export function ChildCollectionCard({ collection, onClick }: ChildCollectionCard
             <h3 className={styles.title}>{collection.name}</h3>
           </div>
         </div>
-      </button>
+      </Link>
     </div>
   );
 }
