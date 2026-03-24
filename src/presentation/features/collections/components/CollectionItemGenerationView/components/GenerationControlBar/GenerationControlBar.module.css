@@ -186,7 +186,7 @@
 }
 
 .mediaFieldError {
-  color: var(--status-error);
+  color: var(--status-error-soft);
 }
 
 .promptShell {
@@ -195,7 +195,7 @@
   flex-direction: column;
   gap: var(--space-2);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--bg-elevated) 88%, black 12%);
+  background: color-mix(in srgb, var(--bg-elevated) 88%, var(--bg-base) 12%);
   border: 1px solid var(--border-subtle);
   padding: 0.6rem 0.6rem 0.35rem;
 }
@@ -224,7 +224,7 @@
   height: 96px;
   border-radius: 16px;
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 70%, black 30%);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, var(--bg-base) 30%);
   color: var(--text-secondary);
   padding: 0;
   position: relative;
@@ -238,7 +238,7 @@
 }
 
 .compactMediaButtonFilled {
-  background: color-mix(in srgb, var(--bg-raised) 48%, black 52%);
+  background: color-mix(in srgb, var(--bg-raised) 48%, var(--bg-base) 52%);
 }
 
 .compactMediaButtonActive {
@@ -270,11 +270,7 @@
 .compactMediaLabelFilled {
   inset: auto 0 0 0;
   min-height: 28px;
-  background: linear-gradient(
-    180deg,
-    transparent,
-    color-mix(in srgb, var(--bg-base) 72%, transparent)
-  );
+  background: linear-gradient(180deg, transparent, var(--overlay-default));
   color: var(--text-primary);
   font-size: 0.68rem;
   padding: 0.25rem 0.35rem 0.35rem;
@@ -296,7 +292,7 @@
   height: 24px;
   border: none;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-base) 70%, transparent);
+  background: var(--overlay-default);
   color: var(--text-primary);
   font-size: 0.95rem;
   line-height: 1;
@@ -306,7 +302,7 @@
 
 .compactMediaError {
   margin: 0;
-  color: var(--status-error);
+  color: var(--status-error-soft);
   font-size: 0.7rem;
 }
 
@@ -342,7 +338,7 @@
   height: 88px;
   border-radius: 14px;
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 70%, black 30%);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, var(--bg-base) 30%);
   overflow: hidden;
   cursor: pointer;
   color: var(--text-secondary);
@@ -374,7 +370,7 @@
   height: 18px;
   border: none;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-base) 72%, transparent);
+  background: var(--overlay-default);
   color: var(--text-primary);
   font-size: 0.8rem;
   line-height: 1;
@@ -429,7 +425,7 @@
 }
 
 .mediaCardFilled {
-  background: color-mix(in srgb, var(--bg-elevated) 72%, black 28%);
+  background: color-mix(in srgb, var(--bg-elevated) 72%, var(--bg-base) 28%);
 }
 
 .mediaCardActive,
@@ -483,7 +479,7 @@
   bottom: 0.85rem;
   border-radius: 999px;
   padding: 0.28rem 0.65rem;
-  background: color-mix(in srgb, var(--bg-base) 58%, transparent);
+  background: var(--overlay-soft);
   color: var(--text-primary);
   font-size: 0.72rem;
 }
@@ -496,7 +492,7 @@
   height: 28px;
   border: none;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-base) 72%, transparent);
+  background: var(--overlay-default);
   color: var(--text-primary);
   font-size: 1rem;
   line-height: 1;
@@ -508,7 +504,7 @@
 }
 
 .mediaCardRemove:hover {
-  background: color-mix(in srgb, var(--status-error) 92%, transparent);
+  background: var(--overlay-danger);
 }
 
 .mediaGallery {
@@ -538,7 +534,7 @@
 .mediaToggle {
   display: inline-flex;
   width: 100%;
-  background: color-mix(in srgb, var(--bg-elevated) 70%, black 30%);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, var(--bg-base) 30%);
   border: 1px solid var(--border-default);
   border-radius: 12px;
   overflow: hidden;
@@ -576,7 +572,7 @@
   appearance: none;
   border: 1px solid var(--border-default);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--bg-elevated) 75%, black 25%);
+  background: color-mix(in srgb, var(--bg-elevated) 75%, var(--bg-base) 25%);
   color: var(--text-secondary);
   padding: 0.72rem 2rem 0.72rem 0.75rem;
   font-size: 1rem;
@@ -612,7 +608,7 @@
   align-self: flex-start;
   border: 1px solid var(--border-default);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-elevated) 70%, black 30%);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, var(--bg-base) 30%);
   color: var(--text-secondary);
   padding: 0.38rem 0.75rem;
   font-size: 0.76rem;
@@ -641,7 +637,7 @@
   align-items: flex-start;
   gap: 0.45rem;
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 72%, black 28%);
+  background: color-mix(in srgb, var(--bg-elevated) 72%, var(--bg-base) 28%);
   border-radius: 12px;
   padding: 0.55rem 0.65rem;
 }
@@ -678,7 +674,7 @@
   align-items: center;
   gap: 0.45rem;
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 72%, black 28%);
+  background: color-mix(in srgb, var(--bg-elevated) 72%, var(--bg-base) 28%);
   border-radius: 12px;
   padding: 0.55rem 0.65rem;
   color: var(--text-secondary);
@@ -707,7 +703,7 @@
 }
 
 .promptInputError {
-  color: var(--status-error);
+  color: var(--status-error-soft);
 }
 
 .promptInput::placeholder {
@@ -717,7 +713,7 @@
 
 .fieldError {
   margin: 0;
-  color: var(--status-error);
+  color: var(--status-error-soft);
   font-size: 0.78rem;
   padding: 0;
 }
@@ -760,12 +756,8 @@
   height: 40px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent-primary) 88%, var(--bg-base) 12%),
-    color-mix(in srgb, var(--accent-primary) 72%, var(--bg-base) 28%)
-  );
-  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--accent-gradient-start), var(--accent-gradient-end));
+  color: var(--accent-gradient-text);
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 1;
@@ -787,7 +779,7 @@
 
 .generateButton:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-accent);
 }
 
 .mediaButton:focus-visible,

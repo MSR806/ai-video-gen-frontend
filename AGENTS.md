@@ -107,9 +107,7 @@ src/presentation/
 │   └── scenes/          # Plain-text scenes editor
 ├── hooks/               # Shared hooks used across features
 └── styles/              # Global styles and design tokens
-    ├── tokens/
-    │   └── colors.ts    # Color definitions
-    └── globals.css      # CSS variables
+    └── globals.css      # CSS variables (Catppuccin Macchiato default)
 ```
 
 **IMPORTANT**:
@@ -203,8 +201,8 @@ Prefer avoiding circular feature dependencies. If two features need the same gen
 
 ### Color Management
 
-- All colors are defined as **CSS custom properties** in `globals.css`
-- TypeScript token definitions live in `@presentation/styles/tokens/colors.ts`
+- All colors are defined as **CSS custom properties** in `@presentation/styles/globals.css`
+- Default theme direction is **Catppuccin Macchiato** through semantic tokens (not direct palette literals in components)
 - **Never use hardcoded hex values** in components — always use `var(--token-name)`
 - Use semantic naming: `--bg-raised` not `--dark-gray`
 
@@ -215,13 +213,15 @@ Prefer avoiding circular feature dependencies. If two features need the same gen
 - `--border-*`: Border colors (subtle → default → strong)
 - `--accent-*`: Brand/action colors
 - `--status-*`: Feedback colors (error, success, warning)
+- `--overlay-*`: Media overlays, badge chips, and destructive hover layers
+- `--shadow-*`: Elevation and accent glow shadows
 
 ### Dark Mode Guidelines
 
-- Use 2-3 background shades max. Don't go pure black `#000`, use `#0a-#12` range
-- Never use pure white `#fff` for text. Use `#f1f5f9` or similar
+- Keep dark surfaces within the Catppuccin Macchiato ramp (`--bg-base` → `--bg-raised` → `--bg-elevated`)
+- Never use pure black `#000` or pure white `#fff` in feature styles; use semantic tokens (`--bg-*`, `--text-*`, `--overlay-*`)
 - Shadows need higher opacity (0.4-0.6) to be visible on dark backgrounds
-- Use `--shadow-sm`, `--shadow-md`, `--shadow-lg` tokens
+- Use `--shadow-sm`, `--shadow-md`, `--shadow-lg`, and `--shadow-accent` tokens
 
 ---
 
@@ -255,7 +255,8 @@ Prefer avoiding circular feature dependencies. If two features need the same gen
 
 ### No Inline Colors
 
-- ❌ **Never** use inline hex/rgb values: `color: '#6366f1'` or `style={{ color: '#fff' }}`
+- ❌ **Never** use inline hex/rgb/rgba values in feature code: `color: '#8aadf4'` or `style={{ color: '#fff' }}`
+- ❌ **Never** mix with raw `black`/`white` in component styles when `color-mix()` is used; mix semantic tokens instead
 - ✅ **Always** use CSS variables: `color: var(--accent-primary)` or `className={styles.text}`
 
 ### Modular UI

@@ -14,7 +14,7 @@
   position: relative;
   border: 1px solid var(--border-default);
   border-radius: 16px;
-  background: color-mix(in srgb, var(--bg-raised) 94%, black 6%);
+  background: color-mix(in srgb, var(--bg-raised) 94%, var(--bg-base) 6%);
   box-shadow: var(--shadow-lg);
   padding: var(--space-3);
   display: flex;
@@ -179,7 +179,7 @@
   text-align: left;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bg-elevated) 84%, black 16%);
+  background: color-mix(in srgb, var(--bg-elevated) 84%, var(--bg-base) 16%);
   padding: 0.55rem 0.6rem;
   display: block;
   cursor: pointer;
