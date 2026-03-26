@@ -323,9 +323,73 @@
   text-shadow: 0 1px 2px var(--bg-overlay);
 }
 
-.menuContainer {
+.favoriteContainer {
   position: absolute;
   top: var(--space-2);
+  right: var(--space-2);
+  z-index: 3;
+}
+
+.favoriteButton {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: color-mix(in srgb, var(--text-primary) 84%, var(--bg-elevated) 16%);
+  color: var(--text-inverse);
+  border-radius: var(--radius-full);
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition:
+    opacity var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.favoriteButtonDormant {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+}
+
+.cardShell:hover .favoriteButtonDormant,
+.cardShell:focus-within .favoriteButtonDormant {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.favoriteButton:hover {
+  background: color-mix(in srgb, var(--text-primary) 76%, var(--bg-elevated) 24%);
+}
+
+.favoriteButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.favoriteButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.favoriteButtonActive {
+  background: color-mix(in srgb, var(--status-error) 80%, var(--bg-elevated) 20%);
+  color: var(--text-primary);
+}
+
+.favoriteButtonActive:hover {
+  background: color-mix(in srgb, var(--status-error) 72%, var(--bg-elevated) 28%);
+}
+
+.menuContainer {
+  position: absolute;
+  top: calc(var(--space-2) + 38px);
   right: var(--space-2);
   z-index: 2;
   opacity: 0;
@@ -436,6 +500,12 @@
 }
 
 @media (hover: none) and (pointer: coarse) {
+  .favoriteButtonDormant {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
   .menuContainer {
     opacity: 1;
     pointer-events: auto;

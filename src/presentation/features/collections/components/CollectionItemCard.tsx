@@ -1,4 +1,5 @@
 import { useRef, useState, type CSSProperties } from 'react';
+import { Heart } from 'lucide-react';
 import type { CollectionItem } from '@core/collection-item';
 import { Dropdown, DropdownItem } from '@presentation/components/ui';
 import styles from './CollectionItemCard.module.css';
@@ -6,20 +7,24 @@ import styles from './CollectionItemCard.module.css';
 interface CollectionItemCardProps {
   item: CollectionItem;
   onClick: (item: CollectionItem) => void;
+  onFavoriteToggle: (item: CollectionItem) => void | Promise<void>;
   onCopy: (item: CollectionItem) => void | Promise<void>;
   onDownload: (item: CollectionItem) => void;
   onDelete?: (item: CollectionItem) => void;
   isDeleting?: boolean;
+  isFavoriteToggling?: boolean;
   onAspectRatioResolved?: (ratio: number) => void;
 }
 
 export function CollectionItemCard({
   item,
   onClick,
+  onFavoriteToggle,
   onCopy,
   onDownload,
   onDelete,
   isDeleting = false,
+  isFavoriteToggling = false,
   onAspectRatioResolved,
 }: CollectionItemCardProps) {
   const handleClick = () => {
@@ -61,6 +66,8 @@ export function CollectionItemCard({
   const canDownload = item.status === 'READY' && mediaUrl.length > 0;
   const canDragAsReference =
     item.mediaType === 'image' && item.status === 'READY' && mediaUrl.length > 0;
+  const isFavorite = item.isFavorite;
+  const favoriteButtonClassName = `${styles.favoriteButton} ${isFavorite ? styles.favoriteButtonActive : styles.favoriteButtonDormant}`;
   const isGenerating = item.status === 'GENERATING';
   const isFailed = item.status === 'FAILED';
   const failedMessage = item.generationErrorMessage?.trim() || 'Generation failed';
@@ -218,6 +225,35 @@ export function CollectionItemCard({
           </div>
         </div>
       </button>
+
+      <div className={styles.favoriteContainer}>
+        <button
+          type="button"
+          className={favoriteButtonClassName}
+          aria-label={
+            isFavoriteToggling
+              ? `Updating favorite for ${item.name}`
+              : isFavorite
+                ? `Unfavorite ${item.name}`
+                : `Favorite ${item.name}`
+          }
+          aria-pressed={isFavorite}
+          disabled={isDeleting || isFavoriteToggling}
+          onClick={() => {
+            if (isDeleting || isFavoriteToggling) {
+              return;
+            }
+            void onFavoriteToggle(item);
+          }}
+        >
+          <Heart
+            aria-hidden="true"
+            size={18}
+            fill={isFavorite ? 'currentColor' : 'none'}
+            strokeWidth="2"
+          />
+        </button>
+      </div>
 
       {!isGenerating && (
         <div className={styles.menuContainer}>

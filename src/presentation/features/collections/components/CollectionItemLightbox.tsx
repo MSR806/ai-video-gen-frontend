@@ -1,13 +1,25 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { CollectionItem } from '@core/collection-item';
 import styles from './CollectionItemLightbox.module.css';
 
 interface CollectionItemLightboxProps {
   item: CollectionItem | null;
   onClose: () => void;
+  onNext?: () => void;
+  onPrevious?: () => void;
+  canGoNext?: boolean;
+  canGoPrevious?: boolean;
 }
 
-export function CollectionItemLightbox({ item, onClose }: CollectionItemLightboxProps) {
+export function CollectionItemLightbox({
+  item,
+  onClose,
+  onNext,
+  onPrevious,
+  canGoNext = false,
+  canGoPrevious = false,
+}: CollectionItemLightboxProps) {
   const [failedSelectionPreviewKey, setFailedSelectionPreviewKey] = useState<string | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -22,6 +34,18 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
+        return;
+      }
+
+      if (e.key === 'ArrowLeft' && canGoPrevious && onPrevious) {
+        e.preventDefault();
+        onPrevious();
+        return;
+      }
+
+      if (e.key === 'ArrowRight' && canGoNext && onNext) {
+        e.preventDefault();
+        onNext();
       }
     };
 
@@ -35,7 +59,7 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
       document.removeEventListener('keydown', handleEscape);
       previousFocusRef.current?.focus();
     };
-  }, [item, onClose]);
+  }, [canGoNext, canGoPrevious, item, onClose, onNext, onPrevious]);
 
   if (!item) return null;
 
@@ -74,10 +98,30 @@ export function CollectionItemLightbox({ item, onClose }: CollectionItemLightbox
         onClick={onClose}
         aria-label="Close"
       >
-        ×
+        <X aria-hidden="true" className={styles.closeIcon} />
       </button>
 
       <div className={styles.viewer} role="dialog" aria-modal="true" aria-label="Media viewer">
+        <button
+          type="button"
+          className={`${styles.navButton} ${styles.navButtonPrevious}`}
+          onClick={onPrevious}
+          disabled={!canGoPrevious}
+          aria-label="Previous item"
+        >
+          <ChevronLeft aria-hidden="true" className={styles.navIcon} />
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.navButton} ${styles.navButtonNext}`}
+          onClick={onNext}
+          disabled={!canGoNext}
+          aria-label="Next item"
+        >
+          <ChevronRight aria-hidden="true" className={styles.navIcon} />
+        </button>
+
         <div className={`${styles.mediaStage} ${mediaStageOrientationClassName}`}>
           {!canRenderMedia ? (
             <div className={styles.selectionThumbFallback}>Media is still processing...</div>

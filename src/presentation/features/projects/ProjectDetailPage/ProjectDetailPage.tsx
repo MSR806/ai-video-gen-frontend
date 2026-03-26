@@ -19,6 +19,7 @@ import {
   GetCollectionItemByIdUseCase,
   GetGenerationCapabilitiesUseCase,
   GetGenerationRunUseCase,
+  SetCollectionItemFavoriteUseCase,
   UploadCollectionItemUseCase,
   type GenerationCapabilities,
   type ImageMetadata,
@@ -47,6 +48,7 @@ import { CollectionsCardList } from './components/CollectionsCardList';
 import { CollectionCreateModal } from '../../collections/components/CollectionCreateModal';
 import { CollectionItemGrid } from '../../collections/components/CollectionItemGrid';
 import { CollectionItemLightbox } from '../../collections/components/CollectionItemLightbox';
+import { PastedImageConfirmModal } from '../../collections/components/PastedImageConfirmModal';
 import { GenerationControlBar } from '../../collections/components/CollectionItemGenerationView/components/GenerationControlBar/GenerationControlBar';
 import { ScenesEditor } from '../../scenes/components/ScenesEditor';
 import { ToastContainer } from '@presentation/components/feedback';
@@ -70,6 +72,11 @@ interface Toast {
   id: string;
   message: string;
   type: 'success' | 'error' | 'info';
+}
+
+interface PastedImageCandidate {
+  file: File;
+  previewUrl: string;
 }
 
 const getCollectionItemDownloadName = (item: CollectionItem): string => {
@@ -99,6 +106,37 @@ const fetchMediaResponse = async (mediaUrl: string): Promise<Response> => {
 
 const isClipboardPermissionError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'NotAllowedError';
+
+const getPastedImageFile = (clipboardData: DataTransfer | null): File | null => {
+  if (!clipboardData) {
+    return null;
+  }
+
+  const itemMatch = Array.from(clipboardData.items).find(
+    (item) => item.kind === 'file' && item.type.startsWith('image/'),
+  );
+  if (itemMatch) {
+    return itemMatch.getAsFile();
+  }
+
+  return Array.from(clipboardData.files).find((file) => file.type.startsWith('image/')) ?? null;
+};
+
+const ensureNamedPastedImageFile = (file: File): File => {
+  if (file.name.trim().length > 0) {
+    return file;
+  }
+
+  const extension = file.type.startsWith('image/')
+    ? file.type.split('/')[1]?.toLowerCase() || 'png'
+    : 'png';
+  const now = Date.now();
+
+  return new File([file], `pasted-image-${now}.${extension}`, {
+    type: file.type || 'image/png',
+    lastModified: now,
+  });
+};
 
 const ACTIVE_GENERATION_RUNS_POLL_INTERVAL_MS = 3000;
 const ACTIVE_GENERATION_RUNS_MAX_POLL_ATTEMPTS = 240;
@@ -144,8 +182,13 @@ export function ProjectDetailPage({
     Collection[]
   >(selectedCollectionChildCollections);
   const [deletingItemIds, setDeletingItemIds] = useState<Set<string>>(new Set());
+  const [favoriteTogglingItemIds, setFavoriteTogglingItemIds] = useState<Set<string>>(new Set());
   const [deleteCandidate, setDeleteCandidate] = useState<CollectionItem | null>(null);
   const [isScenesReady, setIsScenesReady] = useState(false);
+  const [pastedImageCandidate, setPastedImageCandidate] = useState<PastedImageCandidate | null>(
+    null,
+  );
+  const [isSavingPastedImage, setIsSavingPastedImage] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const getRootCollections = (): Collection[] =>
@@ -372,6 +415,7 @@ export function ProjectDetailPage({
           id: output.collectionItemId,
           projectId,
           collectionId: selectedCollectionId,
+          isFavorite: false,
           runId: submission.runId,
           generationRunOutputId: output.outputId,
           mediaType,
@@ -540,6 +584,56 @@ export function ProjectDetailPage({
     [addToast, buildUploadMetadata, isUploadingCollectionItems, projectId, selectedCollectionId],
   );
 
+  const handleClosePastedImageConfirm = useCallback(() => {
+    if (isSavingPastedImage) {
+      return;
+    }
+
+    setPastedImageCandidate(null);
+  }, [isSavingPastedImage]);
+
+  const handleConfirmPastedImageSave = useCallback(async () => {
+    if (!selectedCollectionId || !pastedImageCandidate || isSavingPastedImage) {
+      return;
+    }
+
+    setIsSavingPastedImage(true);
+
+    const file = pastedImageCandidate.file;
+    const fileNameWithoutExtension = file.name.replace(/\.[^/.]+$/, '').trim();
+    const normalizedName = fileNameWithoutExtension.length > 0 ? fileNameWithoutExtension : 'image';
+
+    try {
+      const metadata = await buildUploadMetadata(file);
+      const repository = new CollectionItemRepositoryImpl();
+      const uploadCollectionItemUseCase = new UploadCollectionItemUseCase(repository);
+      await uploadCollectionItemUseCase.execute({
+        projectId,
+        collectionId: selectedCollectionId,
+        name: normalizedName,
+        description: '',
+        file,
+        metadata,
+      });
+
+      setItemRefreshKey((prev) => prev + 1);
+      addToast('Pasted image saved to collection.', 'success');
+      setPastedImageCandidate(null);
+    } catch (error) {
+      console.error('Error saving pasted image:', error);
+      addToast('Failed to save pasted image. Please try again.', 'error');
+    } finally {
+      setIsSavingPastedImage(false);
+    }
+  }, [
+    addToast,
+    buildUploadMetadata,
+    isSavingPastedImage,
+    pastedImageCandidate,
+    projectId,
+    selectedCollectionId,
+  ]);
+
   const handleCopyCollectionItem = useCallback(
     async (item: CollectionItem) => {
       if (item.mediaType !== 'image') {
@@ -677,6 +771,52 @@ export function ProjectDetailPage({
       });
     }
   };
+
+  const handleToggleFavoriteCollectionItem = useCallback(
+    async (item: CollectionItem) => {
+      if (favoriteTogglingItemIds.has(item.id)) {
+        return;
+      }
+
+      const nextFavorite = !item.isFavorite;
+      setFavoriteTogglingItemIds((prev) => {
+        const next = new Set(prev);
+        next.add(item.id);
+        return next;
+      });
+
+      setLoadedCollectionItems((prev) =>
+        prev.map((existing) =>
+          existing.id === item.id ? { ...existing, isFavorite: nextFavorite } : existing,
+        ),
+      );
+
+      try {
+        const repository = new CollectionItemRepositoryImpl();
+        const setFavoriteUseCase = new SetCollectionItemFavoriteUseCase(repository);
+        const updated = await setFavoriteUseCase.execute(item.collectionId, item.id, nextFavorite);
+
+        setLoadedCollectionItems((prev) =>
+          prev.map((existing) => (existing.id === updated.id ? updated : existing)),
+        );
+      } catch (error) {
+        console.error('Error updating collection item favorite:', error);
+        setLoadedCollectionItems((prev) =>
+          prev.map((existing) =>
+            existing.id === item.id ? { ...existing, isFavorite: item.isFavorite } : existing,
+          ),
+        );
+        addToast('Failed to update favorite. Please try again.', 'error');
+      } finally {
+        setFavoriteTogglingItemIds((prev) => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+      }
+    },
+    [addToast, favoriteTogglingItemIds],
+  );
 
   const handleDeleteRequest = (item: CollectionItem) => {
     if (deletingItemIds.has(item.id)) {
@@ -882,6 +1022,60 @@ export function ProjectDetailPage({
   }, [selectedCollectionId, activeTab, itemRefreshKey, refreshCollectionContents]);
 
   useEffect(() => {
+    if (activeTab !== 'collections' || !selectedCollectionId) {
+      setPastedImageCandidate(null);
+    }
+  }, [activeTab, selectedCollectionId]);
+
+  useEffect(() => {
+    if (!pastedImageCandidate) {
+      return;
+    }
+
+    return () => {
+      URL.revokeObjectURL(pastedImageCandidate.previewUrl);
+    };
+  }, [pastedImageCandidate]);
+
+  useEffect(() => {
+    if (activeTab !== 'collections' || !selectedCollectionId) {
+      return;
+    }
+
+    const handlePaste = (event: ClipboardEvent) => {
+      if (isSavingPastedImage || isUploadingCollectionItems) {
+        return;
+      }
+
+      const pastedImageFile = getPastedImageFile(event.clipboardData);
+      if (!pastedImageFile) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const normalizedFile = ensureNamedPastedImageFile(pastedImageFile);
+      const previewUrl = URL.createObjectURL(normalizedFile);
+
+      setPastedImageCandidate((previous) => {
+        if (previous) {
+          URL.revokeObjectURL(previous.previewUrl);
+        }
+
+        return {
+          file: normalizedFile,
+          previewUrl,
+        };
+      });
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, [activeTab, isSavingPastedImage, isUploadingCollectionItems, selectedCollectionId]);
+
+  useEffect(() => {
     if (!selectedCollectionId || activeTab !== 'collections') return;
 
     const selectedGeneratingItems = loadedCollectionItems.filter(
@@ -1085,6 +1279,38 @@ export function ProjectDetailPage({
   const selectedCollectionItems = getCollectionItems();
   const breadcrumb = getCollectionBreadcrumb();
   const emptyMessage = getEmptyMessage();
+  const lightboxCurrentIndex = lightboxItem
+    ? selectedCollectionItems.findIndex((item) => item.id === lightboxItem.id)
+    : -1;
+  const canGoToPreviousLightboxItem = lightboxCurrentIndex > 0;
+  const canGoToNextLightboxItem =
+    lightboxCurrentIndex >= 0 && lightboxCurrentIndex < selectedCollectionItems.length - 1;
+
+  const handleLightboxPrevious = useCallback(() => {
+    if (!lightboxItem) {
+      return;
+    }
+
+    const currentIndex = selectedCollectionItems.findIndex((item) => item.id === lightboxItem.id);
+    if (currentIndex <= 0) {
+      return;
+    }
+
+    setLightboxItem(selectedCollectionItems[currentIndex - 1]);
+  }, [lightboxItem, selectedCollectionItems]);
+
+  const handleLightboxNext = useCallback(() => {
+    if (!lightboxItem) {
+      return;
+    }
+
+    const currentIndex = selectedCollectionItems.findIndex((item) => item.id === lightboxItem.id);
+    if (currentIndex < 0 || currentIndex >= selectedCollectionItems.length - 1) {
+      return;
+    }
+
+    setLightboxItem(selectedCollectionItems[currentIndex + 1]);
+  }, [lightboxItem, selectedCollectionItems]);
 
   const canCreateCollectionItems = !!selectedCollectionId && activeTab === 'collections';
   const containerStyle = {
@@ -1185,10 +1411,12 @@ export function ProjectDetailPage({
                 items={selectedCollectionItems}
                 childCollections={loadedSelectedChildCollections}
                 onItemClick={setLightboxItem}
+                onItemFavoriteToggle={handleToggleFavoriteCollectionItem}
                 onItemCopy={handleCopyCollectionItem}
                 onItemDownload={handleDownloadCollectionItem}
                 onItemDelete={canCreateCollectionItems ? handleDeleteRequest : undefined}
                 deletingItemIds={deletingItemIds}
+                favoriteTogglingItemIds={favoriteTogglingItemIds}
                 emptyMessage={emptyMessage}
               />
             </div>
@@ -1213,7 +1441,14 @@ export function ProjectDetailPage({
         </div>
       )}
 
-      <CollectionItemLightbox item={lightboxItem} onClose={() => setLightboxItem(null)} />
+      <CollectionItemLightbox
+        item={lightboxItem}
+        onClose={() => setLightboxItem(null)}
+        onPrevious={handleLightboxPrevious}
+        onNext={handleLightboxNext}
+        canGoPrevious={canGoToPreviousLightboxItem}
+        canGoNext={canGoToNextLightboxItem}
+      />
 
       <CollectionCreateModal
         projectId={projectId}
@@ -1231,6 +1466,15 @@ export function ProjectDetailPage({
         multiple
         onChange={handleUploadInputChange}
         className={styles.hiddenFileInput}
+      />
+
+      <PastedImageConfirmModal
+        isOpen={pastedImageCandidate !== null}
+        imageUrl={pastedImageCandidate?.previewUrl ?? ''}
+        fileName={pastedImageCandidate?.file.name ?? 'pasted-image'}
+        isSubmitting={isSavingPastedImage}
+        onClose={handleClosePastedImageConfirm}
+        onConfirm={() => void handleConfirmPastedImageSave()}
       />
 
       <Modal

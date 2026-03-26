@@ -19,10 +19,12 @@ interface CollectionItemGridProps {
   items: CollectionItem[];
   childCollections?: Collection[];
   onItemClick: (item: CollectionItem) => void;
+  onItemFavoriteToggle: (item: CollectionItem) => void | Promise<void>;
   onItemCopy: (item: CollectionItem) => void | Promise<void>;
   onItemDownload: (item: CollectionItem) => void;
   onItemDelete?: (item: CollectionItem) => void;
   deletingItemIds?: ReadonlySet<string>;
+  favoriteTogglingItemIds?: ReadonlySet<string>;
   emptyMessage: string;
 }
 
@@ -50,10 +52,12 @@ export function CollectionItemGrid({
   items,
   childCollections = [],
   onItemClick,
+  onItemFavoriteToggle,
   onItemCopy,
   onItemDownload,
   onItemDelete,
   deletingItemIds,
+  favoriteTogglingItemIds,
   emptyMessage,
 }: CollectionItemGridProps) {
   const hasGridContent = childCollections.length > 0 || items.length > 0;
@@ -169,10 +173,12 @@ export function CollectionItemGrid({
                 <CollectionItemCard
                   item={item}
                   onClick={onItemClick}
+                  onFavoriteToggle={onItemFavoriteToggle}
                   onCopy={onItemCopy}
                   onDownload={onItemDownload}
                   onDelete={onItemDelete}
                   isDeleting={deletingItemIds?.has(item.id) ?? false}
+                  isFavoriteToggling={favoriteTogglingItemIds?.has(item.id) ?? false}
                   onAspectRatioResolved={(ratio) => handleAspectRatioResolved(item.id, ratio)}
                 />
               </div>

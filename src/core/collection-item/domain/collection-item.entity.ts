@@ -40,6 +40,7 @@ export interface CollectionItem {
   id: string;
   projectId: string;
   collectionId: string;
+  isFavorite: boolean;
   runId?: string | null;
   generationRunOutputId?: string | null;
   mediaType: 'image' | 'video';

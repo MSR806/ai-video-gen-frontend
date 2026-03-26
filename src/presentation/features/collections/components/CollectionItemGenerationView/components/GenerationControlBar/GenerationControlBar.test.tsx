@@ -21,6 +21,7 @@ const readyItem: CollectionItem = {
   id: 'item-1',
   projectId: 'project-1',
   collectionId: 'collection-1',
+  isFavorite: false,
   mediaType: 'image',
   status: 'READY',
   name: 'Reference',

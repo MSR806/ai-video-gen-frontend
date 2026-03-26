@@ -7,6 +7,7 @@ const baseItem: CollectionItem = {
   id: 'item-1',
   projectId: 'project-1',
   collectionId: 'collection-1',
+  isFavorite: false,
   mediaType: 'image',
   status: 'READY',
   name: 'Hero frame',
@@ -77,5 +78,89 @@ describe('CollectionItemLightbox', () => {
 
     fireEvent.error(videos[1] as HTMLVideoElement);
     expect(screen.getByText('Hero frame')).toBeInTheDocument();
+  });
+
+  it('supports previous and next button navigation', () => {
+    let previousCalls = 0;
+    let nextCalls = 0;
+
+    render(
+      <CollectionItemLightbox
+        item={baseItem}
+        onClose={() => undefined}
+        onPrevious={() => {
+          previousCalls += 1;
+        }}
+        onNext={() => {
+          nextCalls += 1;
+        }}
+        canGoPrevious
+        canGoNext
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous item' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next item' }));
+
+    expect(previousCalls).toBe(1);
+    expect(nextCalls).toBe(1);
+  });
+
+  it('supports arrow-key navigation and disables edge controls', () => {
+    let previousCalls = 0;
+    let nextCalls = 0;
+
+    render(
+      <CollectionItemLightbox
+        item={baseItem}
+        onClose={() => undefined}
+        onPrevious={() => {
+          previousCalls += 1;
+        }}
+        onNext={() => {
+          nextCalls += 1;
+        }}
+        canGoPrevious={false}
+        canGoNext={false}
+      />,
+    );
+
+    const previousButton = screen.getByRole('button', { name: 'Previous item' });
+    const nextButton = screen.getByRole('button', { name: 'Next item' });
+
+    expect(previousButton).toBeDisabled();
+    expect(nextButton).toBeDisabled();
+
+    fireEvent.keyDown(document, { key: 'ArrowLeft' });
+    fireEvent.keyDown(document, { key: 'ArrowRight' });
+
+    expect(previousCalls).toBe(0);
+    expect(nextCalls).toBe(0);
+  });
+
+  it('triggers arrow-key navigation when enabled', () => {
+    let previousCalls = 0;
+    let nextCalls = 0;
+
+    render(
+      <CollectionItemLightbox
+        item={baseItem}
+        onClose={() => undefined}
+        onPrevious={() => {
+          previousCalls += 1;
+        }}
+        onNext={() => {
+          nextCalls += 1;
+        }}
+        canGoPrevious
+        canGoNext
+      />,
+    );
+
+    fireEvent.keyDown(document, { key: 'ArrowLeft' });
+    fireEvent.keyDown(document, { key: 'ArrowRight' });
+
+    expect(previousCalls).toBe(1);
+    expect(nextCalls).toBe(1);
   });
 });

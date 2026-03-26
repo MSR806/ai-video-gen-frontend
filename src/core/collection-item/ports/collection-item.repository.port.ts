@@ -16,6 +16,7 @@ export interface CollectionItemRepository {
   getContentsByCollectionId(collectionId: string): Promise<CollectionContents>;
   getByCollectionId(collectionId: string): Promise<CollectionItem[]>;
   getById(id: string): Promise<CollectionItem | null>;
+  setFavorite(collectionId: string, itemId: string, isFavorite: boolean): Promise<CollectionItem>;
   create(payload: CollectionItemCreationPayload): Promise<CollectionItem>;
   delete(collectionId: string, itemId: string): Promise<void>;
   upload(payload: CollectionItemUploadPayload): Promise<CollectionItem>;

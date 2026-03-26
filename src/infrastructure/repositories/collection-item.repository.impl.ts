@@ -23,6 +23,7 @@ interface ApiCollectionItem {
   id: string;
   projectId: string;
   collectionId: string;
+  isFavorite?: boolean;
   runId?: string | null;
   generationRunOutputId?: string | null;
   mediaType: 'image' | 'video';
@@ -179,6 +180,7 @@ const mapApiCollectionItem = (item: ApiCollectionItem): CollectionItem => {
     id: item.id,
     projectId: item.projectId,
     collectionId: item.collectionId,
+    isFavorite: item.isFavorite ?? false,
     runId: item.runId ?? null,
     generationRunOutputId: item.generationRunOutputId ?? null,
     mediaType: item.mediaType,
@@ -337,6 +339,27 @@ export class CollectionItemRepositoryImpl implements CollectionItemRepository {
       }
       throw error;
     }
+  }
+
+  async setFavorite(
+    collectionId: string,
+    itemId: string,
+    isFavorite: boolean,
+  ): Promise<CollectionItem> {
+    const updated = await backendApiRequest<ApiCollectionItem>(
+      `/api/v1/collections/${collectionId}/items/${itemId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isFavorite }),
+      },
+    );
+
+    const mappedUpdated = mapApiCollectionItem(updated);
+    this.cache.set(mappedUpdated.id, mappedUpdated);
+    return mappedUpdated;
   }
 
   async create(payload: CollectionItemCreationPayload): Promise<CollectionItem> {

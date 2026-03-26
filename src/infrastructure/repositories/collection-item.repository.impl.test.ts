@@ -80,6 +80,50 @@ describe('CollectionItemRepositoryImpl', () => {
     await expect(repository.getById('missing-item')).resolves.toBeNull();
   });
 
+  it('patches item favorite state and returns updated item', async () => {
+    let requestBody: Record<string, unknown> | null = null;
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/api/backend/api/v1/collections/collection-1/items/item-1')) {
+        requestBody = JSON.parse(String(init?.body));
+        return new Response(
+          JSON.stringify({
+            id: 'item-1',
+            projectId: 'project-1',
+            collectionId: 'collection-1',
+            isFavorite: true,
+            mediaType: 'image',
+            status: 'READY',
+            name: 'Item One',
+            description: 'Favorite item',
+            url: 'https://assets.example.com/item-1.png',
+            metadata: {
+              width: 768,
+              height: 1024,
+              format: 'png',
+              thumbnailUrl: 'https://assets.example.com/item-1-thumb.png',
+            },
+            generationErrorMessage: null,
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        );
+      }
+
+      throw new Error(`Unexpected request URL: ${url}`);
+    }) as typeof fetch;
+
+    const repository = new CollectionItemRepositoryImpl();
+    const updated = await repository.setFavorite('collection-1', 'item-1', true);
+
+    expect(requestBody).toEqual({ isFavorite: true });
+    expect(updated.isFavorite).toBe(true);
+    expect(updated.id).toBe('item-1');
+  });
+
   it('loads and maps generation capabilities for image and video models', async () => {
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const url = String(input);

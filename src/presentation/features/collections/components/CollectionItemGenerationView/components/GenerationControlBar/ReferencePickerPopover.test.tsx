@@ -36,6 +36,7 @@ const buildItem = (overrides: Partial<CollectionItem> = {}): CollectionItem => (
   id: overrides.id ?? 'item-1',
   projectId: 'project-1',
   collectionId: 'nested-1',
+  isFavorite: overrides.isFavorite ?? false,
   mediaType: overrides.mediaType ?? 'image',
   status: overrides.status ?? 'READY',
   name: overrides.name ?? 'Ready Asset',

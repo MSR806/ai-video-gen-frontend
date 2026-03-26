@@ -7,6 +7,7 @@ import { GetCollectionItemByIdUseCase } from './get-collection-item-by-id.use-ca
 import { GetCollectionItemsUseCase } from './get-collection-items.use-case';
 import { GetGenerationCapabilitiesUseCase } from './get-generation-capabilities.use-case';
 import { GetGenerationRunUseCase } from './get-generation-run.use-case';
+import { SetCollectionItemFavoriteUseCase } from './set-collection-item-favorite.use-case';
 import { UploadCollectionItemUseCase } from './upload-collection-item.use-case';
 import type {
   CollectionContents,
@@ -24,6 +25,7 @@ const sampleCollectionItem: CollectionItem = {
   id: 'item-1',
   projectId: 'project-1',
   collectionId: 'collection-1',
+  isFavorite: false,
   runId: null,
   generationRunOutputId: null,
   mediaType: 'image',
@@ -178,6 +180,7 @@ function createRepository(
     getContentsByCollectionId: async () => sampleContents,
     getByCollectionId: async () => [sampleCollectionItem],
     getById: async () => sampleCollectionItem,
+    setFavorite: async () => sampleCollectionItem,
     create: async () => sampleCollectionItem,
     delete: async () => undefined,
     upload: async () => sampleCollectionItem,
@@ -283,6 +286,25 @@ describe('collection-item use cases', () => {
     expect(result).toEqual(sampleCollectionItem);
   });
 
+  it('SetCollectionItemFavoriteUseCase delegates item favorite update and returns item', async () => {
+    const calls: Array<{ collectionId: string; itemId: string; isFavorite: boolean }> = [];
+    const repository = createRepository({
+      setFavorite: async (collectionId, itemId, isFavorite) => {
+        calls.push({ collectionId, itemId, isFavorite });
+        return {
+          ...sampleCollectionItem,
+          isFavorite,
+        };
+      },
+    });
+
+    const useCase = new SetCollectionItemFavoriteUseCase(repository);
+    const result = await useCase.execute('collection-1', 'item-1', true);
+
+    expect(calls).toEqual([{ collectionId: 'collection-1', itemId: 'item-1', isFavorite: true }]);
+    expect(result.isFavorite).toBe(true);
+  });
+
   it('GetGenerationRunUseCase delegates run id and returns generation run', async () => {
     const calls: string[] = [];
     const repository = createRepository({
@@ -355,6 +377,9 @@ describe('collection-item use cases', () => {
       getById: async () => {
         throw failure;
       },
+      setFavorite: async () => {
+        throw failure;
+      },
       getGenerationRun: async () => {
         throw failure;
       },
@@ -381,6 +406,9 @@ describe('collection-item use cases', () => {
     await expect(new GetCollectionItemByIdUseCase(failingRepo).execute('item-1')).rejects.toBe(
       failure,
     );
+    await expect(
+      new SetCollectionItemFavoriteUseCase(failingRepo).execute('collection-1', 'item-1', true),
+    ).rejects.toBe(failure);
     await expect(new GetGenerationRunUseCase(failingRepo).execute('run-1')).rejects.toBe(failure);
     await expect(new GetGenerationCapabilitiesUseCase(failingRepo).execute()).rejects.toBe(failure);
     await expect(
