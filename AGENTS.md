@@ -203,6 +203,7 @@ Prefer avoiding circular feature dependencies. If two features need the same gen
 
 - All colors are defined as **CSS custom properties** in `@presentation/styles/globals.css`
 - Default theme direction is **Catppuccin Macchiato** through semantic tokens (not direct palette literals in components)
+- Theme baseline was introduced in commit `460b2f4` (`feat: migrated to Catppuccin Macchiato theme`); preserve this palette unless a redesign is explicitly requested
 - **Never use hardcoded hex values** in components — always use `var(--token-name)`
 - Use semantic naming: `--bg-raised` not `--dark-gray`
 
@@ -222,6 +223,12 @@ Prefer avoiding circular feature dependencies. If two features need the same gen
 - Never use pure black `#000` or pure white `#fff` in feature styles; use semantic tokens (`--bg-*`, `--text-*`, `--overlay-*`)
 - Shadows need higher opacity (0.4-0.6) to be visible on dark backgrounds
 - Use `--shadow-sm`, `--shadow-md`, `--shadow-lg`, and `--shadow-accent` tokens
+
+### Iconography
+
+- Use `lucide-react` as the default icon set for UI controls and status cues
+- Prefer Lucide components over inline SVGs for common icons; use custom SVG only for brand-specific artwork
+- Keep icon sizes consistent with surrounding controls (typically 16-20px) and style via CSS tokens
 
 ---
 
