@@ -6,28 +6,36 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  width: min(24rem, calc(100vw - (var(--space-4) * 2)));
   pointer-events: none;
 }
 
 .toast {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
-  background: var(--bg-raised);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--bg-elevated) 90%, var(--accent-primary-muted)) 0%,
+    var(--bg-raised) 58%,
+    color-mix(in srgb, var(--bg-base) 88%, var(--bg-raised)) 100%
+  );
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
+  border-left: 3px solid var(--border-default);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  min-width: 300px;
-  max-width: 500px;
+  min-width: 0;
+  width: 100%;
   pointer-events: auto;
-  animation: slideInRight var(--transition-normal);
+  animation: toastIn var(--transition-normal);
 }
 
-@keyframes slideInRight {
+@keyframes toastIn {
   from {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateX(1.2rem) scale(0.98);
   }
 
   to {
@@ -37,52 +45,90 @@
 }
 
 .toast.success {
-  border-left: 3px solid var(--status-success);
-  background: var(--status-success-muted);
+  border-left-color: var(--status-success);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--status-success-muted) 80%, var(--bg-elevated)) 0%,
+    color-mix(in srgb, var(--status-success-muted) 44%, var(--bg-raised)) 100%
+  );
 }
 
 .toast.error {
-  border-left: 3px solid var(--status-error);
-  background: var(--status-error-muted);
+  border-left-color: var(--status-error);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--status-error-muted) 78%, var(--bg-elevated)) 0%,
+    color-mix(in srgb, var(--status-error-muted) 42%, var(--bg-raised)) 100%
+  );
 }
 
 .toast.info {
-  border-left: 3px solid var(--accent-primary);
-  background: var(--accent-primary-muted);
+  border-left-color: var(--accent-primary);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--accent-primary-muted) 82%, var(--bg-elevated)) 0%,
+    color-mix(in srgb, var(--accent-primary-muted) 44%, var(--bg-raised)) 100%
+  );
 }
 
 .message {
   flex: 1;
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
   color: var(--text-primary);
 }
 
 .closeButton {
-  background: transparent;
-  border: none;
-  font-size: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--border-default) 84%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  font-size: 1.25rem;
   line-height: 1;
   color: var(--text-secondary);
   cursor: pointer;
   padding: 0;
-  width: 24px;
-  height: 24px;
+  width: 1.75rem;
+  height: 1.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
+  flex-shrink: 0;
   transition:
     background-color var(--transition-fast),
     color var(--transition-fast),
-    border-color var(--transition-fast);
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .closeButton:hover {
-  background: var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 66%, var(--accent-primary-muted));
+  border-color: var(--border-accent);
   color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .closeButton:focus-visible {
-  outline: 2px solid var(--accent-primary);
+  outline: 2px solid var(--focus-ring-color);
   outline-offset: 2px;
+  box-shadow: var(--focus-ring-shadow);
+}
+
+@media (max-width: 640px) {
+  .container {
+    top: var(--space-4);
+    right: var(--space-4);
+    left: var(--space-4);
+    width: auto;
+  }
+
+  .toast {
+    padding: var(--space-4);
+    gap: var(--space-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
 }

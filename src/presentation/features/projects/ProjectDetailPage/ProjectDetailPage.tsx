@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -33,7 +34,9 @@ import {
   type SceneUpdatePayload,
   UpdateSceneUseCase,
 } from '@core/scene';
+import { SendChatMessageUseCase } from '@core/chat';
 import {
+  ChatRepositoryImpl,
   CollectionItemRepositoryImpl,
   CollectionRepositoryImpl,
   SceneRepositoryImpl,
@@ -41,6 +44,7 @@ import {
 import {
   getProjectCollectionPath,
   getProjectCollectionsPath,
+  getProjectOverviewPath,
 } from '@presentation/features/projects/routes';
 import type { TabType } from './types';
 import { TabNavigation } from './components/TabNavigation';
@@ -51,8 +55,10 @@ import { CollectionItemLightbox } from '../../collections/components/CollectionI
 import { PastedImageConfirmModal } from '../../collections/components/PastedImageConfirmModal';
 import { GenerationControlBar } from '../../collections/components/CollectionItemGenerationView/components/GenerationControlBar/GenerationControlBar';
 import { ScenesEditor } from '../../scenes/components/ScenesEditor';
+import { CollectionChatPanel } from '../../chat/components/CollectionChatPanel';
 import { ToastContainer } from '@presentation/components/feedback';
 import { Button, Dropdown, DropdownItem, Modal } from '@presentation/components/ui';
+import { ChevronLeft, PanelLeftOpen, Plus } from 'lucide-react';
 import styles from './ProjectDetailPage.module.css';
 
 type Item = Collection | null;
@@ -143,6 +149,7 @@ const ACTIVE_GENERATION_RUNS_MAX_POLL_ATTEMPTS = 240;
 const MISSING_RUN_FALLBACK_REFRESH_INTERVAL_MS = 15000;
 const MISSING_RUN_FALLBACK_MAX_ATTEMPTS = 4;
 const ITEM_TERMINAL_REFRESH_MAX_RETRIES = 5;
+const CHAT_COLLAPSE_BREAKPOINT_QUERY = '(max-width: 1024px)';
 
 /**
  * ProjectDetailPage
@@ -189,7 +196,12 @@ export function ProjectDetailPage({
     null,
   );
   const [isSavingPastedImage, setIsSavingPastedImage] = useState(false);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const sendChatMessageUseCase = useMemo(
+    () => new SendChatMessageUseCase(new ChatRepositoryImpl()),
+    [],
+  );
 
   const getRootCollections = (): Collection[] =>
     loadedCollections.filter((collection) => collection.parentCollectionId === null);
@@ -258,6 +270,10 @@ export function ProjectDetailPage({
 
   const handleNavigateToRoot = () => {
     router.push(getProjectCollectionsPath(projectId));
+  };
+
+  const handleNavigateToProject = () => {
+    router.push(getProjectOverviewPath(projectId));
   };
 
   const handleNavigateToParent = () => {
@@ -1274,6 +1290,29 @@ export function ProjectDetailPage({
     refreshCollectionContents,
   ]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(CHAT_COLLAPSE_BREAKPOINT_QUERY);
+    const syncChatCollapseWithViewport = (matches: boolean) => {
+      setIsChatCollapsed((previous) => (previous === matches ? previous : matches));
+    };
+
+    syncChatCollapseWithViewport(mediaQuery.matches);
+
+    const handleMediaQueryChange = (event: MediaQueryListEvent) => {
+      syncChatCollapseWithViewport(event.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleMediaQueryChange);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleMediaQueryChange);
+    };
+  }, []);
+
   const rootCollections = getRootCollections();
   const selectedItem = getSelectedItem();
   const selectedCollectionItems = getCollectionItems();
@@ -1313,19 +1352,27 @@ export function ProjectDetailPage({
   }, [lightboxItem, selectedCollectionItems]);
 
   const canCreateCollectionItems = !!selectedCollectionId && activeTab === 'collections';
+  const showTabNavigation = activeTab !== 'collections';
+  const containerClassName = `${styles.container} ${
+    activeTab === 'collections' ? styles.containerCollections : ''
+  }`;
+  const collectionsDetailLayoutClassName = `${styles.collectionsDetailLayout} ${styles.collectionsDetailLayoutFullWidth} ${
+    isChatCollapsed ? styles.collectionsDetailLayoutChatCollapsed : ''
+  }`;
   const containerStyle = {
     '--workspace-viewport-offset': `${viewportOffsetPx}px`,
   } as CSSProperties;
 
   return (
-    <div className={styles.container} style={containerStyle}>
-      <TabNavigation projectId={projectId} activeTab={activeTab} />
+    <div className={containerClassName} style={containerStyle}>
+      {showTabNavigation ? <TabNavigation projectId={projectId} activeTab={activeTab} /> : null}
 
       {activeTab === 'collections' && !selectedCollectionId ? (
         <CollectionsCardList
           projectId={projectId}
           collections={rootCollections}
           onAddClick={handleCreateCollectionClick}
+          onBackToProjectClick={handleNavigateToProject}
         />
       ) : activeTab === 'scenes' ? (
         <div className={styles.scenesArea}>
@@ -1348,15 +1395,35 @@ export function ProjectDetailPage({
           <div>Shots Storyboard Placeholder</div>
         </div>
       ) : (
-        <div className={styles.collectionsDetailLayout}>
+        <div className={collectionsDetailLayoutClassName}>
+          <div className={styles.chatPanel}>
+            <CollectionChatPanel
+              sendChatMessageUseCase={sendChatMessageUseCase}
+              onCollapseSidebar={() => setIsChatCollapsed(true)}
+            />
+          </div>
+
           <div className={styles.collectionsWorkspaceArea}>
             <div className={styles.collectionsPathBar}>
+              {isChatCollapsed ? (
+                <button
+                  type="button"
+                  className={styles.chatToggleButton}
+                  onClick={() => setIsChatCollapsed(false)}
+                  aria-label="Expand chat sidebar"
+                  aria-expanded={false}
+                  title="Expand chat sidebar"
+                >
+                  <PanelLeftOpen aria-hidden="true" size={16} strokeWidth={2.25} />
+                </button>
+              ) : null}
               <button
                 type="button"
                 className={styles.pathBackButton}
                 onClick={handleNavigateToParent}
                 disabled={!selectedItem}
               >
+                <ChevronLeft aria-hidden="true" size={14} strokeWidth={2.5} />
                 Back
               </button>
               <button
@@ -1388,7 +1455,7 @@ export function ProjectDetailPage({
               <div className={styles.pathActions}>
                 {canCreateCollectionItems ? (
                   <Dropdown
-                    trigger={<span aria-hidden="true">+</span>}
+                    trigger={<Plus aria-hidden="true" size={16} strokeWidth={2.5} />}
                     triggerClassName={styles.pathAddButton}
                     triggerAriaLabel="Add options"
                     disabled={isUploadingCollectionItems}

@@ -13,14 +13,19 @@ interface ProjectsListProps {
 export function ProjectsList({ projects }: ProjectsListProps) {
   if (projects.length === 0) {
     return (
-      <div className={styles.empty}>
-        <p className={styles.emptyText}>No projects yet. Create your first video project!</p>
-      </div>
+      <section className={styles.empty} aria-live="polite">
+        <p className={styles.emptyEyebrow}>No projects yet</p>
+        <h2 className={styles.emptyTitle}>Create your first AI video workspace</h2>
+        <p className={styles.emptyText}>
+          Start with a project to organize your collections, draft scene beats, and plan shots in
+          one place.
+        </p>
+      </section>
     );
   }
 
   return (
-    <div className={styles.grid}>
+    <div className={styles.grid} role="list" aria-label="Projects">
       {projects.map((project) => (
         <ProjectCard key={project.id} project={project} />
       ))}

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { Collection } from '@core/collection';
 import type { CollectionItem, GenerationCapabilities } from '@core/collection-item';
 
@@ -58,6 +58,79 @@ const selectedCollectionItem: CollectionItem = {
   generationErrorMessage: null,
 };
 
+const CHAT_COLLAPSE_BREAKPOINT_QUERY = '(max-width: 1024px)';
+
+type MatchMediaChangeListener = (event: MediaQueryListEvent) => void;
+
+const createMatchMediaController = (initialMatches: boolean) => {
+  let matches = initialMatches;
+  const listeners = new Set<MatchMediaChangeListener>();
+
+  const matchMediaMock = mock((query: string) => {
+    const mediaQueryList = {
+      media: query,
+      get matches() {
+        return matches;
+      },
+      onchange: null,
+      addEventListener: (eventName: string, listener: EventListenerOrEventListenerObject) => {
+        if (eventName !== 'change') {
+          return;
+        }
+
+        if (typeof listener === 'function') {
+          listeners.add(listener as MatchMediaChangeListener);
+          return;
+        }
+
+        listeners.add((event) => listener.handleEvent(event));
+      },
+      removeEventListener: (eventName: string, listener: EventListenerOrEventListenerObject) => {
+        if (eventName !== 'change') {
+          return;
+        }
+
+        if (typeof listener === 'function') {
+          listeners.delete(listener as MatchMediaChangeListener);
+          return;
+        }
+
+        listeners.forEach((registeredListener) => {
+          if (registeredListener === listener.handleEvent) {
+            listeners.delete(registeredListener);
+          }
+        });
+      },
+      addListener: (listener: MatchMediaChangeListener) => {
+        listeners.add(listener);
+      },
+      removeListener: (listener: MatchMediaChangeListener) => {
+        listeners.delete(listener);
+      },
+      dispatchEvent: () => true,
+    } satisfies MediaQueryList;
+
+    return mediaQueryList;
+  });
+
+  const dispatchChange = (nextMatches: boolean) => {
+    matches = nextMatches;
+    const event = {
+      matches: nextMatches,
+      media: CHAT_COLLAPSE_BREAKPOINT_QUERY,
+    } as MediaQueryListEvent;
+
+    listeners.forEach((listener) => listener(event));
+  };
+
+  return {
+    matchMedia: matchMediaMock,
+    dispatchChange,
+  };
+};
+
+const originalMatchMedia = window.matchMedia;
+
 mock.module('next/navigation', () => ({
   useRouter: () => ({ push: pushSpy }),
 }));
@@ -65,6 +138,11 @@ mock.module('next/navigation', () => ({
 mock.module('@infra/repositories', () => ({
   CollectionRepositoryImpl: class {},
   SceneRepositoryImpl: class {},
+  ChatRepositoryImpl: class {
+    async send() {
+      return { threadId: 'thread-1', message: { role: 'assistant', text: 'ok' } };
+    }
+  },
   CollectionItemRepositoryImpl: class {
     async getContentsByCollectionId() {
       return {
@@ -110,9 +188,82 @@ mock.module('@infra/repositories', () => ({
 }));
 
 describe('ProjectDetailPage', () => {
+  let matchMediaController: ReturnType<typeof createMatchMediaController>;
+
   beforeEach(() => {
     pushSpy.mockClear();
     uploadSpy.mockClear();
+
+    matchMediaController = createMatchMediaController(false);
+    window.matchMedia = matchMediaController.matchMedia as typeof window.matchMedia;
+  });
+
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
+  it('defaults to collapsed chat when the initial viewport is mobile', async () => {
+    matchMediaController = createMatchMediaController(true);
+    window.matchMedia = matchMediaController.matchMedia as typeof window.matchMedia;
+
+    const { ProjectDetailPage } = await import('./ProjectDetailPage');
+
+    render(
+      <ProjectDetailPage
+        projectId="project-1"
+        activeTab="collections"
+        selectedCollectionId="collection-1"
+        collections={[selectedCollection]}
+        scenes={[]}
+        collectionItems={[selectedCollectionItem]}
+        selectedCollectionChildCollections={[]}
+        viewportOffsetPx={0}
+      />,
+    );
+
+    expect(await screen.findByRole('button', { name: 'Expand chat sidebar' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(matchMediaController.matchMedia).toHaveBeenCalledWith(CHAT_COLLAPSE_BREAKPOINT_QUERY);
+  });
+
+  it('updates chat collapsed state when viewport crosses the breakpoint', async () => {
+    const { ProjectDetailPage } = await import('./ProjectDetailPage');
+
+    render(
+      <ProjectDetailPage
+        projectId="project-1"
+        activeTab="collections"
+        selectedCollectionId="collection-1"
+        collections={[selectedCollection]}
+        scenes={[]}
+        collectionItems={[selectedCollectionItem]}
+        selectedCollectionChildCollections={[]}
+        viewportOffsetPx={0}
+      />,
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Collapse chat sidebar' }),
+    ).toBeInTheDocument();
+
+    act(() => {
+      matchMediaController.dispatchChange(true);
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Expand chat sidebar' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      ),
+    );
+
+    act(() => {
+      matchMediaController.dispatchChange(false);
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Collapse chat sidebar' })).toBeInTheDocument(),
+    );
   });
 
   it('renders the generation input widget inside the right sidebar for selected collections', async () => {
@@ -135,7 +286,7 @@ describe('ProjectDetailPage', () => {
     const promptInput = await within(sidebar).findByRole('textbox');
 
     expect(promptInput.closest('aside')).toBe(sidebar);
-    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect(screen.getAllByRole('textbox').length).toBeGreaterThanOrEqual(1);
   });
 
   it('opens pasted image confirmation and saves on Enter', async () => {
@@ -216,5 +367,65 @@ describe('ProjectDetailPage', () => {
       screen.queryByRole('heading', { name: 'Paste Image to Collection' }),
     ).not.toBeInTheDocument();
     expect(uploadSpy).not.toHaveBeenCalled();
+  });
+
+  it('hides tab navigation in collections view and supports back to project', async () => {
+    const { ProjectDetailPage } = await import('./ProjectDetailPage');
+
+    render(
+      <ProjectDetailPage
+        projectId="project-1"
+        activeTab="collections"
+        selectedCollectionId={null}
+        collections={[selectedCollection]}
+        scenes={[]}
+        collectionItems={[selectedCollectionItem]}
+        selectedCollectionChildCollections={[]}
+        viewportOffsetPx={0}
+      />,
+    );
+
+    expect(
+      screen.queryByRole('navigation', { name: 'Project workspace tabs' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Project' }));
+    expect(pushSpy).toHaveBeenCalledWith('/projects/project-1');
+  });
+
+  it('keeps back to project out of detail path bar and moves chat controls by state', async () => {
+    const { ProjectDetailPage } = await import('./ProjectDetailPage');
+
+    render(
+      <ProjectDetailPage
+        projectId="project-1"
+        activeTab="collections"
+        selectedCollectionId="collection-1"
+        collections={[selectedCollection]}
+        scenes={[]}
+        collectionItems={[selectedCollectionItem]}
+        selectedCollectionChildCollections={[]}
+        viewportOffsetPx={0}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Back to Project' })).not.toBeInTheDocument();
+
+    const chatPanel = screen.getByLabelText('Chat assistant');
+    const collapseButton = within(chatPanel).getByRole('button', {
+      name: 'Collapse chat sidebar',
+    });
+    expect(collapseButton).toBeInTheDocument();
+
+    fireEvent.click(collapseButton);
+
+    const expandButton = await screen.findByRole('button', { name: 'Expand chat sidebar' });
+    const backButton = screen.getByRole('button', { name: /^Back$/ });
+
+    const pathBar = backButton.closest('div');
+    expect(pathBar).not.toBeNull();
+    expect(pathBar).toContainElement(expandButton);
+    expect(pathBar).toContainElement(backButton);
+    expect(expandButton.compareDocumentPosition(backButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });

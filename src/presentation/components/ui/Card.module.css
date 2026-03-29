@@ -1,8 +1,16 @@
 .card {
-  background: var(--bg-raised);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--bg-elevated) 88%, var(--accent-primary-muted)) 0%,
+    var(--bg-raised) 55%,
+    color-mix(in srgb, var(--bg-base) 86%, var(--bg-raised)) 100%
+  );
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
   transition:
     transform var(--transition-normal),
     box-shadow var(--transition-normal),
@@ -10,9 +18,39 @@
     background-color var(--transition-normal);
 }
 
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--border-default);
-  background: var(--bg-elevated);
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--accent-primary) 14%, transparent) 0%,
+    transparent 42%
+  );
+  opacity: 0.75;
+  transition: opacity var(--transition-normal);
+}
+
+.card:focus-within {
+  border-color: var(--border-accent);
+  box-shadow: var(--shadow-md), var(--focus-ring-shadow);
+}
+
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-default);
+    background: linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--bg-elevated) 82%, var(--accent-primary-muted)) 0%,
+      var(--bg-elevated) 62%,
+      color-mix(in srgb, var(--bg-base) 82%, var(--bg-raised)) 100%
+    );
+  }
+
+  .card:hover::before {
+    opacity: 1;
+  }
 }

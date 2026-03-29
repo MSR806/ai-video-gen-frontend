@@ -60,21 +60,43 @@ export function ProjectsHomePage() {
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.headerContent}>
-          <div>
+          <div className={styles.heroCopy}>
+            <p className={styles.eyebrow}>Projects Workspace</p>
             <h1 className={styles.title}>AI Video Content Projects</h1>
-            <p className={styles.subtitle}>Manage and create stunning video content with AI</p>
+            <p className={styles.subtitle}>
+              Build concepts into production-ready stories with one project hub for collections,
+              scenes, and shots.
+            </p>
+            <p className={styles.metric}>
+              <span className={styles.metricValue}>{isLoading ? '...' : projects.length}</span>{' '}
+              active project{projects.length === 1 ? '' : 's'}
+            </p>
           </div>
-          <Button variant="primary" onClick={() => setCreateModalOpen(true)}>
-            + New Project
-          </Button>
+          <div className={styles.headerActions}>
+            <p className={styles.helperText}>
+              Create a new workspace and start planning instantly.
+            </p>
+            <Button variant="primary" onClick={() => setCreateModalOpen(true)}>
+              + New Project
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main className={styles.main}>
+      <main className={styles.main} aria-live="polite">
         {error ? (
-          <p className={styles.subtitle}>{error}</p>
+          <section className={styles.stateCard} role="alert">
+            <h2 className={styles.stateTitle}>Unable to load projects</h2>
+            <p className={styles.stateText}>{error}</p>
+            <Button variant="secondary" onClick={() => void loadProjects()}>
+              Try Again
+            </Button>
+          </section>
         ) : isLoading ? (
-          <p className={styles.subtitle}>Loading projects...</p>
+          <section className={styles.stateCard} role="status" aria-label="Loading projects">
+            <h2 className={styles.stateTitle}>Loading your projects</h2>
+            <p className={styles.stateText}>Preparing your latest workspace data...</p>
+          </section>
         ) : (
           <ProjectsList projects={projects} />
         )}

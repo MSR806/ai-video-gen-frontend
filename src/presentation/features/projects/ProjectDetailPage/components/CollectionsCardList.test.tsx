@@ -5,13 +5,24 @@ import { CollectionsCardList } from './CollectionsCardList';
 describe('CollectionsCardList', () => {
   it('renders empty state and triggers add button action', () => {
     const onAddClick = mock(() => {});
+    const onBackToProjectClick = mock(() => {});
 
-    render(<CollectionsCardList projectId="proj-1" collections={[]} onAddClick={onAddClick} />);
+    render(
+      <CollectionsCardList
+        projectId="proj-1"
+        collections={[]}
+        onAddClick={onAddClick}
+        onBackToProjectClick={onBackToProjectClick}
+      />,
+    );
 
     expect(screen.getByText('No collections found.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '+ New collection' }));
     expect(onAddClick).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Project' }));
+    expect(onBackToProjectClick).toHaveBeenCalledTimes(1);
   });
 
   it('renders collections as navigation links', () => {
@@ -29,6 +40,7 @@ describe('CollectionsCardList', () => {
           },
         ]}
         onAddClick={() => {}}
+        onBackToProjectClick={() => {}}
       />,
     );
 

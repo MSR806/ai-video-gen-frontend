@@ -1,5 +1,6 @@
 import type { Project } from '@core/project';
 import Link from 'next/link';
+import { ArrowUpRight, CalendarDays } from 'lucide-react';
 import { Card } from '@presentation/components/ui/Card';
 import { Badge } from '@presentation/components/ui/Badge';
 import { getProjectOverviewPath } from './routes';
@@ -34,15 +35,29 @@ export function ProjectCard({ project }: ProjectCardProps) {
   };
 
   return (
-    <Link href={getProjectOverviewPath(project.id)} className={styles.link}>
+    <Link
+      href={getProjectOverviewPath(project.id)}
+      className={styles.link}
+      aria-label={`Open ${project.name} project`}
+      role="listitem"
+    >
       <Card className={styles.projectCard}>
+        <div className={styles.metaRow}>
+          <Badge variant={project.status}>{getStatusLabel(project.status)}</Badge>
+          <span className={styles.date}>
+            <CalendarDays size={14} aria-hidden="true" />
+            Updated {formatDate(project.updatedAt)}
+          </span>
+        </div>
         <div className={styles.content}>
           <h3 className={styles.title}>{project.name}</h3>
           <p className={styles.description}>{project.description}</p>
         </div>
         <div className={styles.footer}>
-          <Badge variant={project.status}>{getStatusLabel(project.status)}</Badge>
-          <span className={styles.date}>{formatDate(project.updatedAt)}</span>
+          <span className={styles.cta}>
+            Open workspace
+            <ArrowUpRight size={14} aria-hidden="true" />
+          </span>
         </div>
       </Card>
     </Link>

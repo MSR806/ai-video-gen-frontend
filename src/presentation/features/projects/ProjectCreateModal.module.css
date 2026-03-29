@@ -4,6 +4,10 @@
   gap: var(--space-4);
 }
 
+.form > :last-child {
+  margin-top: var(--space-2);
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -11,9 +15,9 @@
 }
 
 .label {
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .input,
@@ -21,21 +25,53 @@
 .select {
   width: 100%;
   border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 90%, var(--bg-base));
   color: var(--text-primary);
   border-radius: var(--radius-md);
   padding: var(--space-3);
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
-.input:focus,
-.textarea:focus,
-.select:focus {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 1px;
+.select {
+  appearance: none;
+  padding-right: 2.4rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 1rem) calc(50% - 0.1rem),
+    calc(100% - 0.7rem) calc(50% - 0.1rem);
+  background-size: 0.4rem 0.4rem;
+  background-repeat: no-repeat;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.input:hover,
+.textarea:hover,
+.select:hover {
+  border-color: color-mix(in srgb, var(--accent-primary) 36%, var(--border-default));
+}
+
+.input:focus-visible,
+.textarea:focus-visible,
+.select:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary-muted) 20%, var(--bg-elevated));
+  box-shadow: var(--focus-ring-shadow);
 }
 
 .textarea {
+  min-height: 6.5rem;
   resize: vertical;
 }
 
@@ -43,10 +79,11 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .error {
   margin: 0;
   color: var(--status-error);
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
 }

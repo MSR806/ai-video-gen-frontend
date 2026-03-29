@@ -5,6 +5,7 @@ import {
   getProjectScenesPath,
   getProjectShotsPath,
 } from '@presentation/features/projects/routes';
+import { Clapperboard, FolderTree, NotebookText } from 'lucide-react';
 import styles from '../ProjectDetailPage.module.css';
 
 interface TabNavigationProps {
@@ -22,7 +23,8 @@ export function TabNavigation({ projectId, activeTab }: TabNavigationProps) {
         title="Collections"
         aria-current={activeTab === 'collections' ? 'page' : undefined}
       >
-        <span aria-hidden="true">🗂️</span>
+        <FolderTree aria-hidden="true" size={18} strokeWidth={2} />
+        <span className={styles.navButtonLabel}>Collections</span>
       </Link>
       <Link
         href={getProjectScenesPath(projectId)}
@@ -31,7 +33,8 @@ export function TabNavigation({ projectId, activeTab }: TabNavigationProps) {
         title="Scenes"
         aria-current={activeTab === 'scenes' ? 'page' : undefined}
       >
-        <span aria-hidden="true">📝</span>
+        <NotebookText aria-hidden="true" size={18} strokeWidth={2} />
+        <span className={styles.navButtonLabel}>Scenes</span>
       </Link>
       <Link
         href={getProjectShotsPath(projectId)}
@@ -40,7 +43,8 @@ export function TabNavigation({ projectId, activeTab }: TabNavigationProps) {
         title="Shots"
         aria-current={activeTab === 'shots' ? 'page' : undefined}
       >
-        <span aria-hidden="true">🎬</span>
+        <Clapperboard aria-hidden="true" size={18} strokeWidth={2} />
+        <span className={styles.navButtonLabel}>Shots</span>
       </Link>
     </nav>
   );

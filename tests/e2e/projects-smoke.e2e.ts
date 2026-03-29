@@ -137,11 +137,17 @@ test('navigates collections, scenes, and shots tabs for a project workspace', as
   await expect(page).toHaveURL(new RegExp(`/projects/${PROJECT_ID}/collections$`));
   await expect(page.getByRole('heading', { name: 'Collections' })).toBeVisible();
 
-  await page.getByTitle('Scenes').click();
+  await page.goto(`/projects/${PROJECT_ID}`);
+  await expect(page.getByRole('heading', { name: 'Workspace Sections' })).toBeVisible();
+
+  await page.getByRole('link', { name: /Scenes/i }).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${PROJECT_ID}/scenes$`));
   await expect(page.getByRole('heading', { name: 'Scenes' })).toBeVisible();
 
-  await page.getByTitle('Shots').click();
+  await page.goto(`/projects/${PROJECT_ID}`);
+  await expect(page.getByRole('heading', { name: 'Workspace Sections' })).toBeVisible();
+
+  await page.getByRole('link', { name: /Shots/i }).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${PROJECT_ID}/shots$`));
   await expect(page.getByText('Shots Storyboard Placeholder')).toBeVisible();
 });

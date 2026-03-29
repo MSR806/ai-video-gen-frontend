@@ -1,28 +1,38 @@
 .badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 1.5rem;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 500;
+  border: 1px solid transparent;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 9%, transparent);
   transition:
     background-color var(--transition-fast),
-    color var(--transition-fast);
+    color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .draft {
-  background: var(--border-default);
+  background: color-mix(in srgb, var(--border-default) 48%, transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 70%, transparent);
   color: var(--text-secondary);
 }
 
 .in-progress {
-  background: var(--status-warning-muted);
+  background: color-mix(in srgb, var(--status-warning-muted) 92%, transparent);
+  border-color: color-mix(in srgb, var(--status-warning) 48%, var(--border-default));
   color: var(--status-warning);
 }
 
 .completed {
-  background: var(--status-success-muted);
+  background: color-mix(in srgb, var(--status-success-muted) 92%, transparent);
+  border-color: color-mix(in srgb, var(--status-success) 46%, var(--border-default));
   color: var(--status-success);
 }
