@@ -8,6 +8,43 @@
   gap: var(--space-7);
 }
 
+.pageHeader {
+  display: flex;
+  align-items: center;
+}
+
+.backLink {
+  border: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--bg-raised) 92%, var(--bg-elevated));
+  color: var(--text-primary);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  text-decoration: none;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.backLink:hover {
+  background: color-mix(in srgb, var(--accent-primary-muted) 56%, var(--bg-elevated));
+  border-color: color-mix(in srgb, var(--accent-primary) 42%, var(--border-default));
+  color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+.backLink:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
 .summaryCard {
   position: relative;
   overflow: hidden;

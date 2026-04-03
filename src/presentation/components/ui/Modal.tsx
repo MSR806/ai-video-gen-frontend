@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -23,6 +24,15 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  const handleClose = useCallback(() => {
+    onCloseRef.current();
+  }, []);
 
   // Handle ESC key
   useEffect(() => {
@@ -33,7 +43,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        handleClose();
         return;
       }
 
@@ -66,7 +76,24 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     document.body.style.overflow = 'hidden';
     document.addEventListener('keydown', handleEscape);
     requestAnimationFrame(() => {
-      closeButtonRef.current?.focus();
+      const dialog = dialogRef.current;
+      if (!dialog) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement && dialog.contains(activeElement)) {
+        return;
+      }
+
+      const focusable = dialog.querySelectorAll<HTMLElement>(
+        'input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+      );
+      const preferredFocusable = Array.from(focusable).find(
+        (element) => element !== closeButtonRef.current,
+      );
+
+      (preferredFocusable ?? closeButtonRef.current)?.focus();
     });
 
     return () => {
@@ -74,13 +101,13 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       document.removeEventListener('keydown', handleEscape);
       previouslyFocusedRef.current?.focus();
     };
-  }, [isOpen, onClose]);
+  }, [handleClose, isOpen]);
 
   if (!isOpen) return null;
 
   const handleBackdropPointerDown = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
-      onClose();
+      handleClose();
     }
   };
 
@@ -101,7 +128,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             ref={closeButtonRef}
             type="button"
             className={styles.closeButton}
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close"
           >
             ×

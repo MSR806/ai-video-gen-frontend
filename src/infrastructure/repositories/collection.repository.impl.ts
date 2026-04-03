@@ -8,6 +8,16 @@ interface CollectionDto {
   name: string;
   tag: string;
   description: string;
+  thumbnailUrl?: string | null;
+}
+
+function normalizeThumbnailUrl(thumbnailUrl: string | null | undefined): string | null {
+  if (typeof thumbnailUrl !== 'string') {
+    return null;
+  }
+
+  const trimmedThumbnailUrl = thumbnailUrl.trim();
+  return trimmedThumbnailUrl.length > 0 ? trimmedThumbnailUrl : null;
 }
 
 function toCollection(dto: CollectionDto): Collection {
@@ -18,6 +28,7 @@ function toCollection(dto: CollectionDto): Collection {
     name: dto.name,
     tag: dto.tag,
     description: dto.description,
+    thumbnailUrl: normalizeThumbnailUrl(dto.thumbnailUrl),
   };
 }
 

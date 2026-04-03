@@ -9,6 +9,7 @@ export interface Collection {
   name: string;
   tag: string;
   description: string;
+  thumbnailUrl?: string | null;
 }
 
 /**

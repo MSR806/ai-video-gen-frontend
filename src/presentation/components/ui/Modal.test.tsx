@@ -54,4 +54,26 @@ describe('Modal', () => {
     unmount();
     expect(document.body.style.overflow).toBe('');
   });
+
+  it('focuses first form field instead of close button', async () => {
+    const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    }) as typeof requestAnimationFrame;
+
+    render(
+      <Modal isOpen={true} onClose={() => {}} title="Focus preference">
+        <input aria-label="Name" />
+      </Modal>,
+    );
+
+    const input = screen.getByLabelText('Name');
+    const closeButton = screen.getByRole('button', { name: 'Close' });
+
+    expect(input).toHaveFocus();
+    expect(closeButton).not.toHaveFocus();
+
+    globalThis.requestAnimationFrame = originalRequestAnimationFrame;
+  });
 });

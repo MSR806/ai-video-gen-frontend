@@ -10,6 +10,7 @@ const sampleCollection: Collection = {
   name: 'Characters',
   tag: 'character',
   description: 'Character references',
+  thumbnailUrl: null,
 };
 
 const samplePayload: CollectionCreationPayload = {

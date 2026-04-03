@@ -17,6 +17,7 @@ describe('CollectionRepositoryImpl', () => {
             name: 'Characters',
             tag: 'character',
             description: 'Character refs',
+            thumbnailUrl: 'https://assets.example.com/characters.jpg',
           },
         ]),
         {
@@ -36,8 +37,33 @@ describe('CollectionRepositoryImpl', () => {
         name: 'Characters',
         tag: 'character',
         description: 'Character refs',
+        thumbnailUrl: 'https://assets.example.com/characters.jpg',
       },
     ]);
+  });
+
+  it('normalizes blank thumbnail urls to null', async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          id: 'collection-1',
+          projectId: 'project-1',
+          parentCollectionId: null,
+          name: 'Characters',
+          tag: 'character',
+          description: 'Character refs',
+          thumbnailUrl: '   ',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )) as typeof fetch;
+
+    const repository = new CollectionRepositoryImpl();
+    const result = await repository.getById('collection-1');
+
+    expect(result?.thumbnailUrl).toBeNull();
   });
 
   it('returns null for 404 in getById', async () => {

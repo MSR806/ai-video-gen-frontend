@@ -3,7 +3,7 @@ import { Badge } from '@presentation/components/ui/Badge';
 import { Card } from '@presentation/components/ui/Card';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowRight, Clapperboard, FolderKanban, LayoutPanelTop } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clapperboard, FolderKanban, LayoutPanelTop } from 'lucide-react';
 import { getProjectCollectionsPath, getProjectScenesPath, getProjectShotsPath } from './routes';
 import styles from './ProjectOverviewPage.module.css';
 
@@ -52,6 +52,13 @@ const ROUTE_ITEMS: RouteItem[] = [
 export function ProjectOverviewPage({ project }: ProjectOverviewPageProps) {
   return (
     <main className={styles.container}>
+      <div className={styles.pageHeader}>
+        <Link href="/" className={styles.backLink}>
+          <ArrowLeft size={14} aria-hidden="true" />
+          Back to projects
+        </Link>
+      </div>
+
       <section className={styles.summaryCard} aria-labelledby="project-overview-title">
         <p className={styles.overline}>Project Overview</p>
         <div className={styles.summaryHeader}>

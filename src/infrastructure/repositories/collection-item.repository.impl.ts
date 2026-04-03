@@ -42,6 +42,7 @@ interface ApiCollection {
   name: string;
   tag: string;
   description: string;
+  thumbnailUrl?: string | null;
 }
 
 interface ApiCollectionContentsResponse {
@@ -150,6 +151,15 @@ const asString = (value: unknown, fallback = ''): string =>
 const asNumber = (value: unknown, fallback = 0): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 
+const normalizeThumbnailUrl = (thumbnailUrl: string | null | undefined): string | null => {
+  if (typeof thumbnailUrl !== 'string') {
+    return null;
+  }
+
+  const trimmedThumbnailUrl = thumbnailUrl.trim();
+  return trimmedThumbnailUrl.length > 0 ? trimmedThumbnailUrl : null;
+};
+
 const normalizeMetadata = (
   mediaType: 'image' | 'video',
   metadata: unknown,
@@ -201,6 +211,7 @@ const mapApiCollection = (collection: ApiCollection): Collection => {
     name: collection.name,
     tag: collection.tag,
     description: collection.description,
+    thumbnailUrl: normalizeThumbnailUrl(collection.thumbnailUrl),
   };
 };
 

@@ -102,4 +102,31 @@ describe('CollectionCreateModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it('keeps input focus while typing in fields', async () => {
+    render(
+      <CollectionCreateModal
+        projectId="project-1"
+        parentCollectionId={null}
+        isOpen
+        isSubmitting={false}
+        onClose={onClose}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const nameInput = screen.getByLabelText('Name');
+    const closeButton = screen.getByRole('button', { name: 'Close' });
+
+    nameInput.focus();
+    expect(nameInput).toHaveFocus();
+
+    fireEvent.change(nameInput, { target: { value: 'C' } });
+    await waitFor(() => expect(nameInput).toHaveFocus());
+
+    fireEvent.change(nameInput, { target: { value: 'Ch' } });
+    await waitFor(() => expect(nameInput).toHaveFocus());
+
+    expect(closeButton).not.toHaveFocus();
+  });
 });
