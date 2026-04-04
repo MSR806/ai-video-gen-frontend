@@ -10,9 +10,12 @@ export function getProjectCollectionPath(projectId: string, collectionId: string
   return `/projects/${projectId}/collections/${collectionId}`;
 }
 
-export function getProjectScenesPath(projectId: string): string {
+export function getProjectScreenplayPath(projectId: string): string {
   return `/projects/${projectId}/scenes`;
 }
+
+/** @deprecated Use getProjectScreenplayPath instead. */
+export const getProjectScenesPath = getProjectScreenplayPath;
 
 export function getProjectShotsPath(projectId: string): string {
   return `/projects/${projectId}/shots`;

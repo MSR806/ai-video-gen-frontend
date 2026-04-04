@@ -59,6 +59,9 @@ const selectedCollectionItem: CollectionItem = {
 };
 
 const CHAT_COLLAPSE_BREAKPOINT_QUERY = '(max-width: 1024px)';
+const ScreenplayWorkspaceStub = ({ projectId }: { projectId: string }) => (
+  <div data-testid="screenplay-workspace-stub">Screenplay workspace for {projectId}</div>
+);
 
 type MatchMediaChangeListener = (event: MediaQueryListEvent) => void;
 
@@ -135,57 +138,77 @@ mock.module('next/navigation', () => ({
   useRouter: () => ({ push: pushSpy }),
 }));
 
-mock.module('@infra/repositories', () => ({
-  CollectionRepositoryImpl: class {},
-  SceneRepositoryImpl: class {},
-  ChatRepositoryImpl: class {
-    async send() {
-      return { threadId: 'thread-1', message: { role: 'assistant', text: 'ok' } };
-    }
-  },
-  CollectionItemRepositoryImpl: class {
-    async getContentsByCollectionId() {
-      return {
-        items: [selectedCollectionItem],
-        childCollections: [],
-      };
-    }
+mock.module('@infra/repositories', () => {
+  return {
+    ScreenplayRepositoryImpl: class {},
+    ChatRepositoryImpl: class {
+      async send() {
+        return { threadId: 'thread-1', message: { role: 'assistant', text: 'ok' } };
+      }
+    },
+    CollectionRepositoryImpl: class {
+      async create() {
+        return selectedCollection;
+      }
 
-    async getByCollectionId() {
-      return [selectedCollectionItem];
-    }
+      async getByProjectId() {
+        return [selectedCollection];
+      }
 
-    async getById() {
-      return selectedCollectionItem;
-    }
+      async getById() {
+        return selectedCollection;
+      }
 
-    async create() {
-      return selectedCollectionItem;
-    }
+      async update() {
+        return selectedCollection;
+      }
 
-    async setFavorite() {
-      return selectedCollectionItem;
-    }
+      async delete() {}
+    },
+    CollectionItemRepositoryImpl: class {
+      async getContentsByCollectionId() {
+        return {
+          items: [selectedCollectionItem],
+          childCollections: [],
+        };
+      }
 
-    async delete() {}
+      async getByCollectionId() {
+        return [selectedCollectionItem];
+      }
 
-    async upload(payload: unknown) {
-      return uploadSpy(payload);
-    }
+      async getById() {
+        return selectedCollectionItem;
+      }
 
-    async getGenerationCapabilities() {
-      return generationCapabilities;
-    }
+      async create() {
+        return selectedCollectionItem;
+      }
 
-    async generateWithAI() {
-      return { runId: 'run-1', outputs: [] };
-    }
+      async setFavorite() {
+        return selectedCollectionItem;
+      }
 
-    async getGenerationRun() {
-      return { id: 'run-1', status: 'IN_PROGRESS', outputs: [] };
-    }
-  },
-}));
+      async delete() {}
+
+      async upload(payload: unknown) {
+        return uploadSpy(payload);
+      }
+
+      async getGenerationCapabilities() {
+        return generationCapabilities;
+      }
+
+      async generateWithAI() {
+        return { runId: 'run-1', outputs: [] };
+      }
+
+      async getGenerationRun() {
+        return { id: 'run-1', status: 'IN_PROGRESS', outputs: [] };
+      }
+    },
+  };
+});
 
 describe('ProjectDetailPage', () => {
   let matchMediaController: ReturnType<typeof createMatchMediaController>;
@@ -214,9 +237,9 @@ describe('ProjectDetailPage', () => {
         activeTab="collections"
         selectedCollectionId="collection-1"
         collections={[selectedCollection]}
-        scenes={[]}
         collectionItems={[selectedCollectionItem]}
         selectedCollectionChildCollections={[]}
+        screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
         viewportOffsetPx={0}
       />,
     );
@@ -237,9 +260,9 @@ describe('ProjectDetailPage', () => {
         activeTab="collections"
         selectedCollectionId="collection-1"
         collections={[selectedCollection]}
-        scenes={[]}
         collectionItems={[selectedCollectionItem]}
         selectedCollectionChildCollections={[]}
+        screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
         viewportOffsetPx={0}
       />,
     );
@@ -275,9 +298,9 @@ describe('ProjectDetailPage', () => {
         activeTab="collections"
         selectedCollectionId="collection-1"
         collections={[selectedCollection]}
-        scenes={[]}
         collectionItems={[selectedCollectionItem]}
         selectedCollectionChildCollections={[]}
+        screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
         viewportOffsetPx={0}
       />,
     );
@@ -298,9 +321,9 @@ describe('ProjectDetailPage', () => {
         activeTab="collections"
         selectedCollectionId="collection-1"
         collections={[selectedCollection]}
-        scenes={[]}
         collectionItems={[selectedCollectionItem]}
         selectedCollectionChildCollections={[]}
+        screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
         viewportOffsetPx={0}
       />,
     );
@@ -342,9 +365,9 @@ describe('ProjectDetailPage', () => {
         activeTab="collections"
         selectedCollectionId={null}
         collections={[selectedCollection]}
-        scenes={[]}
         collectionItems={[selectedCollectionItem]}
         selectedCollectionChildCollections={[]}
+        screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
         viewportOffsetPx={0}
       />,
     );
@@ -378,9 +401,9 @@ describe('ProjectDetailPage', () => {
         activeTab="collections"
         selectedCollectionId={null}
         collections={[selectedCollection]}
-        scenes={[]}
         collectionItems={[selectedCollectionItem]}
         selectedCollectionChildCollections={[]}
+        screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
         viewportOffsetPx={0}
       />,
     );
@@ -402,9 +425,9 @@ describe('ProjectDetailPage', () => {
         activeTab="collections"
         selectedCollectionId="collection-1"
         collections={[selectedCollection]}
-        scenes={[]}
         collectionItems={[selectedCollectionItem]}
         selectedCollectionChildCollections={[]}
+        screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
         viewportOffsetPx={0}
       />,
     );

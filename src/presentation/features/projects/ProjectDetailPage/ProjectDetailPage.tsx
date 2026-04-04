@@ -6,11 +6,12 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentType,
   type CSSProperties,
   type ChangeEvent,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Collection, Scene, CollectionItem } from '@core';
+import type { Collection, CollectionItem } from '@core';
 import { CreateCollectionUseCase, type CollectionCreationPayload } from '@core/collection';
 import {
   type CollectionItemGenerationParams,
@@ -26,20 +27,11 @@ import {
   type ImageMetadata,
   type VideoMetadata,
 } from '@core/collection-item';
-import {
-  CreateSceneUseCase,
-  DeleteSceneUseCase,
-  GetProjectScenesUseCase,
-  type SceneCreatePayload,
-  type SceneUpdatePayload,
-  UpdateSceneUseCase,
-} from '@core/scene';
 import { SendChatMessageUseCase } from '@core/chat';
 import {
   ChatRepositoryImpl,
   CollectionItemRepositoryImpl,
   CollectionRepositoryImpl,
-  SceneRepositoryImpl,
 } from '@infra/repositories';
 import {
   getProjectCollectionPath,
@@ -54,8 +46,8 @@ import { CollectionItemGrid } from '../../collections/components/CollectionItemG
 import { CollectionItemLightbox } from '../../collections/components/CollectionItemLightbox';
 import { PastedImageConfirmModal } from '../../collections/components/PastedImageConfirmModal';
 import { GenerationControlBar } from '../../collections/components/CollectionItemGenerationView/components/GenerationControlBar/GenerationControlBar';
-import { ScenesEditor } from '../../scenes/components/ScenesEditor';
-import { CollectionChatPanel } from '../../chat/components/CollectionChatPanel';
+import { ScreenplayWorkspace } from '../../screenplay/components/ScreenplayWorkspace';
+import { CollectionChatPanel } from '../../chat/components/CollectionChatPanel/CollectionChatPanel';
 import { ToastContainer } from '@presentation/components/feedback';
 import { Button, Dropdown, DropdownItem, Modal } from '@presentation/components/ui';
 import { ChevronLeft, PanelLeftOpen, Plus } from 'lucide-react';
@@ -68,10 +60,11 @@ interface ProjectDetailPageProps {
   activeTab: TabType;
   selectedCollectionId: string | null;
   collections: Collection[];
-  scenes: Scene[];
   collectionItems: CollectionItem[];
   selectedCollectionChildCollections: Collection[];
   viewportOffsetPx?: number;
+  // Test-only DI seam so page orchestration tests can stub the screenplay surface.
+  screenplayWorkspaceComponent?: ComponentType<{ projectId: string }>;
 }
 
 interface Toast {
@@ -155,7 +148,7 @@ const CHAT_COLLAPSE_BREAKPOINT_QUERY = '(max-width: 1024px)';
  * ProjectDetailPage
  *
  * Orchestrates the project workspace layout:
- * - Tab navigation (Collections/Scenes/Shots)
+ * - Tab navigation (Collections/Screenplay/Shots)
  * - Root collection cards or selected collection drill-down workspace
  * - Collection item grid with generation controls docked in the right sidebar
  */
@@ -164,10 +157,10 @@ export function ProjectDetailPage({
   activeTab,
   selectedCollectionId,
   collections,
-  scenes,
   collectionItems,
   selectedCollectionChildCollections,
   viewportOffsetPx = 57,
+  screenplayWorkspaceComponent: ScreenplayWorkspaceComponent = ScreenplayWorkspace,
 }: ProjectDetailPageProps) {
   const router = useRouter();
   const [lightboxItem, setLightboxItem] = useState<CollectionItem | null>(null);
@@ -181,7 +174,6 @@ export function ProjectDetailPage({
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [itemRefreshKey, setItemRefreshKey] = useState(0);
   const [loadedCollections, setLoadedCollections] = useState<Collection[]>(collections);
-  const [loadedScenes, setLoadedScenes] = useState<Scene[]>(scenes);
   const [loadedCollectionItems, setLoadedCollectionItems] =
     useState<CollectionItem[]>(collectionItems);
   const loadedCollectionItemsRef = useRef<CollectionItem[]>(collectionItems);
@@ -191,7 +183,6 @@ export function ProjectDetailPage({
   const [deletingItemIds, setDeletingItemIds] = useState<Set<string>>(new Set());
   const [favoriteTogglingItemIds, setFavoriteTogglingItemIds] = useState<Set<string>>(new Set());
   const [deleteCandidate, setDeleteCandidate] = useState<CollectionItem | null>(null);
-  const [isScenesReady, setIsScenesReady] = useState(false);
   const [pastedImageCandidate, setPastedImageCandidate] = useState<PastedImageCandidate | null>(
     null,
   );
@@ -255,7 +246,7 @@ export function ProjectDetailPage({
       return '';
     }
 
-    if (activeTab === 'scenes' || activeTab === 'shots') return 'Not applicable for this view';
+    if (activeTab === 'screenplay' || activeTab === 'shots') return 'Not applicable for this view';
 
     return 'No collection items or subcollections available';
   };
@@ -855,55 +846,6 @@ export function ProjectDetailPage({
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  const handleSceneCreate = useCallback(
-    async (payload: SceneCreatePayload): Promise<Scene[]> => {
-      try {
-        const sceneRepository = new SceneRepositoryImpl();
-        const createSceneUseCase = new CreateSceneUseCase(sceneRepository);
-        const nextScenes = await createSceneUseCase.execute(projectId, payload);
-        setLoadedScenes(nextScenes);
-        return nextScenes;
-      } catch (error) {
-        console.error('Error creating scene:', error);
-        addToast('Failed to create scene. Please try again.', 'error');
-        throw error;
-      }
-    },
-    [addToast, projectId],
-  );
-
-  const handleSceneUpdate = useCallback(
-    async (sceneId: string, payload: SceneUpdatePayload): Promise<Scene> => {
-      try {
-        const sceneRepository = new SceneRepositoryImpl();
-        const updateSceneUseCase = new UpdateSceneUseCase(sceneRepository);
-        return await updateSceneUseCase.execute(projectId, sceneId, payload);
-      } catch (error) {
-        console.error('Error updating scene:', error);
-        addToast('Failed to save scene. Please try again.', 'error');
-        throw error;
-      }
-    },
-    [addToast, projectId],
-  );
-
-  const handleSceneDelete = useCallback(
-    async (sceneId: string): Promise<Scene[]> => {
-      try {
-        const sceneRepository = new SceneRepositoryImpl();
-        const deleteSceneUseCase = new DeleteSceneUseCase(sceneRepository);
-        const nextScenes = await deleteSceneUseCase.execute(projectId, sceneId);
-        setLoadedScenes(nextScenes);
-        return nextScenes;
-      } catch (error) {
-        console.error('Error deleting scene:', error);
-        addToast('Failed to delete scene. Please try again.', 'error');
-        throw error;
-      }
-    },
-    [addToast, projectId],
-  );
-
   const fetchCollectionItemById = useCallback(
     async (itemId: string, options?: { silentError?: boolean }): Promise<CollectionItem | null> => {
       const silentError = options?.silentError ?? false;
@@ -957,43 +899,6 @@ export function ProjectDetailPage({
   useEffect(() => {
     setLoadedSelectedChildCollections(selectedCollectionChildCollections);
   }, [selectedCollectionChildCollections]);
-
-  useEffect(() => {
-    setLoadedScenes(scenes);
-  }, [scenes]);
-
-  useEffect(() => {
-    if (activeTab !== 'scenes') return;
-    setIsScenesReady(false);
-
-    let isCancelled = false;
-
-    const loadScenes = async () => {
-      try {
-        const repository = new SceneRepositoryImpl();
-        const getProjectScenesUseCase = new GetProjectScenesUseCase(repository);
-        const latestScenes = await getProjectScenesUseCase.execute(projectId);
-
-        if (isCancelled) return;
-        setLoadedScenes(latestScenes);
-      } catch (error) {
-        if (isCancelled) return;
-
-        console.error('Error loading scenes:', error);
-        addToast('Failed to load scenes from backend.', 'error');
-      } finally {
-        if (!isCancelled) {
-          setIsScenesReady(true);
-        }
-      }
-    };
-
-    void loadScenes();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [activeTab, addToast, projectId]);
 
   useEffect(() => {
     if (activeTab !== 'collections' || !selectedCollectionId) {
@@ -1374,20 +1279,10 @@ export function ProjectDetailPage({
           onAddClick={handleCreateCollectionClick}
           onBackToProjectClick={handleNavigateToProject}
         />
-      ) : activeTab === 'scenes' ? (
+      ) : activeTab === 'screenplay' ? (
         <div className={styles.scenesArea}>
           <div className={styles.scenesContent}>
-            {isScenesReady ? (
-              <ScenesEditor
-                projectId={projectId}
-                scenes={loadedScenes}
-                onSceneCreate={handleSceneCreate}
-                onSceneUpdate={handleSceneUpdate}
-                onSceneDelete={handleSceneDelete}
-              />
-            ) : (
-              <div className={styles.scenesLoading}>Loading scenes...</div>
-            )}
+            <ScreenplayWorkspaceComponent projectId={projectId} />
           </div>
         </div>
       ) : activeTab === 'shots' ? (

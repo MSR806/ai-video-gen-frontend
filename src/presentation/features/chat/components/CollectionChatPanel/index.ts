@@ -1,1 +1,0 @@
-export { CollectionChatPanel } from './CollectionChatPanel';

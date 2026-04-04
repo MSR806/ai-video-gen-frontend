@@ -17,7 +17,6 @@ export default async function ProjectCollectionsPage({ params }: PageProps) {
         activeTab="collections"
         selectedCollectionId={null}
         collections={collections}
-        scenes={[]}
         collectionItems={collectionItems}
         selectedCollectionChildCollections={selectedCollectionChildCollections}
         viewportOffsetPx={0}

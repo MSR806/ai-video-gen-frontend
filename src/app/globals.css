@@ -4,6 +4,7 @@
   --font-sans: var(--font-geist-sans), 'Segoe UI', sans-serif;
   --font-display: var(--font-space-grotesk), var(--font-geist-sans), sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-script: var(--font-courier-prime), var(--font-mono);
 }
 
 body {

@@ -2,10 +2,10 @@ import type { TabType } from '../types';
 import Link from 'next/link';
 import {
   getProjectCollectionsPath,
-  getProjectScenesPath,
+  getProjectScreenplayPath,
   getProjectShotsPath,
 } from '@presentation/features/projects/routes';
-import { Clapperboard, FolderTree, NotebookText } from 'lucide-react';
+import { Clapperboard, FolderTree, NotebookPen } from 'lucide-react';
 import styles from '../ProjectDetailPage.module.css';
 
 interface TabNavigationProps {
@@ -27,14 +27,14 @@ export function TabNavigation({ projectId, activeTab }: TabNavigationProps) {
         <span className={styles.navButtonLabel}>Collections</span>
       </Link>
       <Link
-        href={getProjectScenesPath(projectId)}
-        className={`${styles.navButton} ${activeTab === 'scenes' ? styles.active : ''}`}
-        aria-label="Scenes"
-        title="Scenes"
-        aria-current={activeTab === 'scenes' ? 'page' : undefined}
+        href={getProjectScreenplayPath(projectId)}
+        className={`${styles.navButton} ${activeTab === 'screenplay' ? styles.active : ''}`}
+        aria-label="Screenplay"
+        title="Screenplay"
+        aria-current={activeTab === 'screenplay' ? 'page' : undefined}
       >
-        <NotebookText aria-hidden="true" size={18} strokeWidth={2} />
-        <span className={styles.navButtonLabel}>Scenes</span>
+        <NotebookPen aria-hidden="true" size={18} strokeWidth={2} />
+        <span className={styles.navButtonLabel}>Screenplay</span>
       </Link>
       <Link
         href={getProjectShotsPath(projectId)}

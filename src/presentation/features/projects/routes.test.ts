@@ -2,6 +2,7 @@ import {
   getProjectCollectionPath,
   getProjectCollectionsPath,
   getProjectOverviewPath,
+  getProjectScreenplayPath,
   getProjectScenesPath,
   getProjectShotsPath,
 } from './routes';
@@ -24,7 +25,11 @@ describe('project routes', () => {
     );
   });
 
-  it('builds the project scenes path', () => {
+  it('builds the project screenplay path', () => {
+    expect(getProjectScreenplayPath(projectId)).toBe('/projects/proj-123/scenes');
+  });
+
+  it('keeps getProjectScenesPath as a compatibility alias', () => {
     expect(getProjectScenesPath(projectId)).toBe('/projects/proj-123/scenes');
   });
 

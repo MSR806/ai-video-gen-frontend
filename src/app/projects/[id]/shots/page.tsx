@@ -16,7 +16,6 @@ export default async function ProjectShotsPage({ params }: PageProps) {
         activeTab="shots"
         selectedCollectionId={null}
         collections={[]}
-        scenes={[]}
         collectionItems={[]}
         selectedCollectionChildCollections={[]}
         viewportOffsetPx={0}

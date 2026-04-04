@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono, Space_Grotesk } from 'next/font/google';
+import { Courier_Prime, Geist, Geist_Mono, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import '@presentation/styles/globals.css';
 
@@ -21,6 +21,13 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
 });
 
+const courierPrime = Courier_Prime({
+  variable: '--font-courier-prime',
+  weight: ['400', '700'],
+  display: 'swap',
+  subsets: ['latin'],
+});
+
 export const metadata: Metadata = {
   title: 'AI Video Content Generator',
   description: 'Create stunning video content with AI-powered tools',
@@ -35,7 +42,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${courierPrime.variable}`}
     >
       <body className="antialiased">{children}</body>
     </html>

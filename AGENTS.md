@@ -59,9 +59,9 @@ src/core/
 │   ├── ports/
 │   ├── use-cases/
 │   └── index.ts
-├── scene/
+├── screenplay/
 │   └── ... (same structure)
-└── index.ts                 # Unified export: project/collection/collection-item/scene
+└── index.ts                 # Unified export: project/collection/collection-item/screenplay
 ```
 
 **Benefits**:
@@ -81,7 +81,7 @@ src/infrastructure/
     ├── project.repository.impl.ts      # ProjectRepositoryImpl
     ├── collection.repository.impl.ts   # CollectionRepositoryImpl
     ├── collection-item.repository.impl.ts # CollectionItemRepositoryImpl
-    ├── scene.repository.impl.ts        # SceneRepositoryImpl
+    ├── screenplay.repository.impl.ts   # ScreenplayRepositoryImpl
     └── index.ts                        # Barrel export
 ```
 
@@ -104,7 +104,7 @@ src/presentation/
 ├── features/            # Feature-specific components
 │   ├── projects/        # Project workspace composition and page-level orchestration
 │   ├── collections/     # Collection list, details, and collection-item UI
-│   └── scenes/          # Plain-text scenes editor
+│   └── screenplay/      # Screenplay editor/workspace components
 ├── hooks/               # Shared hooks used across features
 └── styles/              # Global styles and design tokens
     └── globals.css      # CSS variables (Catppuccin Macchiato default)

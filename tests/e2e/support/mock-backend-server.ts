@@ -18,18 +18,29 @@ interface MockCollectionDto {
   description: string;
 }
 
-export interface MockSceneDto {
+interface MockScreenplayBlockDto {
+  id: string;
+  type: string;
+  text: string;
+}
+
+export interface MockScreenplaySceneDto {
+  id: string;
+  orderIndex: number;
+  content: MockScreenplayBlockDto[];
+}
+
+export interface MockScreenplayDto {
   id: string;
   projectId: string;
-  name: string;
-  sceneNumber: number;
-  content: Record<string, unknown>;
+  title: string;
+  scenes: MockScreenplaySceneDto[];
 }
 
 interface MockBackendFixture {
   projects: MockProjectDto[];
   collectionsByProject: Record<string, MockCollectionDto[]>;
-  scenesByProject: Record<string, MockSceneDto[]>;
+  screenplaysByProject: Record<string, MockScreenplayDto | null>;
 }
 
 interface StartMockBackendServerOptions {
@@ -79,17 +90,21 @@ async function readJsonBody(request: IncomingMessage): Promise<Record<string, un
   }
 }
 
-function normalizeScenes(scenes: MockSceneDto[]): MockSceneDto[] {
+function normalizeScreenplayScenes(scenes: MockScreenplaySceneDto[]): MockScreenplaySceneDto[] {
   return [...scenes]
-    .sort((a, b) => a.sceneNumber - b.sceneNumber)
+    .sort((a, b) => a.orderIndex - b.orderIndex)
     .map((scene, index) => ({
       ...scene,
-      sceneNumber: index + 1,
-      name:
-        typeof scene.name === 'string' && scene.name.trim().length > 0
-          ? scene.name
-          : `Untitled Scene ${index + 1}`,
+      orderIndex: index + 1,
     }));
+}
+
+function cloneScreenplay(screenplay: MockScreenplayDto): MockScreenplayDto {
+  return JSON.parse(JSON.stringify(screenplay)) as MockScreenplayDto;
+}
+
+function cloneScreenplayScene(scene: MockScreenplaySceneDto): MockScreenplaySceneDto {
+  return JSON.parse(JSON.stringify(scene)) as MockScreenplaySceneDto;
 }
 
 export function createDefaultMockFixture(projectId = 'project-e2e-1'): MockBackendFixture {
@@ -116,16 +131,19 @@ export function createDefaultMockFixture(projectId = 'project-e2e-1'): MockBacke
         },
       ],
     },
-    scenesByProject: {
-      [projectId]: [
-        {
-          id: 'scene-e2e-1',
-          projectId,
-          name: 'Opening Scene',
-          sceneNumber: 1,
-          content: { text: 'Initial mocked scene content.' },
-        },
-      ],
+    screenplaysByProject: {
+      [projectId]: {
+        id: 'screenplay-e2e-1',
+        projectId,
+        title: 'Untitled Screenplay',
+        scenes: [
+          {
+            id: 'screenplay-scene-e2e-1',
+            orderIndex: 1,
+            content: [{ id: 'blk-1', type: 'action', text: 'Initial mocked screenplay content.' }],
+          },
+        ],
+      },
     },
   };
 }
@@ -160,7 +178,7 @@ export async function startMockBackendServer(
       };
       fixture.projects = [created, ...fixture.projects];
       fixture.collectionsByProject[id] = [];
-      fixture.scenesByProject[id] = [];
+      fixture.screenplaysByProject[id] = null;
       json(response, 200, created);
       return;
     }
@@ -191,61 +209,148 @@ export async function startMockBackendServer(
       return;
     }
 
-    const scenesPathMatch = pathname.match(/^\/api\/v1\/projects\/([^/]+)\/scenes$/);
-    if (method === 'GET' && scenesPathMatch) {
-      const [, projectId] = scenesPathMatch;
-      const scenes = fixture.scenesByProject[projectId];
-      if (!scenes) {
+    const screenplayPathMatch = pathname.match(/^\/api\/v1\/projects\/([^/]+)\/screenplays$/);
+    if (method === 'GET' && screenplayPathMatch) {
+      const [, projectId] = screenplayPathMatch;
+      if (!(projectId in fixture.screenplaysByProject)) {
         notFound(response, 'Project not found');
         return;
       }
 
-      json(response, 200, normalizeScenes(scenes));
+      json(response, 200, fixture.screenplaysByProject[projectId]);
       return;
     }
 
-    const patchScenePathMatch = pathname.match(/^\/api\/v1\/projects\/([^/]+)\/scenes\/([^/]+)$/);
-    if (method === 'PATCH' && patchScenePathMatch) {
-      const [, projectId, sceneId] = patchScenePathMatch;
-      const scenes = fixture.scenesByProject[projectId];
-      if (!scenes) {
+    if (method === 'POST' && screenplayPathMatch) {
+      const [, projectId] = screenplayPathMatch;
+      if (!(projectId in fixture.screenplaysByProject)) {
         notFound(response, 'Project not found');
-        return;
-      }
-
-      const sceneIndex = scenes.findIndex((scene) => scene.id === sceneId);
-      if (sceneIndex === -1) {
-        notFound(response, 'Scene not found');
         return;
       }
 
       const body = await readJsonBody(request);
-      const next = {
-        ...scenes[sceneIndex],
-        ...(typeof body.name === 'string' ? { name: body.name } : {}),
-        ...(body.content && typeof body.content === 'object'
-          ? { content: body.content as Record<string, unknown> }
-          : {}),
+      const created: MockScreenplayDto = {
+        id: `screenplay-${projectId}`,
+        projectId,
+        title: typeof body.title === 'string' ? body.title : 'Untitled Screenplay',
+        scenes: [],
       };
 
-      scenes[sceneIndex] = next;
-      fixture.scenesByProject[projectId] = normalizeScenes(scenes);
-      json(response, 200, next);
+      fixture.screenplaysByProject[projectId] = created;
+      json(response, 200, created);
       return;
     }
 
-    const deleteScenePathMatch = pathname.match(/^\/api\/v1\/projects\/([^/]+)\/scenes\/([^/]+)$/);
-    if (method === 'DELETE' && deleteScenePathMatch) {
-      const [, projectId, sceneId] = deleteScenePathMatch;
-      const scenes = fixture.scenesByProject[projectId];
-      if (!scenes) {
-        notFound(response, 'Project not found');
+    if (method === 'PATCH' && screenplayPathMatch) {
+      const [, projectId] = screenplayPathMatch;
+      const screenplay = fixture.screenplaysByProject[projectId];
+      if (!screenplay) {
+        notFound(response, 'Screenplay not found');
         return;
       }
 
-      const nextScenes = normalizeScenes(scenes.filter((scene) => scene.id !== sceneId));
-      fixture.scenesByProject[projectId] = nextScenes;
-      json(response, 200, { success: true, scenes: nextScenes });
+      const body = await readJsonBody(request);
+      screenplay.title = typeof body.title === 'string' ? body.title : screenplay.title;
+      json(response, 200, cloneScreenplay(screenplay));
+      return;
+    }
+
+    const screenplayScenesPathMatch = pathname.match(
+      /^\/api\/v1\/projects\/([^/]+)\/screenplays\/scenes$/,
+    );
+    if (method === 'POST' && screenplayScenesPathMatch) {
+      const [, projectId] = screenplayScenesPathMatch;
+      const screenplay = fixture.screenplaysByProject[projectId];
+      if (!screenplay) {
+        notFound(response, 'Screenplay not found');
+        return;
+      }
+
+      const body = await readJsonBody(request);
+      const requestedPosition =
+        typeof body.position === 'number' && Number.isFinite(body.position)
+          ? Math.max(1, Math.floor(body.position))
+          : screenplay.scenes.length + 1;
+      const content = Array.isArray(body.content) ? (body.content as MockScreenplayBlockDto[]) : [];
+      const nextScene: MockScreenplaySceneDto = {
+        id: `screenplay-scene-${Date.now()}`,
+        orderIndex: requestedPosition,
+        content,
+      };
+
+      const nextScenes = [...screenplay.scenes];
+      nextScenes.splice(Math.min(nextScenes.length, requestedPosition - 1), 0, nextScene);
+      screenplay.scenes = normalizeScreenplayScenes(nextScenes);
+
+      json(response, 200, cloneScreenplay(screenplay));
+      return;
+    }
+
+    const screenplayScenePathMatch = pathname.match(
+      /^\/api\/v1\/projects\/([^/]+)\/screenplays\/scenes\/([^/]+)$/,
+    );
+    if (method === 'PATCH' && screenplayScenePathMatch) {
+      const [, projectId, sceneId] = screenplayScenePathMatch;
+      const screenplay = fixture.screenplaysByProject[projectId];
+      if (!screenplay) {
+        notFound(response, 'Screenplay not found');
+        return;
+      }
+
+      const scene = screenplay.scenes.find((entry) => entry.id === sceneId);
+      if (!scene) {
+        notFound(response, 'Screenplay scene not found');
+        return;
+      }
+
+      const body = await readJsonBody(request);
+      if (Array.isArray(body.content)) {
+        scene.content = body.content as MockScreenplayBlockDto[];
+      }
+
+      json(response, 200, cloneScreenplayScene(scene));
+      return;
+    }
+
+    if (method === 'DELETE' && screenplayScenePathMatch) {
+      const [, projectId, sceneId] = screenplayScenePathMatch;
+      const screenplay = fixture.screenplaysByProject[projectId];
+      if (!screenplay) {
+        notFound(response, 'Screenplay not found');
+        return;
+      }
+
+      screenplay.scenes = normalizeScreenplayScenes(
+        screenplay.scenes.filter((scene) => scene.id !== sceneId),
+      );
+      json(response, 200, cloneScreenplay(screenplay));
+      return;
+    }
+
+    const reorderPathMatch = pathname.match(
+      /^\/api\/v1\/projects\/([^/]+)\/screenplays\/scenes\/reorder$/,
+    );
+    if (method === 'POST' && reorderPathMatch) {
+      const [, projectId] = reorderPathMatch;
+      const screenplay = fixture.screenplaysByProject[projectId];
+      if (!screenplay) {
+        notFound(response, 'Screenplay not found');
+        return;
+      }
+
+      const body = await readJsonBody(request);
+      const sceneIds = Array.isArray(body.sceneIds)
+        ? body.sceneIds.filter((value): value is string => typeof value === 'string')
+        : [];
+
+      const byId = new Map(screenplay.scenes.map((scene) => [scene.id, scene]));
+      screenplay.scenes = normalizeScreenplayScenes(
+        sceneIds
+          .map((sceneId) => byId.get(sceneId))
+          .filter((scene): scene is MockScreenplaySceneDto => Boolean(scene)),
+      );
+
+      json(response, 200, cloneScreenplay(screenplay));
       return;
     }
 

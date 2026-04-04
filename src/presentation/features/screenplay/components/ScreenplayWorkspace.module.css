@@ -1,0 +1,377 @@
+.shell {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-base) 94%, var(--bg-raised));
+}
+
+.sceneListPanel {
+  border-right: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-raised) 92%, var(--bg-base));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sceneListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sceneListHeader h2 {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.sceneListHeader button,
+.sceneActions button {
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+
+.sceneList {
+  overflow: auto;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sceneListItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  cursor: pointer;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.activeScene {
+  border-color: color-mix(in srgb, var(--accent-primary) 45%, var(--border-default));
+  background: color-mix(in srgb, var(--accent-primary-muted) 45%, var(--bg-elevated));
+}
+
+.sceneListTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.warningBadge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--status-warning) 42%, var(--border-default));
+  color: var(--status-warning);
+  font-size: var(--font-size-xs);
+}
+
+.editorPanel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editorBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.editorHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-raised);
+}
+
+.screenplayTitle {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 700;
+  width: 100%;
+  max-width: 28rem;
+}
+
+.saveState {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.sceneActions {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.sceneControls {
+  border-top: 1px solid var(--border-subtle);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.warningList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.warningList li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  color: var(--status-warning);
+  font-size: var(--font-size-xs);
+}
+
+.sceneSyncNotice {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.tipTapEditorWrap {
+  position: relative;
+  min-height: 100%;
+  padding: var(--space-6) clamp(var(--space-3), 4vw, var(--space-8)) calc(var(--space-6) + 24vh);
+  background: color-mix(in srgb, var(--bg-base) 92%, var(--bg-raised));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tipTapEditorWrap :global(.tiptap) {
+  width: min(100%, 56rem);
+}
+
+.editorContentHost {
+  position: relative;
+  width: min(100%, 56rem);
+}
+
+.screenplayEditor {
+  position: relative;
+  width: 100%;
+  max-width: 56rem;
+  min-height: 100%;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-raised) 70%, var(--bg-elevated));
+  box-shadow: var(--shadow-md);
+  padding: calc(var(--space-8) + var(--space-2)) clamp(var(--space-5), 4vw, var(--space-8))
+    calc(var(--space-8) + 24vh);
+  color: var(--text-primary);
+  font-family: var(--font-script);
+  font-size: var(--font-size-sm);
+  letter-spacing: var(--tracking-wide);
+  line-height: 1.32;
+  outline: none;
+  white-space: pre-wrap;
+}
+
+.screenplayEditor::before {
+  content: '1';
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-4);
+  color: var(--text-subtle);
+  font-size: var(--font-size-xs);
+  letter-spacing: var(--tracking-wide);
+  pointer-events: none;
+}
+
+.screenplayEditor p {
+  margin: 0;
+  min-height: 1.25rem;
+  position: relative;
+}
+
+.screenplayEditor p[data-placeholder]:is(:has(> br), :empty)::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.screenplayEditor p + p {
+  margin-top: var(--space-1);
+}
+
+/* Keep screenplay beats readable with clearer separation between action lines. */
+.screenplayEditor [data-block-type='action'] + [data-block-type='action'] {
+  margin-top: var(--space-4);
+}
+
+/* Stronger beat separation from action blocks into character cues. */
+.screenplayEditor [data-block-type='action'] + [data-block-type='character'] {
+  margin-top: var(--space-5);
+}
+
+/* Dialogue returning to action should also read as a clear paragraph break. */
+.screenplayEditor [data-block-type='dialogue'] + [data-block-type='action'],
+.screenplayEditor [data-block-type='parenthetical'] + [data-block-type='action'] {
+  margin-top: var(--space-5);
+}
+
+/* Dialogue cluster should stay visually tight (character/parenthetical/dialogue). */
+.screenplayEditor [data-block-type='character'] + [data-block-type='dialogue'],
+.screenplayEditor [data-block-type='character'] + [data-block-type='parenthetical'],
+.screenplayEditor [data-block-type='parenthetical'] + [data-block-type='dialogue'] {
+  margin-top: 2px;
+}
+
+.screenplayEditor [data-block-type='slugline'],
+.screenplayEditor [data-block-type='transition'],
+.screenplayEditor [data-block-type='character'] {
+  text-transform: uppercase;
+}
+
+.screenplayEditor [data-block-type='slugline'],
+.screenplayEditor [data-block-type='transition'] {
+  font-weight: 600;
+}
+
+/* New scene heading should read as a strong break (double-space feel). */
+.screenplayEditor [data-block-type='slugline'] {
+  margin-top: var(--space-6);
+}
+
+.screenplayEditor p:first-child[data-block-type='slugline'] {
+  margin-top: 0;
+}
+
+/* Increase separation before and after sluglines. */
+.screenplayEditor [data-block-type] + [data-block-type='slugline'] {
+  margin-top: var(--space-6);
+}
+
+.screenplayEditor [data-block-type='slugline'] + [data-block-type] {
+  margin-top: var(--space-4);
+}
+
+.screenplayEditor [data-block-type='transition'] {
+  margin-left: auto;
+  max-width: 38%;
+  text-align: right;
+}
+
+.screenplayEditor [data-block-type='character'] {
+  margin-left: 40%;
+  max-width: 32%;
+}
+
+.screenplayEditor [data-block-type='parenthetical'] {
+  margin-left: 34%;
+  max-width: 36%;
+}
+
+.screenplayEditor [data-block-type='dialogue'] {
+  margin-left: 30%;
+  max-width: 42%;
+}
+
+.inlineSuggestions {
+  position: absolute;
+  z-index: 6;
+  width: fit-content;
+  min-width: 12rem;
+  max-width: 22rem;
+  margin: 0;
+  padding: var(--space-2);
+  list-style: none;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inlineSuggestions li {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.activeSuggestion {
+  background: color-mix(in srgb, var(--accent-primary-muted) 52%, var(--bg-elevated));
+  color: var(--text-primary);
+}
+
+.emptyState,
+.loading {
+  color: var(--text-secondary);
+  padding: var(--space-6);
+}
+
+@media (max-width: 860px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sceneListPanel {
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    max-height: 34vh;
+  }
+
+  .tipTapEditorWrap {
+    padding: var(--space-4);
+  }
+
+  .screenplayEditor {
+    padding: var(--space-7) var(--space-4) var(--space-6);
+  }
+
+  .screenplayEditor [data-block-type='character'] {
+    margin-left: 32%;
+    max-width: 48%;
+  }
+
+  .screenplayEditor [data-block-type='parenthetical'] {
+    margin-left: 26%;
+    max-width: 56%;
+  }
+
+  .screenplayEditor [data-block-type='dialogue'] {
+    margin-left: 20%;
+    max-width: 66%;
+  }
+
+  .screenplayEditor [data-block-type='transition'] {
+    max-width: 52%;
+  }
+}

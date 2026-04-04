@@ -3,8 +3,8 @@ import { Badge } from '@presentation/components/ui/Badge';
 import { Card } from '@presentation/components/ui/Card';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowLeft, ArrowRight, Clapperboard, FolderKanban, LayoutPanelTop } from 'lucide-react';
-import { getProjectCollectionsPath, getProjectScenesPath, getProjectShotsPath } from './routes';
+import { ArrowLeft, ArrowRight, Clapperboard, FolderKanban, NotebookPen } from 'lucide-react';
+import { getProjectCollectionsPath, getProjectScreenplayPath, getProjectShotsPath } from './routes';
 import styles from './ProjectOverviewPage.module.css';
 
 interface ProjectOverviewPageProps {
@@ -34,11 +34,11 @@ const ROUTE_ITEMS: RouteItem[] = [
     icon: FolderKanban,
   },
   {
-    label: 'Scenes',
-    description: 'Write and refine scene outlines to structure your narrative flow.',
-    cta: 'Open scenes',
-    href: getProjectScenesPath,
-    icon: LayoutPanelTop,
+    label: 'Screenplay',
+    description: 'Write your screenplay scene-by-scene with screenplay block formatting.',
+    cta: 'Open screenplay',
+    href: getProjectScreenplayPath,
+    icon: NotebookPen,
   },
   {
     label: 'Shots',
