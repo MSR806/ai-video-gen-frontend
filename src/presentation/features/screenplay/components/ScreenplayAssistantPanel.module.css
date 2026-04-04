@@ -1,0 +1,188 @@
+.panel {
+  border-right: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-raised) 92%, var(--bg-base));
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.headerTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.collapseButton {
+  border: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--bg-elevated) 92%, var(--bg-base));
+  color: var(--text-primary);
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.threadRoot {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.viewport {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+
+.messageRoot {
+  display: block;
+}
+
+.assistantMessageRow,
+.userMessageRow {
+  display: flex;
+  margin-bottom: var(--space-2);
+}
+
+.assistantMessageRow {
+  justify-content: flex-start;
+}
+
+.assistantMessageContent {
+  max-width: min(44ch, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.userMessageRow {
+  justify-content: flex-end;
+}
+
+.assistantMessageBubble,
+.userMessageBubble {
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  max-width: min(44ch, 100%);
+  border: 1px solid var(--border-subtle);
+}
+
+.assistantMessageBubble {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.userMessageBubble {
+  background: color-mix(in srgb, var(--accent-primary-muted) 60%, var(--bg-elevated));
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent-primary) 22%, var(--border-subtle));
+}
+
+.messageText {
+  margin: 0;
+  color: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.toolActivityText {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+}
+
+.transportToolActivityBlock {
+  margin: var(--space-2) var(--space-3) 0;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-raised) 88%, var(--bg-base));
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+}
+
+.composer {
+  border-top: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-raised) 90%, var(--bg-base));
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.composerInputShell {
+  position: relative;
+}
+
+.messageInput {
+  width: 100%;
+  min-height: 4rem;
+  max-height: 12rem;
+  resize: none;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  padding: var(--space-3);
+  padding-right: calc(var(--space-6) + var(--space-3));
+  font-size: var(--font-size-sm);
+}
+
+.sendButton {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-3);
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 42%, var(--border-default));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-primary-muted) 50%, var(--bg-elevated));
+  color: var(--accent-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.composerError,
+.messageError {
+  margin: var(--space-2) 0 0;
+  color: var(--status-error);
+  font-size: var(--font-size-xs);
+}
+
+.contextHint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}

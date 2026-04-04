@@ -1,5 +1,5 @@
 export * from './domain/screenplay.entity';
-export * from './domain/block-id';
+export * from './domain/screenplay-xml';
 export * from './ports/screenplay.repository.port';
 export * from './use-cases/get-project-screenplay.use-case';
 export * from './use-cases/create-screenplay.use-case';

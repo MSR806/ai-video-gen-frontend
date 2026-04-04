@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { act, render, waitFor } from '@testing-library/react';
+import { createRef } from 'react';
 import type {
   Screenplay,
   ScreenplayRepository,
@@ -8,6 +9,8 @@ import type {
   ScreenplaySceneUpdatePayload,
   ScreenplayUpdatePayload,
 } from '@core/screenplay';
+import { BackendApiError } from '@infra/http/backend-api';
+import type { ScreenplayWorkspaceHandle } from './ScreenplayWorkspace';
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -89,12 +92,10 @@ mock.module('./ScreenplayTipTapEditor', () => ({
             return;
           }
 
-          onSceneContentChange(scene.id, {
-            blocks: [
-              { id: 'blk-1', type: 'slugline', text: 'INT. GARAGE - DAY' },
-              { id: 'blk-2', type: 'action', text: 'A prototype flickers to life.' },
-            ],
-          });
+          onSceneContentChange(
+            scene.id,
+            '<scene><slugline>INT. GARAGE - DAY</slugline><action>A prototype flickers to life.</action></scene>',
+          );
         }}
       >
         Emit Edit
@@ -136,7 +137,7 @@ function createScreenplayRepositoryStub(): ScreenplayRepository {
         id: sceneId,
         name: payload.name ?? `Scene ${repositoryHarness.screenplay.scenes.length + 1}`,
         sceneNumber: payload.position ?? repositoryHarness.screenplay.scenes.length + 1,
-        content: payload.content ?? { blocks: [] },
+        content: payload.content ?? '<scene><action></action></scene>',
       };
       const insertionIndex = Math.max(
         0,
@@ -247,10 +248,123 @@ describe('ScreenplayWorkspace', () => {
     });
 
     expect(repositoryHarness.addSceneCalls).toHaveLength(1);
-    expect(repositoryHarness.addSceneCalls[0].payload.content?.blocks[1]?.text).toBe(
-      'A prototype flickers to life.',
+    expect(repositoryHarness.addSceneCalls[0].payload.content ?? '').toContain(
+      '<action>A prototype flickers to life.</action>',
     );
     expect(repositoryHarness.updateSceneCalls).toHaveLength(0);
+  });
+
+  it('creates screenplay on initial load when project has none', async () => {
+    let getCalls = 0;
+    let createCalls = 0;
+    const createdScreenplay: Screenplay = {
+      id: 'screenplay-created',
+      projectId: 'project-1',
+      title: 'Untitled Screenplay',
+      scenes: [],
+    };
+
+    const repository: ScreenplayRepository = {
+      async getByProjectId() {
+        getCalls += 1;
+        return null;
+      },
+      async create() {
+        createCalls += 1;
+        return cloneScreenplay(createdScreenplay);
+      },
+      async update() {
+        return cloneScreenplay(createdScreenplay);
+      },
+      async addScene() {
+        return cloneScreenplay(createdScreenplay);
+      },
+      async updateScene() {
+        return {
+          id: 'scene-1',
+          name: 'Scene 1',
+          sceneNumber: 1,
+          content: '<scene><action></action></scene>',
+        };
+      },
+      async deleteScene() {
+        return cloneScreenplay(createdScreenplay);
+      },
+      async reorderScenes() {
+        return cloneScreenplay(createdScreenplay);
+      },
+    };
+
+    const { ScreenplayWorkspace } = await import('./ScreenplayWorkspace');
+    const { queryByText } = render(
+      <ScreenplayWorkspace projectId="project-1" screenplayRepository={repository} />,
+    );
+
+    await waitFor(() => expect(queryByText('Screenplay')).toBeTruthy());
+
+    expect(getCalls).toBe(1);
+    expect(createCalls).toBe(1);
+  });
+
+  it('recovers from duplicate screenplay create conflicts by refetching', async () => {
+    let getCalls = 0;
+    let createCalls = 0;
+    const existingScreenplay: Screenplay = {
+      id: 'screenplay-existing',
+      projectId: 'project-1',
+      title: 'Untitled Screenplay',
+      scenes: [],
+    };
+
+    const repository: ScreenplayRepository = {
+      async getByProjectId() {
+        getCalls += 1;
+        if (getCalls === 1) {
+          return null;
+        }
+
+        return cloneScreenplay(existingScreenplay);
+      },
+      async create() {
+        createCalls += 1;
+        throw new BackendApiError({
+          status: 409,
+          code: 'screenplay_already_exists',
+          message: 'Screenplay already exists',
+        });
+      },
+      async update() {
+        return cloneScreenplay(existingScreenplay);
+      },
+      async addScene() {
+        return cloneScreenplay(existingScreenplay);
+      },
+      async updateScene() {
+        return {
+          id: 'scene-1',
+          name: 'Scene 1',
+          sceneNumber: 1,
+          content: '<scene><action></action></scene>',
+        };
+      },
+      async deleteScene() {
+        return cloneScreenplay(existingScreenplay);
+      },
+      async reorderScenes() {
+        return cloneScreenplay(existingScreenplay);
+      },
+    };
+
+    const { ScreenplayWorkspace } = await import('./ScreenplayWorkspace');
+    const { queryByText } = render(
+      <ScreenplayWorkspace projectId="project-1" screenplayRepository={repository} />,
+    );
+
+    await waitFor(() => expect(queryByText('Screenplay')).toBeTruthy());
+
+    expect(createCalls).toBe(1);
+    expect(getCalls).toBe(2);
+    expect(queryByText('Failed to load screenplay. Please refresh to retry.')).toBeNull();
   });
 
   it('best-effort flushes pending scene patches on unmount', async () => {
@@ -263,12 +377,8 @@ describe('ScreenplayWorkspace', () => {
           id: 'scene-1',
           name: 'Scene 1',
           sceneNumber: 1,
-          content: {
-            blocks: [
-              { id: 'blk-1', type: 'slugline', text: 'INT. OFFICE - DAY' },
-              { id: 'blk-2', type: 'action', text: 'Old action' },
-            ],
-          },
+          content:
+            '<scene><slugline>INT. OFFICE - DAY</slugline><action>Old action</action></scene>',
         },
       ],
     };
@@ -294,8 +404,8 @@ describe('ScreenplayWorkspace', () => {
     });
 
     expect(repositoryHarness.updateSceneCalls).toHaveLength(1);
-    expect(repositoryHarness.updateSceneCalls[0].payload.content?.blocks[1]?.text).toBe(
-      'A prototype flickers to life.',
+    expect(repositoryHarness.updateSceneCalls[0].payload.content ?? '').toContain(
+      '<action>A prototype flickers to life.</action>',
     );
   });
 
@@ -309,23 +419,15 @@ describe('ScreenplayWorkspace', () => {
           id: 'scene-1',
           name: 'Scene 1',
           sceneNumber: 1,
-          content: {
-            blocks: [
-              { id: 'blk-1', type: 'slugline', text: 'INT. OFFICE - DAY' },
-              { id: 'blk-2', type: 'action', text: 'Persisted scene.' },
-            ],
-          },
+          content:
+            '<scene><slugline>INT. OFFICE - DAY</slugline><action>Persisted scene.</action></scene>',
         },
         {
           id: 'screenplay-provisional-scene:stuck-scene',
           name: 'Scene 2',
           sceneNumber: 2,
-          content: {
-            blocks: [
-              { id: 'blk-3', type: 'slugline', text: 'INT. LAB - NIGHT' },
-              { id: 'blk-4', type: 'action', text: 'Still provisional after sync.' },
-            ],
-          },
+          content:
+            '<scene><slugline>INT. LAB - NIGHT</slugline><action>Still provisional after sync.</action></scene>',
         },
       ],
     };
@@ -366,23 +468,15 @@ describe('ScreenplayWorkspace', () => {
           id: 'scene-1',
           name: 'Scene 1',
           sceneNumber: 1,
-          content: {
-            blocks: [
-              { id: 'blk-1', type: 'slugline', text: 'INT. OFFICE - DAY' },
-              { id: 'blk-2', type: 'action', text: 'First scene.' },
-            ],
-          },
+          content:
+            '<scene><slugline>INT. OFFICE - DAY</slugline><action>First scene.</action></scene>',
         },
         {
           id: 'scene-2',
           name: 'Scene 2',
           sceneNumber: 2,
-          content: {
-            blocks: [
-              { id: 'blk-3', type: 'slugline', text: 'EXT. STREET - NIGHT' },
-              { id: 'blk-4', type: 'action', text: 'Second scene.' },
-            ],
-          },
+          content:
+            '<scene><slugline>EXT. STREET - NIGHT</slugline><action>Second scene.</action></scene>',
         },
       ],
     };
@@ -427,12 +521,8 @@ describe('ScreenplayWorkspace', () => {
           id: 'scene-1',
           name: 'Scene 1',
           sceneNumber: 1,
-          content: {
-            blocks: [
-              { id: 'blk-1', type: 'slugline', text: 'INT. OFFICE - DAY' },
-              { id: 'blk-2', type: 'action', text: 'Old action.' },
-            ],
-          },
+          content:
+            '<scene><slugline>INT. OFFICE - DAY</slugline><action>Old action.</action></scene>',
         },
       ],
     };
@@ -463,5 +553,62 @@ describe('ScreenplayWorkspace', () => {
 
     deferred.resolve();
     await waitFor(() => expect(repositoryHarness.addSceneCalls).toHaveLength(1));
+  });
+
+  it('clears queued autosave patches when applying remote screenplay', async () => {
+    repositoryHarness.screenplay = {
+      id: 'screenplay-1',
+      projectId: 'project-1',
+      title: 'Untitled Screenplay',
+      scenes: [
+        {
+          id: 'scene-1',
+          name: 'Scene 1',
+          sceneNumber: 1,
+          content:
+            '<scene><slugline>INT. OFFICE - DAY</slugline><action>Old action.</action></scene>',
+        },
+      ],
+    };
+
+    const { ScreenplayWorkspace } = await import('./ScreenplayWorkspace');
+    const workspaceRef = createRef<ScreenplayWorkspaceHandle>();
+    const { getByText } = render(
+      <ScreenplayWorkspace
+        ref={workspaceRef}
+        projectId="project-1"
+        screenplayRepository={createScreenplayRepositoryStub()}
+      />,
+    );
+
+    await waitFor(() => expect(editorHarness.onSceneContentChange).toBeTruthy());
+
+    act(() => {
+      getByText('Emit Edit').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    await act(async () => {
+      await workspaceRef.current?.applyRemoteScreenplay({
+        id: 'screenplay-1',
+        projectId: 'project-1',
+        title: 'Remote Title',
+        scenes: [
+          {
+            id: 'scene-1',
+            name: 'Remote Scene 1',
+            sceneNumber: 1,
+            content:
+              '<scene><slugline>INT. LAB - NIGHT</slugline><action>Remote authority.</action></scene>',
+          },
+        ],
+      });
+    });
+
+    await act(async () => {
+      await wait(900);
+    });
+
+    expect(repositoryHarness.updateSceneCalls).toHaveLength(0);
+    expect(getByText('Remote Scene 1')).toBeTruthy();
   });
 });

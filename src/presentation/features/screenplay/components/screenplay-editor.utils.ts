@@ -1,7 +1,10 @@
 import {
-  createScreenplayBlockId,
-  type ScreenplayBlock,
+  createEmptySceneXml,
+  parseSceneXmlBlocks,
+  validateSceneXml,
   type ScreenplayScene,
+  type ScreenplayBlockType,
+  type ScreenplayXmlBlock,
 } from '@core/screenplay';
 
 export const SCREENPLAY_BLOCK_TYPES = [
@@ -14,7 +17,7 @@ export const SCREENPLAY_BLOCK_TYPES = [
 ] as const;
 
 export interface BlockWarning {
-  blockId: string;
+  blockKey: string;
   message: string;
 }
 
@@ -22,7 +25,7 @@ export interface SceneValidationResult {
   warnings: BlockWarning[];
 }
 
-export const BLOCK_TYPE_LABELS: Record<ScreenplayBlock['type'], string> = {
+export const BLOCK_TYPE_LABELS: Record<ScreenplayBlockType, string> = {
   slugline: 'Slugline',
   action: 'Action',
   character: 'Character',
@@ -31,7 +34,7 @@ export const BLOCK_TYPE_LABELS: Record<ScreenplayBlock['type'], string> = {
   transition: 'Transition',
 };
 
-export const BLOCK_TYPE_CUES: Record<ScreenplayBlock['type'], string> = {
+export const BLOCK_TYPE_CUES: Record<ScreenplayBlockType, string> = {
   slugline: 'Slugline...',
   action: 'Action...',
   character: 'Character...',
@@ -42,7 +45,7 @@ export const BLOCK_TYPE_CUES: Record<ScreenplayBlock['type'], string> = {
 
 export const SLUGLINE_PREFIX_SUGGESTIONS = ['INT.', 'EXT.', 'INT./EXT.', 'EST.'] as const;
 
-const ENTER_TRANSITIONS: Record<ScreenplayBlock['type'], ScreenplayBlock['type']> = {
+const ENTER_TRANSITIONS: Record<ScreenplayBlockType, ScreenplayBlockType> = {
   slugline: 'action',
   action: 'action',
   character: 'dialogue',
@@ -51,7 +54,7 @@ const ENTER_TRANSITIONS: Record<ScreenplayBlock['type'], ScreenplayBlock['type']
   transition: 'slugline',
 };
 
-const TAB_CYCLE_ORDER: ScreenplayBlock['type'][] = [
+const TAB_CYCLE_ORDER: ScreenplayBlockType[] = [
   'slugline',
   'action',
   'character',
@@ -60,16 +63,14 @@ const TAB_CYCLE_ORDER: ScreenplayBlock['type'][] = [
   'transition',
 ];
 
-export function resolveNextBlockTypeOnEnter(
-  type: ScreenplayBlock['type'],
-): ScreenplayBlock['type'] {
+export function resolveNextBlockTypeOnEnter(type: ScreenplayBlockType): ScreenplayBlockType {
   return ENTER_TRANSITIONS[type];
 }
 
 export function resolveNextBlockTypeOnTab(
-  type: ScreenplayBlock['type'],
+  type: ScreenplayBlockType,
   direction: 'forward' | 'backward' = 'forward',
-): ScreenplayBlock['type'] {
+): ScreenplayBlockType {
   const index = TAB_CYCLE_ORDER.indexOf(type);
   if (index < 0) {
     return 'action';
@@ -80,7 +81,7 @@ export function resolveNextBlockTypeOnTab(
   return TAB_CYCLE_ORDER[nextIndex];
 }
 
-export function normalizeBlockTextByType(type: ScreenplayBlock['type'], text: string): string {
+export function normalizeBlockTextByType(type: ScreenplayBlockType, text: string): string {
   if (type === 'slugline' || type === 'character') {
     return text.toUpperCase();
   }
@@ -102,7 +103,7 @@ export function normalizeBlockTextByType(type: ScreenplayBlock['type'], text: st
   return text;
 }
 
-export function getBlockCueText(type: ScreenplayBlock['type']): string {
+export function getBlockCueText(type: ScreenplayBlockType): string {
   return BLOCK_TYPE_CUES[type];
 }
 
@@ -121,7 +122,7 @@ export function clampSelectionToParentheticalInnerRange(
   return { from, to };
 }
 
-export function getSlashCommandSuggestions(query: string): ScreenplayBlock['type'][] {
+export function getSlashCommandSuggestions(query: string): ScreenplayBlockType[] {
   const normalized = query.trim().toLowerCase();
   if (normalized.length === 0) {
     return [...SCREENPLAY_BLOCK_TYPES];
@@ -133,23 +134,29 @@ export function getSlashCommandSuggestions(query: string): ScreenplayBlock['type
   );
 }
 
-export function makeBlock(type: ScreenplayBlock['type'] = 'action'): ScreenplayBlock {
-  return {
-    id: createScreenplayBlockId(),
-    type,
-    text: '',
-  };
-}
-
 export function validateScene(scene: ScreenplayScene): SceneValidationResult {
   const warnings: BlockWarning[] = [];
+  const xmlValidation = validateSceneXml(scene.content);
+  if (!xmlValidation.isValid) {
+    return {
+      warnings: [
+        {
+          blockKey: 'scene:xml',
+          message: 'Scene XML is invalid and cannot be fully validated.',
+        },
+      ],
+    };
+  }
 
-  scene.content.blocks.forEach((block) => {
+  const blocks = parseSceneXmlBlocks(scene.content);
+
+  blocks.forEach((block, index) => {
     const text = block.text.trim();
+    const blockKey = `${index}:${block.type}`;
 
     if (text.length === 0) {
       warnings.push({
-        blockId: block.id,
+        blockKey,
         message: `${BLOCK_TYPE_LABELS[block.type]} block is empty.`,
       });
       return;
@@ -157,28 +164,28 @@ export function validateScene(scene: ScreenplayScene): SceneValidationResult {
 
     if (block.type === 'slugline' && !/^(INT\.|EXT\.|INT\/EXT\.|EST\.)/i.test(text)) {
       warnings.push({
-        blockId: block.id,
+        blockKey,
         message: 'Slugline should begin with INT., EXT., INT/EXT., or EST.',
       });
     }
 
     if (block.type === 'character' && text !== text.toUpperCase()) {
       warnings.push({
-        blockId: block.id,
+        blockKey,
         message: 'Character cues are usually uppercase.',
       });
     }
 
     if (block.type === 'parenthetical' && !(text.startsWith('(') && text.endsWith(')'))) {
       warnings.push({
-        blockId: block.id,
+        blockKey,
         message: 'Parentheticals should be wrapped in parentheses.',
       });
     }
 
     if (block.type === 'transition' && !/TO:$/.test(text.toUpperCase())) {
       warnings.push({
-        blockId: block.id,
+        blockKey,
         message: 'Transitions should typically end with “TO:”.',
       });
     }
@@ -188,16 +195,43 @@ export function validateScene(scene: ScreenplayScene): SceneValidationResult {
 }
 
 export function ensureSceneHasBlocks(scene: ScreenplayScene): ScreenplayScene {
-  if (scene.content.blocks.length > 0) {
+  const xmlValidation = validateSceneXml(scene.content);
+  if (!xmlValidation.isValid) {
+    // Preserve invalid payloads so the workspace does not silently overwrite them.
+    return scene;
+  }
+
+  if (parseSceneXmlBlocks(scene.content).length > 0) {
     return scene;
   }
 
   return {
     ...scene,
-    content: {
-      blocks: [makeBlock('action')],
-    },
+    content: createEmptySceneXml(),
   };
+}
+
+export function getCharacterCueSuggestionsFromScenes(scenes: ScreenplayScene[]): string[] {
+  const unique = new Set<string>();
+
+  scenes.forEach((scene) => {
+    if (!validateSceneXml(scene.content).isValid) {
+      return;
+    }
+
+    parseSceneXmlBlocks(scene.content).forEach((block: ScreenplayXmlBlock) => {
+      if (block.type !== 'character') {
+        return;
+      }
+
+      const value = block.text.trim().toUpperCase();
+      if (value.length > 0) {
+        unique.add(value);
+      }
+    });
+  });
+
+  return Array.from(unique);
 }
 
 export function reorder<T>(items: T[], fromIndex: number, toIndex: number): T[] {

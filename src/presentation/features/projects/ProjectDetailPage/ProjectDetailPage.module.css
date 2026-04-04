@@ -416,8 +416,51 @@
   border-left: 1px solid var(--border-subtle);
 }
 
+.screenplayLayout {
+  grid-column: 2 / 5;
+  display: grid;
+  grid-template-columns: clamp(260px, 24vw, 340px) minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-base);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.screenplayLayoutChatCollapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.screenplayLayoutChatCollapsed .chatPanel {
+  display: none;
+}
+
+.screenplayWorkspaceArea {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.screenplayAssistantToggleBar {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-raised);
+  display: flex;
+  justify-content: flex-start;
+}
+
 .scenesContent {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
   padding: var(--space-5) var(--space-5) var(--space-7) 0;
+}
+
+.scenesContent > * {
+  flex: 1;
+  min-height: 0;
 }
 
 .shotsArea {
@@ -554,6 +597,10 @@
     grid-template-columns: minmax(220px, 30vw) minmax(0, 1fr) minmax(240px, 34vw);
   }
 
+  .screenplayLayout {
+    grid-template-columns: minmax(220px, 30vw) minmax(0, 1fr);
+  }
+
   .collectionsDetailLayoutChatCollapsed {
     grid-template-columns: minmax(0, 1fr) minmax(240px, 34vw);
   }
@@ -566,6 +613,7 @@
   }
 
   .collectionsDetailLayout,
+  .screenplayLayout,
   .scenesArea,
   .shotsArea {
     grid-column: 2;
@@ -580,8 +628,17 @@
     grid-template-rows: minmax(260px, 38vh) minmax(0, 1fr) auto;
   }
 
+  .screenplayLayout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(220px, 35vh) minmax(0, 1fr);
+  }
+
   .collectionsDetailLayoutChatCollapsed {
     grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .screenplayLayoutChatCollapsed {
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .chatPanel {
@@ -654,6 +711,7 @@
   }
 
   .collectionsDetailLayout,
+  .screenplayLayout,
   .scenesArea,
   .shotsArea {
     grid-column: 1;
@@ -661,6 +719,8 @@
 
   .scenesArea,
   .shotsArea,
+  .screenplayLayout,
+  .screenplayWorkspaceArea,
   .collectionsWorkspaceArea,
   .collectionsDetailLayout,
   .chatPanel {

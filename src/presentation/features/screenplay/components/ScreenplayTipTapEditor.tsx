@@ -6,7 +6,11 @@ import Document from '@tiptap/extension-document';
 import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import History from '@tiptap/extension-history';
-import type { ScreenplayBlock, ScreenplayScene } from '@core/screenplay';
+import {
+  parseScreenplayBlockType,
+  type ScreenplayBlockType,
+  type ScreenplayScene,
+} from '@core/screenplay';
 import {
   clampSelectionToParentheticalInnerRange,
   getBlockCueText,
@@ -22,9 +26,9 @@ import {
   type TextReplacement,
 } from './screenplay-editor-transforms.utils';
 import {
-  isBlockListEqual,
-  screenplayBlocksToTipTapDoc,
-  tipTapDocToScreenplayBlocks,
+  isSceneContentEqual,
+  screenplayXmlToTipTapDoc,
+  tipTapDocToSceneXml,
 } from './screenplay-tiptap.adapter';
 import styles from './ScreenplayWorkspace.module.css';
 
@@ -48,19 +52,9 @@ const ScreenplayParagraph = Paragraph.extend({
           };
         },
       },
-      blockId: {
-        default: null,
-        parseHTML: (element) => element.getAttribute('data-block-id'),
-        renderHTML: (attributes) =>
-          typeof attributes.blockId === 'string' && attributes.blockId.length > 0
-            ? { 'data-block-id': attributes.blockId }
-            : {},
-      },
     };
   },
 });
-
-type ScreenplayBlockType = ScreenplayBlock['type'];
 
 export function ScreenplayTipTapEditor({
   scene,
@@ -92,7 +86,7 @@ export function ScreenplayTipTapEditor({
         class: styles.screenplayEditor,
       },
     },
-    content: screenplayBlocksToTipTapDoc(scene?.content.blocks ?? []),
+    content: screenplayXmlToTipTapDoc(scene?.content ?? ''),
     onUpdate: ({ editor: nextEditor }) => {
       if (!scene || isApplyingExternalContentRef.current || isNormalizingParentheticalRef.current) {
         return;
@@ -102,14 +96,8 @@ export function ScreenplayTipTapEditor({
         return;
       }
 
-      const blocks = tipTapDocToScreenplayBlocks(nextEditor.getJSON(), scene.content.blocks).map(
-        (block) => ({
-          ...block,
-          text: normalizeBlockTextByType(block.type, block.text),
-        }),
-      );
-
-      onSceneContentChange(scene.id, { blocks });
+      const content = tipTapDocToSceneXml(nextEditor.getJSON());
+      onSceneContentChange(scene.id, content);
       syncInlineSuggestions(
         nextEditor,
         characterSuggestions,
@@ -146,13 +134,13 @@ export function ScreenplayTipTapEditor({
       return;
     }
 
-    const currentBlocks = tipTapDocToScreenplayBlocks(editor.getJSON(), scene.content.blocks);
-    if (isBlockListEqual(currentBlocks, scene.content.blocks)) {
+    const currentContent = tipTapDocToSceneXml(editor.getJSON());
+    if (isSceneContentEqual(currentContent, scene.content)) {
       return;
     }
 
     isApplyingExternalContentRef.current = true;
-    editor.commands.setContent(screenplayBlocksToTipTapDoc(scene.content.blocks), {
+    editor.commands.setContent(screenplayXmlToTipTapDoc(scene.content), {
       emitUpdate: false,
     });
     queueMicrotask(() => {
@@ -612,16 +600,5 @@ function applyAutocomplete(editor: NonNullable<ReturnType<typeof useEditor>>, va
 }
 
 function parseBlockType(value: unknown): ScreenplayBlockType {
-  if (
-    value === 'slugline' ||
-    value === 'action' ||
-    value === 'character' ||
-    value === 'parenthetical' ||
-    value === 'dialogue' ||
-    value === 'transition'
-  ) {
-    return value;
-  }
-
-  return 'action';
+  return parseScreenplayBlockType(value) ?? 'action';
 }

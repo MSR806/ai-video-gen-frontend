@@ -36,28 +36,37 @@ function buildApiUrl(path: string): string {
   return `${getApiBaseUrl()}${normalizedPath}`;
 }
 
-export async function backendApiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(buildApiUrl(path), {
+export async function backendApiFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(buildApiUrl(path), {
     cache: 'no-store',
     ...init,
   });
+}
 
-  if (!response.ok) {
-    let payload: ApiErrorPayload | null = null;
-
-    try {
-      payload = (await response.json()) as ApiErrorPayload;
-    } catch {
-      payload = null;
-    }
-
-    throw new BackendApiError({
-      status: response.status,
-      code: payload?.error?.code,
-      message: payload?.error?.message || `${response.status} ${response.statusText}`,
-      details: payload?.error?.details,
-    });
+export async function throwIfBackendApiError(response: Response): Promise<void> {
+  if (response.ok) {
+    return;
   }
+
+  let payload: ApiErrorPayload | null = null;
+
+  try {
+    payload = (await response.json()) as ApiErrorPayload;
+  } catch {
+    payload = null;
+  }
+
+  throw new BackendApiError({
+    status: response.status,
+    code: payload?.error?.code,
+    message: payload?.error?.message || `${response.status} ${response.statusText}`,
+    details: payload?.error?.details,
+  });
+}
+
+export async function backendApiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await backendApiFetch(path, init);
+  await throwIfBackendApiError(response);
 
   if (response.status === 204) {
     return undefined as T;

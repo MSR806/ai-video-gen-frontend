@@ -63,6 +63,14 @@ const ScreenplayWorkspaceStub = ({ projectId }: { projectId: string }) => (
   <div data-testid="screenplay-workspace-stub">Screenplay workspace for {projectId}</div>
 );
 
+const ScreenplayAssistantPanelStub = () => (
+  <aside aria-label="Screenplay assistant">
+    <input aria-label="Screenplay assistant message" />
+    <button type="button">Send message</button>
+    <p>Loading screenplay context… you can start typing now, and early sends will wait.</p>
+  </aside>
+);
+
 type MatchMediaChangeListener = (event: MediaQueryListEvent) => void;
 
 const createMatchMediaController = (initialMatches: boolean) => {
@@ -240,6 +248,7 @@ describe('ProjectDetailPage', () => {
         collectionItems={[selectedCollectionItem]}
         selectedCollectionChildCollections={[]}
         screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
+        screenplayAssistantPanelComponent={ScreenplayAssistantPanelStub}
         viewportOffsetPx={0}
       />,
     );
@@ -263,6 +272,7 @@ describe('ProjectDetailPage', () => {
         collectionItems={[selectedCollectionItem]}
         selectedCollectionChildCollections={[]}
         screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
+        screenplayAssistantPanelComponent={ScreenplayAssistantPanelStub}
         viewportOffsetPx={0}
       />,
     );
@@ -301,6 +311,7 @@ describe('ProjectDetailPage', () => {
         collectionItems={[selectedCollectionItem]}
         selectedCollectionChildCollections={[]}
         screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
+        screenplayAssistantPanelComponent={ScreenplayAssistantPanelStub}
         viewportOffsetPx={0}
       />,
     );
@@ -450,5 +461,40 @@ describe('ProjectDetailPage', () => {
     expect(pathBar).toContainElement(expandButton);
     expect(pathBar).toContainElement(backButton);
     expect(expandButton.compareDocumentPosition(backButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('renders screenplay assistant sidebar alongside screenplay workspace', async () => {
+    const { ProjectDetailPage } = await import('./ProjectDetailPage');
+
+    render(
+      <ProjectDetailPage
+        projectId="project-1"
+        activeTab="screenplay"
+        selectedCollectionId={null}
+        collections={[selectedCollection]}
+        collectionItems={[selectedCollectionItem]}
+        selectedCollectionChildCollections={[]}
+        screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
+        screenplayAssistantPanelComponent={ScreenplayAssistantPanelStub}
+        viewportOffsetPx={0}
+      />,
+    );
+
+    const assistantPanel = await screen.findByLabelText('Screenplay assistant');
+    const assistantInput = within(assistantPanel).getByRole('textbox', {
+      name: 'Screenplay assistant message',
+    });
+    const sendButton = within(assistantPanel).getByRole('button', { name: 'Send message' });
+
+    expect(assistantInput).not.toBeDisabled();
+    fireEvent.change(assistantInput, { target: { value: 'Help tighten dialogue' } });
+    expect(assistantInput).toHaveValue('Help tighten dialogue');
+    expect(sendButton).toBeInTheDocument();
+    expect(screen.getByTestId('screenplay-workspace-stub')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Loading screenplay context… you can start typing now, and early sends will wait.',
+      ),
+    ).toBeInTheDocument();
   });
 });

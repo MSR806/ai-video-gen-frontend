@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type ComponentType,
+  type ComponentProps,
   type CSSProperties,
   type ChangeEvent,
 } from 'react';
@@ -46,7 +47,11 @@ import { CollectionItemGrid } from '../../collections/components/CollectionItemG
 import { CollectionItemLightbox } from '../../collections/components/CollectionItemLightbox';
 import { PastedImageConfirmModal } from '../../collections/components/PastedImageConfirmModal';
 import { GenerationControlBar } from '../../collections/components/CollectionItemGenerationView/components/GenerationControlBar/GenerationControlBar';
-import { ScreenplayWorkspace } from '../../screenplay/components/ScreenplayWorkspace';
+import {
+  ScreenplayWorkspace,
+  type ScreenplayWorkspaceHandle,
+} from '../../screenplay/components/ScreenplayWorkspace';
+import { ScreenplayAssistantPanel } from '../../screenplay/components/ScreenplayAssistantPanel';
 import { CollectionChatPanel } from '../../chat/components/CollectionChatPanel/CollectionChatPanel';
 import { ToastContainer } from '@presentation/components/feedback';
 import { Button, Dropdown, DropdownItem, Modal } from '@presentation/components/ui';
@@ -65,12 +70,21 @@ interface ProjectDetailPageProps {
   viewportOffsetPx?: number;
   // Test-only DI seam so page orchestration tests can stub the screenplay surface.
   screenplayWorkspaceComponent?: ComponentType<{ projectId: string }>;
+  screenplayAssistantPanelComponent?: ComponentType<
+    ComponentProps<typeof ScreenplayAssistantPanel>
+  >;
 }
 
 interface Toast {
   id: string;
   message: string;
   type: 'success' | 'error' | 'info';
+}
+
+interface ScreenplayAssistantContextState {
+  screenplayId: string | null;
+  activeSceneId: string | null;
+  isReady: boolean;
 }
 
 interface PastedImageCandidate {
@@ -161,6 +175,7 @@ export function ProjectDetailPage({
   selectedCollectionChildCollections,
   viewportOffsetPx = 57,
   screenplayWorkspaceComponent: ScreenplayWorkspaceComponent = ScreenplayWorkspace,
+  screenplayAssistantPanelComponent: ScreenplayAssistantPanelComponent = ScreenplayAssistantPanel,
 }: ProjectDetailPageProps) {
   const router = useRouter();
   const [lightboxItem, setLightboxItem] = useState<CollectionItem | null>(null);
@@ -188,6 +203,13 @@ export function ProjectDetailPage({
   );
   const [isSavingPastedImage, setIsSavingPastedImage] = useState(false);
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+  const screenplayWorkspaceRef = useRef<ScreenplayWorkspaceHandle | null>(null);
+  const [screenplayAssistantContext, setScreenplayAssistantContext] =
+    useState<ScreenplayAssistantContextState>({
+      screenplayId: null,
+      activeSceneId: null,
+      isReady: false,
+    });
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const sendChatMessageUseCase = useMemo(
     () => new SendChatMessageUseCase(new ChatRepositoryImpl()),
@@ -1264,6 +1286,21 @@ export function ProjectDetailPage({
   const collectionsDetailLayoutClassName = `${styles.collectionsDetailLayout} ${styles.collectionsDetailLayoutFullWidth} ${
     isChatCollapsed ? styles.collectionsDetailLayoutChatCollapsed : ''
   }`;
+  const screenplayLayoutClassName = `${styles.screenplayLayout} ${
+    isChatCollapsed ? styles.screenplayLayoutChatCollapsed : ''
+  }`;
+
+  useEffect(() => {
+    if (activeTab !== 'screenplay') {
+      return;
+    }
+
+    setScreenplayAssistantContext({
+      screenplayId: null,
+      activeSceneId: null,
+      isReady: false,
+    });
+  }, [activeTab, projectId]);
   const containerStyle = {
     '--workspace-viewport-offset': `${viewportOffsetPx}px`,
   } as CSSProperties;
@@ -1280,9 +1317,43 @@ export function ProjectDetailPage({
           onBackToProjectClick={handleNavigateToProject}
         />
       ) : activeTab === 'screenplay' ? (
-        <div className={styles.scenesArea}>
-          <div className={styles.scenesContent}>
-            <ScreenplayWorkspaceComponent projectId={projectId} />
+        <div className={screenplayLayoutClassName}>
+          <div className={styles.chatPanel}>
+            <ScreenplayAssistantPanelComponent
+              projectId={projectId}
+              screenplayId={screenplayAssistantContext.screenplayId}
+              isScreenplayContextReady={screenplayAssistantContext.isReady}
+              workspaceRef={screenplayWorkspaceRef}
+              onCollapseSidebar={() => setIsChatCollapsed(true)}
+            />
+          </div>
+          <div className={styles.screenplayWorkspaceArea}>
+            {isChatCollapsed ? (
+              <div className={styles.screenplayAssistantToggleBar}>
+                <button
+                  type="button"
+                  className={styles.chatToggleButton}
+                  onClick={() => setIsChatCollapsed(false)}
+                  aria-label="Expand screenplay assistant sidebar"
+                  aria-expanded={false}
+                  title="Expand screenplay assistant sidebar"
+                >
+                  <PanelLeftOpen aria-hidden="true" size={16} strokeWidth={2.25} />
+                </button>
+              </div>
+            ) : null}
+            <div className={styles.scenesContent}>
+              {ScreenplayWorkspaceComponent === ScreenplayWorkspace ? (
+                // Keep the test seam intact while wiring assistant-side imperative controls in production.
+                <ScreenplayWorkspace
+                  ref={screenplayWorkspaceRef}
+                  projectId={projectId}
+                  onContextChange={setScreenplayAssistantContext}
+                />
+              ) : (
+                <ScreenplayWorkspaceComponent projectId={projectId} />
+              )}
+            </div>
           </div>
         </div>
       ) : activeTab === 'shots' ? (

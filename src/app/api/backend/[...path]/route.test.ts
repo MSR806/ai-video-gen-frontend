@@ -82,4 +82,40 @@ describe('backend proxy route', () => {
     expect(upstreamInit?.method).toBe('GET');
     expect(upstreamInit?.body).toBeUndefined();
   });
+
+  it('passes through streaming SSE responses without buffering', async () => {
+    const encoder = new TextEncoder();
+
+    globalThis.fetch = (async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode('event: message\n'));
+            controller.enqueue(encoder.encode('data: {"kind":"status","text":"Thinking"}\n\n'));
+            controller.close();
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/event-stream',
+            Connection: 'keep-alive',
+          },
+        },
+      )) as typeof fetch;
+
+    const request = new NextRequest('http://localhost:3000/api/backend/api/v1/chat/stream', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', text: 'hi' }] }),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    const response = await POST(request, {
+      params: Promise.resolve({ path: ['api', 'v1', 'chat', 'stream'] }),
+    });
+
+    expect(response.headers.get('content-type')).toBe('text/event-stream');
+    expect(response.headers.get('connection')).toBeNull();
+    await expect(response.text()).resolves.toContain('"kind":"status"');
+  });
 });

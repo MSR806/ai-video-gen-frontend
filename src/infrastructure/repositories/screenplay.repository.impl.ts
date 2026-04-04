@@ -1,9 +1,9 @@
 import {
-  createScreenplayBlockId,
+  canonicalizeSceneXml,
+  createEmptySceneXml,
+  tryCanonicalizeSceneXml,
   type Screenplay,
-  type ScreenplayBlock,
   type ScreenplayScene,
-  type ScreenplaySceneContent,
   type ScreenplayRepository,
   type ScreenplayCreatePayload,
   type ScreenplayUpdatePayload,
@@ -132,17 +132,11 @@ export class ScreenplayRepositoryImpl implements ScreenplayRepository {
   }
 }
 
-interface ScreenplayBlockApiModel {
-  id: string;
-  type: string;
-  text: string;
-}
-
 interface ScreenplaySceneApiResponse {
   id: string;
   orderIndex?: number;
   sceneNumber?: number;
-  content?: ScreenplayBlockApiModel[] | ScreenplaySceneContent;
+  content?: string;
 }
 
 interface ScreenplayApiResponse {
@@ -156,11 +150,11 @@ interface ScreenplayApiResponse {
 
 interface SceneCreateApiRequest {
   position?: number;
-  content: ScreenplayBlockApiModel[];
+  content: string;
 }
 
 interface SceneUpdateApiRequest {
-  content: ScreenplayBlockApiModel[];
+  content: string;
 }
 
 function extractScreenplay(payload: ScreenplayResponse): ScreenplayApiResponse {
@@ -187,43 +181,21 @@ function mapSceneFromApi(payload: ScreenplaySceneApiResponse, index: number): Sc
     id: payload.id,
     name: `Scene ${index + 1}`,
     sceneNumber: payload.orderIndex ?? payload.sceneNumber ?? index + 1,
-    content: mapSceneContentFromApi(payload.content),
+    content: normalizeSceneContentFromApi(payload.content),
   };
-}
-
-function mapSceneContentFromApi(
-  payload: ScreenplayBlockApiModel[] | ScreenplaySceneContent | undefined,
-): ScreenplaySceneContent {
-  if (Array.isArray(payload)) {
-    return {
-      blocks: payload.map((block) => normalizeBlock(block)).filter((block) => block !== null),
-    };
-  }
-
-  return normalizeSceneContent(payload);
 }
 
 function mapSceneCreatePayloadToApi(payload: ScreenplaySceneCreatePayload): SceneCreateApiRequest {
   return {
     position: payload.position,
-    content: mapSceneContentToApi(payload.content),
+    content: normalizeSceneContentForRequest(payload.content, 'create'),
   };
 }
 
 function mapSceneUpdatePayloadToApi(payload: ScreenplaySceneUpdatePayload): SceneUpdateApiRequest {
   return {
-    content: mapSceneContentToApi(payload.content),
+    content: normalizeSceneContentForRequest(payload.content, 'update'),
   };
-}
-
-function mapSceneContentToApi(
-  content: ScreenplaySceneContent | undefined,
-): ScreenplayBlockApiModel[] {
-  return (content?.blocks ?? []).map((block) => ({
-    id: block.id,
-    type: block.type,
-    text: block.text,
-  }));
 }
 
 function normalizeScreenplay(screenplay: Screenplay): Screenplay {
@@ -244,53 +216,39 @@ function normalizeScene(scene: ScreenplayScene, index: number): ScreenplayScene 
     id: scene.id,
     name: scene.name?.trim() || `Scene ${index + 1}`,
     sceneNumber: Number.isFinite(scene.sceneNumber) ? scene.sceneNumber : index + 1,
-    content: normalizeSceneContent(scene.content),
+    content: normalizeSceneContentFromApi(scene.content),
   };
 }
 
-function normalizeSceneContent(
-  content: ScreenplaySceneContent | null | undefined,
-): ScreenplaySceneContent {
-  if (!content || !Array.isArray(content.blocks)) {
-    return { blocks: [] };
+function normalizeSceneContentFromApi(content: string | null | undefined): string {
+  if (typeof content !== 'string' || content.trim().length === 0) {
+    return createEmptySceneXml();
   }
 
-  return {
-    blocks: content.blocks.map((block) => normalizeBlock(block)).filter((block) => block !== null),
-  };
+  const canonicalContent = tryCanonicalizeSceneXml(content);
+  if (!canonicalContent) {
+    // Preserve invalid backend payloads verbatim so we do not silently drop data.
+    return content;
+  }
+
+  return canonicalContent;
 }
 
-function normalizeBlock(
-  block: { id?: unknown; type?: unknown; text?: unknown } | null | undefined,
-): ScreenplayBlock | null {
-  if (!block) {
-    return null;
+function normalizeSceneContentForRequest(
+  content: string | null | undefined,
+  operation: 'create' | 'update',
+): string {
+  if (typeof content !== 'string') {
+    if (operation === 'create') {
+      return createEmptySceneXml();
+    }
+
+    throw new Error('Screenplay scene update requires XML content.');
   }
 
-  const id =
-    typeof block.id === 'string' && block.id.trim().length > 0
-      ? block.id
-      : createScreenplayBlockId();
-  const text = typeof block.text === 'string' ? block.text : '';
-  const type = normalizeBlockType(typeof block.type === 'string' ? block.type : '');
-
-  return {
-    id,
-    text,
-    type,
-  };
-}
-
-function normalizeBlockType(rawType: string): ScreenplayBlock['type'] {
-  switch (rawType) {
-    case 'slugline':
-    case 'action':
-    case 'character':
-    case 'parenthetical':
-    case 'dialogue':
-    case 'transition':
-      return rawType;
-    default:
-      return 'action';
+  if (content.trim().length === 0) {
+    return createEmptySceneXml();
   }
+
+  return canonicalizeSceneXml(content);
 }

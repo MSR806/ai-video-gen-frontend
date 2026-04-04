@@ -6,15 +6,7 @@ export type ScreenplayBlockType =
   | 'dialogue'
   | 'transition';
 
-export interface ScreenplayBlock {
-  id: string;
-  type: ScreenplayBlockType;
-  text: string;
-}
-
-export interface ScreenplaySceneContent {
-  blocks: ScreenplayBlock[];
-}
+export type ScreenplaySceneContent = string;
 
 export interface ScreenplayScene {
   id: string;

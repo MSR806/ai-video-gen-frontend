@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'bun:test';
-import type { ScreenplayBlock } from '@core/screenplay';
 import {
   createProvisionalSceneId,
   isProvisionalSceneId,
-  screenplayBlocksToTipTapDoc,
-  tipTapDocToScreenplayBlocks,
+  screenplayXmlToTipTapDoc,
+  tipTapDocToSceneXml,
 } from './screenplay-tiptap.adapter';
 import {
   clampSelectionToParentheticalInnerRange,
@@ -20,99 +19,61 @@ import {
 } from './screenplay-editor-transforms.utils';
 
 describe('screenplay-tiptap.adapter', () => {
-  it('maps blocks to tiptap paragraphs with attrs', () => {
-    const blocks: ScreenplayBlock[] = [
-      { id: 'blk-1', type: 'slugline', text: 'INT. OFFICE - DAY' },
-      { id: 'blk-2', type: 'action', text: 'A neon sign flickers.' },
-    ];
-
-    const doc = screenplayBlocksToTipTapDoc(blocks);
+  it('maps scene xml to tiptap paragraphs with block types', () => {
+    const doc = screenplayXmlToTipTapDoc(
+      '<scene><slugline>INT. OFFICE - DAY</slugline><action>A neon sign flickers.</action></scene>',
+    );
     expect(doc.type).toBe('doc');
     expect(doc.content?.[0]).toMatchObject({
       type: 'paragraph',
-      attrs: { blockId: 'blk-1', blockType: 'slugline' },
+      attrs: { blockType: 'slugline' },
     });
     expect(doc.content?.[1]).toMatchObject({
       type: 'paragraph',
-      attrs: { blockId: 'blk-2', blockType: 'action' },
+      attrs: { blockType: 'action' },
     });
   });
 
-  it('parses tiptap doc and preserves ids while uppercasing slugline/character', () => {
-    const parsed = tipTapDocToScreenplayBlocks(
-      {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            attrs: { blockId: 'blk-1', blockType: 'slugline' },
-            content: [{ type: 'text', text: 'int. office - day' }],
-          },
-          {
-            type: 'paragraph',
-            attrs: { blockId: 'blk-2', blockType: 'character' },
-            content: [{ type: 'text', text: 'maya' }],
-          },
-        ],
-      },
-      [],
-    );
+  it('serializes tiptap doc to canonical scene xml', () => {
+    const parsed = tipTapDocToSceneXml({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { blockType: 'slugline' },
+          content: [{ type: 'text', text: 'int. office - day' }],
+        },
+        {
+          type: 'paragraph',
+          attrs: { blockType: 'character' },
+          content: [{ type: 'text', text: 'maya' }],
+        },
+      ],
+    });
 
-    expect(parsed[0]).toEqual({ id: 'blk-1', type: 'slugline', text: 'INT. OFFICE - DAY' });
-    expect(parsed[1]).toEqual({ id: 'blk-2', type: 'character', text: 'MAYA' });
+    expect(parsed).toBe(
+      '<scene><slugline>INT. OFFICE - DAY</slugline><character>MAYA</character></scene>',
+    );
   });
 
-  it('normalizes parenthetical paragraphs to a single wrapper when parsing tiptap docs', () => {
-    const parsed = tipTapDocToScreenplayBlocks(
-      {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            attrs: { blockId: 'blk-parenthetical', blockType: 'parenthetical' },
-            content: [{ type: 'text', text: '(( whispering ))' }],
-          },
-        ],
-      },
-      [],
-    );
-
-    expect(parsed[0]).toEqual({
-      id: 'blk-parenthetical',
-      type: 'parenthetical',
-      text: '(whispering)',
+  it('normalizes parenthetical paragraphs to a single wrapper', () => {
+    const parsed = tipTapDocToSceneXml({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { blockType: 'parenthetical' },
+          content: [{ type: 'text', text: '(( whispering ))' }],
+        },
+      ],
     });
+
+    expect(parsed).toBe('<scene><parenthetical>(whispering)</parenthetical></scene>');
   });
 
   it('mints and detects provisional scene ids', () => {
     const sceneId = createProvisionalSceneId();
     expect(isProvisionalSceneId(sceneId)).toBeTrue();
-  });
-
-  it('re-mints duplicate block ids from tiptap doc to keep scene payload valid', () => {
-    const parsed = tipTapDocToScreenplayBlocks(
-      {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            attrs: { blockId: 'blk-dup', blockType: 'action' },
-            content: [{ type: 'text', text: 'First line.' }],
-          },
-          {
-            type: 'paragraph',
-            attrs: { blockId: 'blk-dup', blockType: 'action' },
-            content: [{ type: 'text', text: 'Second line.' }],
-          },
-        ],
-      },
-      [],
-    );
-
-    expect(parsed).toHaveLength(2);
-    expect(parsed[0].id).toBe('blk-dup');
-    expect(parsed[1].id).not.toBe('blk-dup');
-    expect(parsed[1].id.length).toBeGreaterThan(0);
   });
 });
 
@@ -157,14 +118,12 @@ describe('screenplay editor keyboard utilities', () => {
     expect(clampSelectionToParentheticalInnerRange(20, 30, 19, 31)).toEqual({ from: 21, to: 29 });
   });
 
-  it('assigns unique block ids for repeated Enter splits', () => {
-    const firstSplit = createSplitBlockAttrs({ blockId: 'blk-seed' }, 'action');
+  it('keeps only block type attrs for split blocks', () => {
+    const firstSplit = createSplitBlockAttrs({ custom: 'value' }, 'action');
     const secondSplit = createSplitBlockAttrs(firstSplit, 'action');
-    const thirdSplit = createSplitBlockAttrs(secondSplit, 'action');
 
-    expect(firstSplit.blockId).not.toBe('blk-seed');
-    expect(secondSplit.blockId).not.toBe(firstSplit.blockId);
-    expect(thirdSplit.blockId).not.toBe(secondSplit.blockId);
+    expect(firstSplit).toMatchObject({ custom: 'value', blockType: 'action' });
+    expect(secondSplit).toMatchObject({ custom: 'value', blockType: 'action' });
   });
 
   it('detects IME composition keyboard events', () => {

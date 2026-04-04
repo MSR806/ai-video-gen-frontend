@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from 'bun:test';
-import { BackendApiError, backendApiRequest } from './backend-api';
+import {
+  BackendApiError,
+  backendApiFetch,
+  backendApiRequest,
+  throwIfBackendApiError,
+} from './backend-api';
 
 afterEach(() => {
   delete (globalThis as Record<string, unknown>).fetch;
@@ -119,5 +124,32 @@ describe('backendApiRequest', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(BackendApiError);
     }
+  });
+
+  it('exposes backendApiFetch for stream-capable callers', async () => {
+    let requestedUrl = '';
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      requestedUrl = String(input);
+      return new Response('ok', { status: 200 });
+    }) as typeof fetch;
+
+    await backendApiFetch('/api/v1/chat/stream');
+    expect(requestedUrl).toBe('/api/backend/api/v1/chat/stream');
+  });
+
+  it('maps response failures through throwIfBackendApiError', async () => {
+    const response = new Response(JSON.stringify({ error: { message: 'Bad request' } }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    await expect(throwIfBackendApiError(response)).rejects.toEqual(
+      expect.objectContaining({
+        name: 'BackendApiError',
+        status: 400,
+        message: 'Bad request',
+      }),
+    );
   });
 });
