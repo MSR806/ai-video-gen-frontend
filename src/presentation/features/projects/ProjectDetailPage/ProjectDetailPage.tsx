@@ -53,6 +53,7 @@ import {
 } from '../../screenplay/components/ScreenplayWorkspace';
 import { ScreenplayAssistantPanel } from '../../screenplay/components/ScreenplayAssistantPanel';
 import { CollectionChatPanel } from '../../chat/components/CollectionChatPanel/CollectionChatPanel';
+import { ShotsWorkspace } from '../../shots/components';
 import { ToastContainer } from '@presentation/components/feedback';
 import { Button, Dropdown, DropdownItem, Modal } from '@presentation/components/ui';
 import { ChevronLeft, PanelLeftOpen, Plus } from 'lucide-react';
@@ -1358,7 +1359,7 @@ export function ProjectDetailPage({
         </div>
       ) : activeTab === 'shots' ? (
         <div className={styles.shotsArea}>
-          <div>Shots Storyboard Placeholder</div>
+          <ShotsWorkspace projectId={projectId} />
         </div>
       ) : (
         <div className={collectionsDetailLayoutClassName}>

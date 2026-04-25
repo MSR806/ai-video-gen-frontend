@@ -1,0 +1,117 @@
+import { afterEach, describe, expect, it } from 'bun:test';
+import { ShotRepositoryImpl } from './shot.repository.impl';
+
+afterEach(() => {
+  delete (globalThis as Record<string, unknown>).fetch;
+});
+
+describe('ShotRepositoryImpl', () => {
+  it('loads shots for a scene and sorts by order index', async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify([
+          {
+            id: 'shot-2',
+            sceneId: 'scene-1',
+            orderIndex: 2,
+            title: 'Close-up on hand',
+            description: 'Character opens a letter.',
+            cameraFraming: 'Close-up',
+            cameraMovement: 'Static',
+            mood: 'Tense',
+          },
+          {
+            id: 'shot-1',
+            sceneId: 'scene-1',
+            orderIndex: 1,
+            title: 'Wide hallway',
+            description: 'Character enters frame.',
+            cameraFraming: 'Wide',
+            cameraMovement: 'Dolly in',
+            mood: 'Uneasy',
+          },
+        ]),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )) as typeof fetch;
+
+    const repository = new ShotRepositoryImpl();
+    const shots = await repository.getBySceneId('project-1', 'scene-1');
+
+    expect(shots.map((shot) => shot.id)).toEqual(['shot-1', 'shot-2']);
+    expect(shots[0]?.cameraFraming).toBe('Wide');
+  });
+
+  it('posts create payload to scene shots endpoint', async () => {
+    let requestPath = '';
+    let requestBody: Record<string, unknown> | null = null;
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      requestPath = String(input);
+      requestBody = JSON.parse(String(init?.body));
+
+      return new Response(
+        JSON.stringify({
+          id: 'shot-3',
+          sceneId: 'scene-1',
+          orderIndex: 3,
+          title: 'Insert detail',
+          description: 'A phone buzzes on the table.',
+          cameraFraming: 'Insert',
+          cameraMovement: 'Static',
+          mood: 'Urgent',
+        }),
+        {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+    }) as typeof fetch;
+
+    const repository = new ShotRepositoryImpl();
+    const shot = await repository.create('project-1', 'scene-1', {
+      title: 'Insert detail',
+      description: 'A phone buzzes on the table.',
+      cameraFraming: 'Insert',
+      cameraMovement: 'Static',
+      mood: 'Urgent',
+    });
+
+    expect(requestPath).toContain('/api/v1/projects/project-1/screenplays/scenes/scene-1/shots');
+    expect(requestBody).toEqual({
+      title: 'Insert detail',
+      description: 'A phone buzzes on the table.',
+      cameraFraming: 'Insert',
+      cameraMovement: 'Static',
+      mood: 'Urgent',
+    });
+    expect(shot.id).toBe('shot-3');
+  });
+
+  it('posts reorder payload with shot ids', async () => {
+    let requestPath = '';
+    let requestMethod = '';
+    let requestBody: Record<string, unknown> | null = null;
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      requestPath = String(input);
+      requestMethod = String(init?.method);
+      requestBody = JSON.parse(String(init?.body));
+
+      return new Response(null, { status: 204 });
+    }) as typeof fetch;
+
+    const repository = new ShotRepositoryImpl();
+    await repository.reorder('project-1', 'scene-1', {
+      shotIds: ['shot-3', 'shot-1', 'shot-2'],
+    });
+
+    expect(requestPath).toContain(
+      '/api/v1/projects/project-1/screenplays/scenes/scene-1/shots/reorder',
+    );
+    expect(requestMethod).toBe('POST');
+    expect(requestBody).toEqual({ shotIds: ['shot-3', 'shot-1', 'shot-2'] });
+  });
+});

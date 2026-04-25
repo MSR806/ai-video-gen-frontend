@@ -148,7 +148,66 @@ mock.module('next/navigation', () => ({
 
 mock.module('@infra/repositories', () => {
   return {
-    ScreenplayRepositoryImpl: class {},
+    ScreenplayRepositoryImpl: class {
+      async getByProjectId() {
+        return {
+          id: 'screenplay-1',
+          projectId: 'project-1',
+          title: 'Untitled',
+          scenes: [
+            {
+              id: 'scene-1',
+              name: 'Scene 1',
+              sceneNumber: 1,
+              content: '<scene><action>Intro</action></scene>',
+            },
+          ],
+        };
+      }
+    },
+    ShotRepositoryImpl: class {
+      async getBySceneId() {
+        return [
+          {
+            id: 'shot-1',
+            sceneId: 'scene-1',
+            orderIndex: 1,
+            title: 'Opening shot',
+            description: 'Establishing frame',
+            cameraFraming: 'Wide',
+            cameraMovement: 'Static',
+            mood: 'Neutral',
+          },
+        ];
+      }
+
+      async create(_projectId: string, sceneId: string, payload: Record<string, string>) {
+        return {
+          id: 'shot-created',
+          sceneId,
+          orderIndex: 2,
+          ...payload,
+        };
+      }
+
+      async update(
+        _projectId: string,
+        sceneId: string,
+        shotId: string,
+        payload: Record<string, string>,
+      ) {
+        return {
+          id: shotId,
+          sceneId,
+          orderIndex: 1,
+          ...payload,
+        };
+      }
+
+      async delete() {}
+
+      async reorder() {}
+    },
     ChatRepositoryImpl: class {
       async send() {
         return { threadId: 'thread-1', message: { role: 'assistant', text: 'ok' } };
@@ -496,5 +555,25 @@ describe('ProjectDetailPage', () => {
         'Loading screenplay context… you can start typing now, and early sends will wait.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('renders manual shots workspace in shots tab', async () => {
+    const { ProjectDetailPage } = await import('./ProjectDetailPage');
+
+    render(
+      <ProjectDetailPage
+        projectId="project-1"
+        activeTab="shots"
+        selectedCollectionId={null}
+        collections={[selectedCollection]}
+        collectionItems={[selectedCollectionItem]}
+        selectedCollectionChildCollections={[]}
+        screenplayWorkspaceComponent={ScreenplayWorkspaceStub}
+        viewportOffsetPx={0}
+      />,
+    );
+
+    expect(await screen.findByRole('button', { name: 'Scene 1 1 shots' })).toBeInTheDocument();
+    expect(screen.getByText('Opening shot')).toBeInTheDocument();
   });
 });

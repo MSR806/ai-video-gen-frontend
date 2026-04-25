@@ -468,6 +468,13 @@
   background: color-mix(in srgb, var(--bg-base) 94%, var(--bg-raised));
   padding: var(--space-7);
   border-left: 1px solid var(--border-subtle);
+  display: flex;
+  min-height: 0;
+}
+
+.shotsArea > * {
+  flex: 1;
+  min-height: 0;
 }
 
 .scenesLoading {

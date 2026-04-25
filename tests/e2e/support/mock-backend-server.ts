@@ -354,6 +354,27 @@ export async function startMockBackendServer(
       return;
     }
 
+    const sceneShotsPathMatch = pathname.match(
+      /^\/api\/v1\/projects\/([^/]+)\/screenplays\/scenes\/([^/]+)\/shots$/,
+    );
+    if (method === 'GET' && sceneShotsPathMatch) {
+      const [, projectId, sceneId] = sceneShotsPathMatch;
+      const screenplay = fixture.screenplaysByProject[projectId];
+      if (!screenplay) {
+        notFound(response, 'Screenplay not found');
+        return;
+      }
+
+      const hasScene = screenplay.scenes.some((scene) => scene.id === sceneId);
+      if (!hasScene) {
+        notFound(response, 'Screenplay scene not found');
+        return;
+      }
+
+      json(response, 200, []);
+      return;
+    }
+
     const collectionContentsMatch = pathname.match(/^\/api\/v1\/collections\/([^/]+)\/items$/);
     if (method === 'GET' && collectionContentsMatch) {
       const [, collectionId] = collectionContentsMatch;
