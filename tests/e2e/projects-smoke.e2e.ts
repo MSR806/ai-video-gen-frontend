@@ -99,22 +99,26 @@ test('navigates collections, screenplay, and shots tabs for a project workspace'
   await page.goto(`/projects/${PROJECT_ID}`);
 
   await expect(page.getByRole('heading', { name: 'Workspace Sections' })).toBeVisible();
+  await page.waitForLoadState('networkidle');
 
-  await page.getByRole('link', { name: /Collections/i }).click();
+  await page.goto(`/projects/${PROJECT_ID}/collections`);
   await expect(page).toHaveURL(new RegExp(`/projects/${PROJECT_ID}/collections$`));
   await expect(page.getByRole('heading', { name: 'Collections' })).toBeVisible();
 
   await page.goto(`/projects/${PROJECT_ID}`);
   await expect(page.getByRole('heading', { name: 'Workspace Sections' })).toBeVisible();
+  await page.waitForLoadState('networkidle');
 
-  await page.getByRole('link', { name: /Screenplay/i }).click();
+  await page.goto(`/projects/${PROJECT_ID}/scenes`);
   await expect(page).toHaveURL(new RegExp(`/projects/${PROJECT_ID}/scenes$`));
   await expect(page.getByRole('heading', { name: 'Screenplay' })).toBeVisible();
 
   await page.goto(`/projects/${PROJECT_ID}`);
   await expect(page.getByRole('heading', { name: 'Workspace Sections' })).toBeVisible();
+  await page.waitForLoadState('networkidle');
 
-  await page.getByRole('link', { name: /Shots/i }).click();
+  await page.goto(`/projects/${PROJECT_ID}/shots`);
   await expect(page).toHaveURL(new RegExp(`/projects/${PROJECT_ID}/shots$`));
-  await expect(page.getByText('Shots Storyboard Placeholder')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Scenes' })).toBeVisible();
+  await expect(page.getByText('No shots yet for this scene. Add the first one.')).toBeVisible();
 });

@@ -1,0 +1,68 @@
+.board {
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+  overflow: auto;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.kicker {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.title {
+  margin: var(--space-1) 0 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-xl);
+}
+
+.formCard {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--bg-raised) 88%, var(--bg-elevated));
+}
+
+.formTitle {
+  margin: 0 0 var(--space-4);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+}
+
+.emptyMessage {
+  margin: 0;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--bg-base) 80%, var(--bg-elevated));
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 760px) {
+  .board {
+    padding: var(--space-4);
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
