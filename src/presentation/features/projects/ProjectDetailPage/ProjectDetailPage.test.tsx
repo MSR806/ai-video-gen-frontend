@@ -181,6 +181,21 @@ mock.module('@infra/repositories', () => {
         ];
       }
 
+      async generate(_projectId: string, sceneId: string) {
+        return [
+          {
+            id: 'shot-generated-1',
+            sceneId,
+            orderIndex: 1,
+            title: 'Generated shot',
+            description: 'Generated description',
+            cameraFraming: 'Wide',
+            cameraMovement: 'Static',
+            mood: 'Neutral',
+          },
+        ];
+      }
+
       async create(_projectId: string, sceneId: string, payload: Record<string, string>) {
         return {
           id: 'shot-created',

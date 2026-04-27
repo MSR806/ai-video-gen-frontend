@@ -90,9 +90,18 @@ export class ShotRepositoryImpl implements ShotRepository {
     const response = await backendApiRequest<ShotListResponse>(
       getSceneShotsBasePath(projectId, sceneId),
     );
-    const shots = extractShotList(response).map((shot, index) => mapShotFromApi(shot, index + 1));
+    return mapAndSortShotList(response);
+  }
 
-    return [...shots].sort((a, b) => a.orderIndex - b.orderIndex);
+  async generate(projectId: string, sceneId: string): Promise<Shot[]> {
+    const response = await backendApiRequest<ShotListResponse>(
+      `${getSceneShotsBasePath(projectId, sceneId)}/generate`,
+      {
+        method: 'POST',
+      },
+    );
+
+    return mapAndSortShotList(response);
   }
 
   async create(projectId: string, sceneId: string, payload: ShotCreatePayload): Promise<Shot> {
@@ -145,4 +154,9 @@ export class ShotRepositoryImpl implements ShotRepository {
       body: JSON.stringify(payload),
     });
   }
+}
+
+function mapAndSortShotList(payload: ShotListResponse): Shot[] {
+  const shots = extractShotList(payload).map((shot, index) => mapShotFromApi(shot, index + 1));
+  return [...shots].sort((a, b) => a.orderIndex - b.orderIndex);
 }

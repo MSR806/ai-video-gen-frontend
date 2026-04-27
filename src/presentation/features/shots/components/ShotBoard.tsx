@@ -11,8 +11,10 @@ interface ShotBoardProps {
   shots: Shot[];
   isSaving: boolean;
   isWorking: boolean;
+  isGenerating: boolean;
   formMode: 'create' | 'edit' | null;
   initialFormValues: ShotFormValues;
+  onGenerateShots: () => Promise<void>;
   onOpenCreate: () => void;
   onCancelForm: () => void;
   onSubmitForm: (values: ShotFormValues) => Promise<void>;
@@ -27,8 +29,10 @@ export function ShotBoard({
   shots,
   isSaving,
   isWorking,
+  isGenerating,
   formMode,
   initialFormValues,
+  onGenerateShots,
   onOpenCreate,
   onCancelForm,
   onSubmitForm,
@@ -52,12 +56,28 @@ export function ShotBoard({
           <p className={styles.kicker}>Selected scene</p>
           <h2 className={styles.title}>{activeScene.name}</h2>
         </div>
-        {formMode === null ? (
-          <Button type="button" variant="primary" onClick={onOpenCreate} disabled={isWorking}>
-            <Plus aria-hidden="true" size={14} strokeWidth={2.6} />
-            Add shot
+        <div className={styles.actions}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void onGenerateShots()}
+            disabled={isWorking || isGenerating || isSaving}
+          >
+            {shots.length === 0 ? 'Generate shots' : 'Regenerate shots'}
           </Button>
-        ) : null}
+
+          {formMode === null ? (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={onOpenCreate}
+              disabled={isWorking || isGenerating}
+            >
+              <Plus aria-hidden="true" size={14} strokeWidth={2.6} />
+              Add shot
+            </Button>
+          ) : null}
+        </div>
       </header>
 
       {formMode !== null ? (
@@ -74,7 +94,9 @@ export function ShotBoard({
       ) : null}
 
       {shots.length === 0 ? (
-        <p className={styles.emptyMessage}>No shots yet for this scene. Add the first one.</p>
+        <p className={styles.emptyMessage}>
+          No shots yet for this scene. Generate shots or add one.
+        </p>
       ) : (
         <div className={styles.grid}>
           {shots.map((shot, index) => (

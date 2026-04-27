@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   CreateShotUseCase,
   DeleteShotUseCase,
+  GenerateSceneShotsUseCase,
   GetSceneShotsUseCase,
   ReorderShotsUseCase,
   type Shot,
@@ -99,6 +100,7 @@ export function ShotsWorkspace({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
@@ -279,6 +281,41 @@ export function ShotsWorkspace({
     }
   };
 
+  const handleGenerateShots = async (): Promise<void> => {
+    if (!activeSceneId) {
+      return;
+    }
+
+    const hasExistingShots = activeSceneShots.length > 0;
+    if (hasExistingShots) {
+      const confirmed = window.confirm(
+        'Regenerating shots will replace the existing shots for this scene. Continue?',
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setErrorMessage(null);
+    setIsGenerating(true);
+
+    try {
+      const generateSceneShotsUseCase = new GenerateSceneShotsUseCase(shotsRepo);
+      const generatedShots = await generateSceneShotsUseCase.execute(projectId, activeSceneId);
+
+      resetFormState();
+      setShotsByScene((previous) => ({
+        ...previous,
+        [activeSceneId]: sortAndReindexShots(generatedShots),
+      }));
+    } catch (error) {
+      console.error('Failed to generate shots:', error);
+      setErrorMessage('Failed to generate shots. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   if (isLoading) {
     return <p className={styles.stateMessage}>Loading shots workspace…</p>;
   }
@@ -306,9 +343,11 @@ export function ShotsWorkspace({
           activeScene={activeScene}
           shots={activeSceneShots}
           isSaving={isSaving}
-          isWorking={isWorking}
+          isWorking={isWorking || isGenerating}
+          isGenerating={isGenerating}
           formMode={formMode}
           initialFormValues={initialFormValues}
+          onGenerateShots={handleGenerateShots}
           onOpenCreate={() => {
             setEditingShotId(null);
             setFormMode('create');

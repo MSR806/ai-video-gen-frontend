@@ -22,6 +22,7 @@ export interface ShotReorderPayload {
 
 export interface ShotRepository {
   getBySceneId(projectId: string, sceneId: string): Promise<Shot[]>;
+  generate(projectId: string, sceneId: string): Promise<Shot[]>;
   create(projectId: string, sceneId: string, payload: ShotCreatePayload): Promise<Shot>;
   update(
     projectId: string,
