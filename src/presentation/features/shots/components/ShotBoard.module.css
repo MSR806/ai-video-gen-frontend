@@ -56,10 +56,10 @@
   background: color-mix(in srgb, var(--bg-base) 80%, var(--bg-elevated));
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: var(--space-3);
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 @media (max-width: 760px) {
