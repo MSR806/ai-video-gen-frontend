@@ -192,6 +192,82 @@ const buildShotRepository = () => {
 };
 
 describe('ShotsWorkspace', () => {
+  it('renders collapsed shot rows with compact tags and toggles expanded details', async () => {
+    const shotRepositoryState = buildShotRepository();
+
+    render(
+      <ShotsWorkspace
+        projectId="project-1"
+        screenplayRepository={buildScreenplayRepository()}
+        shotRepository={shotRepositoryState.repository}
+      />,
+    );
+
+    await screen.findByText('Shot Two');
+    expect(screen.queryByText('Framing')).not.toBeInTheDocument();
+    expect(screen.queryByText('Movement')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mood')).not.toBeInTheDocument();
+
+    const firstShotRow = screen.getByText('Shot One').closest('article');
+    expect(firstShotRow).not.toBeNull();
+
+    const shotRow = screen.getByText('Shot Two').closest('article');
+    expect(shotRow).not.toBeNull();
+
+    expect(within(shotRow as HTMLElement).getByText('Medium')).toBeInTheDocument();
+    expect(within(shotRow as HTMLElement).getByText('Push-in')).toBeInTheDocument();
+    expect(within(shotRow as HTMLElement).getByText('Tense')).toBeInTheDocument();
+    expect(within(shotRow as HTMLElement).queryByText('Framing')).not.toBeInTheDocument();
+    expect(within(shotRow as HTMLElement).queryByText('Movement')).not.toBeInTheDocument();
+    expect(within(shotRow as HTMLElement).queryByText('Mood')).not.toBeInTheDocument();
+
+    const expandButton = within(shotRow as HTMLElement).getByRole('button', {
+      name: 'Show details for Shot Two',
+    });
+    expect(expandButton).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(within(shotRow as HTMLElement).getByText('Shot Two'));
+
+    expect(expandButton).toHaveAttribute('aria-expanded', 'true');
+    expect(within(shotRow as HTMLElement).getByText('Framing')).toBeInTheDocument();
+    expect(within(shotRow as HTMLElement).getByText('Movement')).toBeInTheDocument();
+    expect(within(shotRow as HTMLElement).getByText('Mood')).toBeInTheDocument();
+
+    fireEvent.click(within(firstShotRow as HTMLElement).getByText('Shot One'));
+
+    expect(
+      within(firstShotRow as HTMLElement).getByRole('button', {
+        name: 'Hide details for Shot One',
+      }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      within(shotRow as HTMLElement).getByRole('button', {
+        name: 'Show details for Shot Two',
+      }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(within(shotRow as HTMLElement).queryByText('Framing')).not.toBeInTheDocument();
+
+    fireEvent.click(within(firstShotRow as HTMLElement).getByText('Shot One'));
+
+    expect(
+      within(firstShotRow as HTMLElement).getByRole('button', {
+        name: 'Show details for Shot One',
+      }),
+    ).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(within(shotRow as HTMLElement).getByText('Shot Two'));
+
+    const collapseButton = within(shotRow as HTMLElement).getByRole('button', {
+      name: 'Hide details for Shot Two',
+    });
+    fireEvent.click(collapseButton);
+
+    expect(collapseButton).toHaveAttribute('aria-expanded', 'false');
+    expect(within(shotRow as HTMLElement).queryByText('Framing')).not.toBeInTheDocument();
+    expect(within(shotRow as HTMLElement).queryByText('Movement')).not.toBeInTheDocument();
+    expect(within(shotRow as HTMLElement).queryByText('Mood')).not.toBeInTheDocument();
+  });
+
   it('shows scene shot counts and toggles visible scene shots', async () => {
     const shotRepositoryState = buildShotRepository();
 

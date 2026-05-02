@@ -1,9 +1,10 @@
 import { Plus } from 'lucide-react';
+import { useState } from 'react';
 import type { Shot } from '@core/shot';
 import type { ScreenplayScene } from '@core/screenplay';
 import { Button } from '@presentation/components/ui';
-import { ShotCard } from './ShotCard';
 import { ShotForm, type ShotFormValues } from './ShotForm';
+import { ShotRow } from './ShotRow';
 import styles from './ShotBoard.module.css';
 
 interface ShotBoardProps {
@@ -20,6 +21,35 @@ interface ShotBoardProps {
   onSubmitForm: (values: ShotFormValues) => Promise<void>;
   onEditShot: (shot: Shot) => void;
   onDeleteShot: (shot: Shot) => Promise<void>;
+}
+
+interface ShotListProps {
+  shots: Shot[];
+  isWorking: boolean;
+  onEditShot: (shot: Shot) => void;
+  onDeleteShot: (shot: Shot) => Promise<void>;
+}
+
+function ShotList({ shots, isWorking, onEditShot, onDeleteShot }: ShotListProps) {
+  const [expandedShotId, setExpandedShotId] = useState<string | null>(null);
+
+  return (
+    <div className={styles.list}>
+      {shots.map((shot) => (
+        <ShotRow
+          key={shot.id}
+          shot={shot}
+          isWorking={isWorking}
+          isExpanded={expandedShotId === shot.id}
+          onToggleExpanded={(shotId) => {
+            setExpandedShotId((currentShotId) => (currentShotId === shotId ? null : shotId));
+          }}
+          onEdit={onEditShot}
+          onDelete={onDeleteShot}
+        />
+      ))}
+    </div>
+  );
 }
 
 export function ShotBoard({
@@ -94,17 +124,13 @@ export function ShotBoard({
           No shots yet for this scene. Generate shots or add one.
         </p>
       ) : (
-        <div className={styles.grid}>
-          {shots.map((shot) => (
-            <ShotCard
-              key={shot.id}
-              shot={shot}
-              isWorking={isWorking}
-              onEdit={onEditShot}
-              onDelete={onDeleteShot}
-            />
-          ))}
-        </div>
+        <ShotList
+          key={activeScene.id}
+          shots={shots}
+          isWorking={isWorking}
+          onEditShot={onEditShot}
+          onDeleteShot={onDeleteShot}
+        />
       )}
     </section>
   );
