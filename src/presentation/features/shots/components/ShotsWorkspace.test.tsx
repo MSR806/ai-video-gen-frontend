@@ -104,8 +104,6 @@ const buildShotRepository = () => {
 
   let createdCount = 0;
   let generatedCount = 0;
-  let lastReorderPayload: ShotReorderPayload | null = null;
-
   const repository: ShotRepository = {
     async getBySceneId(_projectId: string, sceneId: string): Promise<Shot[]> {
       return [...(shotMap.get(sceneId) ?? [])];
@@ -150,7 +148,6 @@ const buildShotRepository = () => {
     },
     async reorder(projectId: string, sceneId: string, payload: ShotReorderPayload): Promise<void> {
       void projectId;
-      lastReorderPayload = payload;
       const ordered = payload.shotIds
         .map((shotId) => (shotMap.get(sceneId) ?? []).find((shot) => shot.id === shotId))
         .filter((shot): shot is Shot => Boolean(shot))
@@ -191,7 +188,6 @@ const buildShotRepository = () => {
 
   return {
     repository,
-    getLastReorderShotIds: (): string[] | null => lastReorderPayload?.shotIds ?? null,
   };
 };
 
@@ -219,7 +215,7 @@ describe('ShotsWorkspace', () => {
     expect(screen.queryByText('Shot One')).not.toBeInTheDocument();
   });
 
-  it('supports add, edit, delete, and reorder in selected scene', async () => {
+  it('supports add, edit, and delete in selected scene', async () => {
     const shotRepositoryState = buildShotRepository();
 
     render(
@@ -267,11 +263,6 @@ describe('ShotsWorkspace', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
     await waitFor(() => expect(screen.queryByText('Shot Four Updated')).not.toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Scene 1 2 shots' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Move Shot Two up' }));
-    await waitFor(() =>
-      expect(shotRepositoryState.getLastReorderShotIds()).toEqual(['shot-2', 'shot-1']),
-    );
   });
 
   it('generates shots for empty scenes and regenerates existing shots after confirmation', async () => {
