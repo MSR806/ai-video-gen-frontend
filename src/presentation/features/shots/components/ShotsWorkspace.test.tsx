@@ -247,14 +247,24 @@ describe('ShotsWorkspace', () => {
 
     const createdCard = screen.getByText('Shot Four').closest('article');
     expect(createdCard).not.toBeNull();
-    fireEvent.click(within(createdCard as HTMLElement).getByRole('button', { name: 'Edit' }));
+    fireEvent.click(
+      within(createdCard as HTMLElement).getByRole('button', {
+        name: 'Open actions for Shot Four',
+      }),
+    );
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }));
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Shot Four Updated' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save shot' }));
     expect(await screen.findByText('Shot Four Updated')).toBeInTheDocument();
 
     const editedCard = screen.getByText('Shot Four Updated').closest('article');
     expect(editedCard).not.toBeNull();
-    fireEvent.click(within(editedCard as HTMLElement).getByRole('button', { name: 'Delete' }));
+    fireEvent.click(
+      within(editedCard as HTMLElement).getByRole('button', {
+        name: 'Open actions for Shot Four Updated',
+      }),
+    );
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
     await waitFor(() => expect(screen.queryByText('Shot Four Updated')).not.toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Scene 1 2 shots' })).toBeInTheDocument();
 
