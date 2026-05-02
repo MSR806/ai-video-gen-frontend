@@ -29,6 +29,12 @@ const buildScreenplayRepository = (): ScreenplayRepository => ({
           sceneNumber: 2,
           content: '<scene><action>Two</action></scene>',
         },
+        {
+          id: 'scene-3',
+          name: 'Scene 3',
+          sceneNumber: 3,
+          content: '<scene><action>Three</action></scene>',
+        },
       ],
     };
   },
@@ -97,6 +103,7 @@ const buildShotRepository = () => {
   ]);
 
   let createdCount = 0;
+  let generatedCount = 0;
   let lastReorderPayload: ShotReorderPayload | null = null;
 
   const repository: ShotRepository = {
@@ -151,6 +158,35 @@ const buildShotRepository = () => {
 
       shotMap.set(sceneId, ordered);
     },
+    async generate(projectId: string, sceneId: string): Promise<Shot[]> {
+      void projectId;
+      generatedCount += 1;
+      const generatedShots: Shot[] = [
+        {
+          id: `shot-generated-${generatedCount}-2`,
+          sceneId,
+          orderIndex: 2,
+          title: 'Generated Follow Up',
+          description: 'A second generated perspective.',
+          cameraFraming: 'Medium',
+          cameraMovement: 'Push in',
+          mood: 'Rising',
+        },
+        {
+          id: `shot-generated-${generatedCount}-1`,
+          sceneId,
+          orderIndex: 1,
+          title: 'Generated Establishing',
+          description: 'A generated opening beat.',
+          cameraFraming: 'Wide',
+          cameraMovement: 'Static',
+          mood: 'Focused',
+        },
+      ];
+
+      shotMap.set(sceneId, generatedShots);
+      return generatedShots;
+    },
   };
 
   return {
@@ -173,6 +209,7 @@ describe('ShotsWorkspace', () => {
 
     expect(await screen.findByRole('button', { name: 'Scene 1 2 shots' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Scene 2 1 shots' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scene 3 0 shots' })).toBeInTheDocument();
 
     expect(screen.getByText('Shot One')).toBeInTheDocument();
     expect(screen.queryByText('Shot Three')).not.toBeInTheDocument();
@@ -225,5 +262,70 @@ describe('ShotsWorkspace', () => {
     await waitFor(() =>
       expect(shotRepositoryState.getLastReorderShotIds()).toEqual(['shot-2', 'shot-1']),
     );
+  });
+
+  it('generates shots for empty scenes and regenerates existing shots after confirmation', async () => {
+    const shotRepositoryState = buildShotRepository();
+    const originalConfirm = window.confirm;
+    const confirmCalls: string[] = [];
+
+    window.confirm = (message?: string) => {
+      confirmCalls.push(message ?? '');
+      return true;
+    };
+
+    try {
+      render(
+        <ShotsWorkspace
+          projectId="project-1"
+          screenplayRepository={buildScreenplayRepository()}
+          shotRepository={shotRepositoryState.repository}
+        />,
+      );
+
+      await screen.findByRole('button', { name: 'Scene 3 0 shots' });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Scene 3 0 shots' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Generate shots' }));
+
+      expect(await screen.findByText('Generated Establishing')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Scene 3 2 shots' })).toBeInTheDocument();
+      expect(confirmCalls).toEqual([]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Scene 1 2 shots' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Regenerate shots' }));
+
+      await waitFor(() => expect(screen.queryByText('Shot One')).not.toBeInTheDocument());
+      expect(await screen.findByText('Generated Follow Up')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Scene 1 2 shots' })).toBeInTheDocument();
+      expect(confirmCalls).toHaveLength(1);
+    } finally {
+      window.confirm = originalConfirm;
+    }
+  });
+
+  it('does not regenerate shots when confirmation is cancelled', async () => {
+    const shotRepositoryState = buildShotRepository();
+    const originalConfirm = window.confirm;
+    window.confirm = () => false;
+
+    try {
+      render(
+        <ShotsWorkspace
+          projectId="project-1"
+          screenplayRepository={buildScreenplayRepository()}
+          shotRepository={shotRepositoryState.repository}
+        />,
+      );
+
+      expect(await screen.findByText('Shot One')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Regenerate shots' }));
+
+      expect(screen.getByText('Shot One')).toBeInTheDocument();
+      expect(screen.getByText('Shot Two')).toBeInTheDocument();
+    } finally {
+      window.confirm = originalConfirm;
+    }
   });
 });

@@ -37,6 +37,17 @@ export interface MockScreenplayDto {
   scenes: MockScreenplaySceneDto[];
 }
 
+interface MockShotDto {
+  id: string;
+  sceneId: string;
+  orderIndex: number;
+  title: string;
+  description: string;
+  cameraFraming: string;
+  cameraMovement: string;
+  mood: string;
+}
+
 interface MockBackendFixture {
   projects: MockProjectDto[];
   collectionsByProject: Record<string, MockCollectionDto[]>;
@@ -153,6 +164,7 @@ export async function startMockBackendServer(
 ): Promise<StartedMockBackendServer> {
   const fixture = options.fixture ?? createDefaultMockFixture();
   const port = options.port ?? 18080;
+  const shotsByScene = new Map<string, MockShotDto[]>();
 
   const server = createServer(async (request, response) => {
     const method = request.method?.toUpperCase() ?? 'GET';
@@ -371,7 +383,52 @@ export async function startMockBackendServer(
         return;
       }
 
-      json(response, 200, []);
+      json(response, 200, shotsByScene.get(sceneId) ?? []);
+      return;
+    }
+
+    const generateSceneShotsPathMatch = pathname.match(
+      /^\/api\/v1\/projects\/([^/]+)\/screenplays\/scenes\/([^/]+)\/shots\/generate$/,
+    );
+    if (method === 'POST' && generateSceneShotsPathMatch) {
+      const [, projectId, sceneId] = generateSceneShotsPathMatch;
+      const screenplay = fixture.screenplaysByProject[projectId];
+      if (!screenplay) {
+        notFound(response, 'Screenplay not found');
+        return;
+      }
+
+      const hasScene = screenplay.scenes.some((scene) => scene.id === sceneId);
+      if (!hasScene) {
+        notFound(response, 'Screenplay scene not found');
+        return;
+      }
+
+      const generatedShots: MockShotDto[] = [
+        {
+          id: `${sceneId}-generated-1`,
+          sceneId,
+          orderIndex: 1,
+          title: 'Generated establishing shot',
+          description: 'Auto-generated opening shot for the selected scene.',
+          cameraFraming: 'Wide',
+          cameraMovement: 'Static',
+          mood: 'Neutral',
+        },
+        {
+          id: `${sceneId}-generated-2`,
+          sceneId,
+          orderIndex: 2,
+          title: 'Generated follow-up shot',
+          description: 'Auto-generated follow-up framing for the scene beat.',
+          cameraFraming: 'Medium',
+          cameraMovement: 'Push in',
+          mood: 'Tense',
+        },
+      ];
+
+      shotsByScene.set(sceneId, generatedShots);
+      json(response, 200, generatedShots);
       return;
     }
 

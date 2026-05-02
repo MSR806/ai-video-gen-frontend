@@ -114,4 +114,54 @@ describe('ShotRepositoryImpl', () => {
     expect(requestMethod).toBe('POST');
     expect(requestBody).toEqual({ shotIds: ['shot-3', 'shot-1', 'shot-2'] });
   });
+
+  it('posts generate request and returns generated shots sorted by order index', async () => {
+    let requestPath = '';
+    let requestMethod = '';
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      requestPath = String(input);
+      requestMethod = String(init?.method);
+
+      return new Response(
+        JSON.stringify({
+          shots: [
+            {
+              id: 'shot-2',
+              sceneId: 'scene-1',
+              orderIndex: 2,
+              title: 'Second generated shot',
+              description: 'Generated second',
+              cameraFraming: 'Close-up',
+              cameraMovement: 'Tilt',
+              mood: 'Tense',
+            },
+            {
+              id: 'shot-1',
+              sceneId: 'scene-1',
+              orderIndex: 1,
+              title: 'First generated shot',
+              description: 'Generated first',
+              cameraFraming: 'Wide',
+              cameraMovement: 'Static',
+              mood: 'Calm',
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+    }) as typeof fetch;
+
+    const repository = new ShotRepositoryImpl();
+    const shots = await repository.generate('project-1', 'scene-1');
+
+    expect(requestPath).toContain(
+      '/api/v1/projects/project-1/screenplays/scenes/scene-1/shots/generate',
+    );
+    expect(requestMethod).toBe('POST');
+    expect(shots.map((shot) => shot.id)).toEqual(['shot-1', 'shot-2']);
+  });
 });
