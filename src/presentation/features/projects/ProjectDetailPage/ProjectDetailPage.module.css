@@ -464,7 +464,7 @@
 }
 
 .shotsArea {
-  grid-column: 2 / 4;
+  grid-column: 2 / -1;
   background: color-mix(in srgb, var(--bg-base) 94%, var(--bg-raised));
   padding: var(--space-7);
   border-left: 1px solid var(--border-subtle);
