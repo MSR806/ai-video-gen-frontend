@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { Dropdown, DropdownItem } from '@presentation/components/ui';
 import type { Shot } from '@core/shot';
 import styles from './ShotCard.module.css';
@@ -20,7 +20,14 @@ export function ShotCard({ shot, isWorking, onEdit, onDelete }: ShotCardProps) {
         </div>
         <Dropdown
           menuClassName={styles.actionMenu}
-          trigger={<span aria-hidden="true">⋮</span>}
+          trigger={
+            <MoreVertical
+              className={styles.menuIcon}
+              aria-hidden="true"
+              size={16}
+              strokeWidth={2.2}
+            />
+          }
           triggerClassName={styles.menuButton}
           triggerAriaLabel={isWorking ? `Updating ${shot.title}` : `Open actions for ${shot.title}`}
           disabled={isWorking}

@@ -80,6 +80,11 @@
   font-weight: 700;
 }
 
+.menuIcon {
+  display: block;
+  color: currentColor;
+}
+
 .menuButton:hover:not(:disabled) {
   color: var(--text-primary);
   border-color: var(--border-strong);
