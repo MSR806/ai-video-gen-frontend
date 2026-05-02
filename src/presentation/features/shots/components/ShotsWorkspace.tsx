@@ -6,7 +6,6 @@ import {
   DeleteShotUseCase,
   GenerateSceneShotsUseCase,
   GetSceneShotsUseCase,
-  ReorderShotsUseCase,
   type Shot,
   type ShotRepository,
   UpdateShotUseCase,
@@ -17,7 +16,6 @@ import {
   type ScreenplayRepository,
 } from '@core/screenplay';
 import { ScreenplayRepositoryImpl, ShotRepositoryImpl } from '@infra/repositories';
-import { SceneShotList } from './SceneShotList';
 import { ShotBoard } from './ShotBoard';
 import { EMPTY_SHOT_FORM_VALUES, type ShotFormValues } from './ShotForm';
 import styles from './ShotsWorkspace.module.css';
@@ -51,32 +49,6 @@ const shotToFormValues = (shot: Shot): ShotFormValues => ({
   cameraMovement: shot.cameraMovement,
   mood: shot.mood,
 });
-
-const reorderByDirection = (shots: Shot[], shotId: string, direction: 'up' | 'down'): Shot[] => {
-  const startIndex = shots.findIndex((shot) => shot.id === shotId);
-  if (startIndex === -1) {
-    return shots;
-  }
-
-  const targetIndex = direction === 'up' ? startIndex - 1 : startIndex + 1;
-  if (targetIndex < 0 || targetIndex >= shots.length) {
-    return shots;
-  }
-
-  const reordered = [...shots];
-  const current = reordered[startIndex];
-  const target = reordered[targetIndex];
-  if (!current) {
-    return shots;
-  }
-  if (!target) {
-    return shots;
-  }
-  reordered[startIndex] = target;
-  reordered[targetIndex] = current;
-
-  return reindexShotsInCurrentOrder(reordered);
-};
 
 export function ShotsWorkspace({
   projectId,
@@ -249,38 +221,6 @@ export function ShotsWorkspace({
     }
   };
 
-  const handleMoveShot = async (shot: Shot, direction: 'up' | 'down'): Promise<void> => {
-    if (!activeSceneId) {
-      return;
-    }
-
-    const currentShots = shotsByScene[activeSceneId] ?? [];
-    const reorderedShots = reorderByDirection(currentShots, shot.id, direction);
-    if (reorderedShots === currentShots) {
-      return;
-    }
-
-    setErrorMessage(null);
-    setIsWorking(true);
-
-    try {
-      const reorderShotsUseCase = new ReorderShotsUseCase(shotsRepo);
-      await reorderShotsUseCase.execute(projectId, activeSceneId, {
-        shotIds: reorderedShots.map((candidate) => candidate.id),
-      });
-
-      setShotsByScene((previous) => ({
-        ...previous,
-        [activeSceneId]: reorderedShots,
-      }));
-    } catch (error) {
-      console.error('Failed to reorder shots:', error);
-      setErrorMessage('Failed to reorder shots. Please try again.');
-    } finally {
-      setIsWorking(false);
-    }
-  };
-
   const handleGenerateShots = async (): Promise<void> => {
     if (!activeSceneId) {
       return;
@@ -322,14 +262,31 @@ export function ShotsWorkspace({
 
   return (
     <div className={styles.workspace}>
-      <SceneShotList
-        scenes={scenes}
-        activeSceneId={activeSceneId}
-        shotCounts={shotCounts}
-        onSceneSelect={setActiveSceneId}
-      />
-
       <div className={styles.boardPane}>
+        {scenes.length > 0 ? (
+          <div className={styles.sceneSelectorRow}>
+            <label className={styles.sceneSelectorLabel} htmlFor="scene-selector">
+              Scene
+            </label>
+            <select
+              id="scene-selector"
+              className={styles.sceneSelector}
+              value={activeSceneId ?? ''}
+              onChange={(event) => setActiveSceneId(event.target.value)}
+              aria-label="Select scene"
+            >
+              {scenes.map((scene) => {
+                const shotCount = shotCounts.get(scene.id) ?? 0;
+                return (
+                  <option key={scene.id} value={scene.id}>
+                    {`${scene.name} (${shotCount} shots)`}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        ) : null}
+
         {errorMessage ? (
           <div className={styles.errorBanner} role="alert">
             <span>{errorMessage}</span>
@@ -359,8 +316,6 @@ export function ShotsWorkspace({
             setFormMode('edit');
           }}
           onDeleteShot={handleDeleteShot}
-          onMoveShotUp={(shot) => handleMoveShot(shot, 'up')}
-          onMoveShotDown={(shot) => handleMoveShot(shot, 'down')}
         />
       </div>
     </div>

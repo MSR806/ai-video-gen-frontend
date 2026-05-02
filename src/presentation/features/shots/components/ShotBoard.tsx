@@ -20,8 +20,6 @@ interface ShotBoardProps {
   onSubmitForm: (values: ShotFormValues) => Promise<void>;
   onEditShot: (shot: Shot) => void;
   onDeleteShot: (shot: Shot) => Promise<void>;
-  onMoveShotUp: (shot: Shot) => Promise<void>;
-  onMoveShotDown: (shot: Shot) => Promise<void>;
 }
 
 export function ShotBoard({
@@ -38,8 +36,6 @@ export function ShotBoard({
   onSubmitForm,
   onEditShot,
   onDeleteShot,
-  onMoveShotUp,
-  onMoveShotDown,
 }: ShotBoardProps) {
   if (!activeScene) {
     return (
@@ -99,17 +95,13 @@ export function ShotBoard({
         </p>
       ) : (
         <div className={styles.grid}>
-          {shots.map((shot, index) => (
+          {shots.map((shot) => (
             <ShotCard
               key={shot.id}
               shot={shot}
-              isMoveUpDisabled={index === 0}
-              isMoveDownDisabled={index === shots.length - 1}
               isWorking={isWorking}
               onEdit={onEditShot}
               onDelete={onDeleteShot}
-              onMoveUp={onMoveShotUp}
-              onMoveDown={onMoveShotDown}
             />
           ))}
         </div>

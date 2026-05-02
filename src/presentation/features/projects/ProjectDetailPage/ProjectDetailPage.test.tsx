@@ -588,7 +588,8 @@ describe('ProjectDetailPage', () => {
       />,
     );
 
-    expect(await screen.findByRole('button', { name: 'Scene 1 1 shots' })).toBeInTheDocument();
+    expect(await screen.findByRole('combobox', { name: 'Select scene' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Scene 1 (1 shots)' })).toBeInTheDocument();
     expect(screen.getByText('Opening shot')).toBeInTheDocument();
   });
 });

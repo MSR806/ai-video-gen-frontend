@@ -104,8 +104,6 @@ const buildShotRepository = () => {
 
   let createdCount = 0;
   let generatedCount = 0;
-  let lastReorderPayload: ShotReorderPayload | null = null;
-
   const repository: ShotRepository = {
     async getBySceneId(_projectId: string, sceneId: string): Promise<Shot[]> {
       return [...(shotMap.get(sceneId) ?? [])];
@@ -150,7 +148,6 @@ const buildShotRepository = () => {
     },
     async reorder(projectId: string, sceneId: string, payload: ShotReorderPayload): Promise<void> {
       void projectId;
-      lastReorderPayload = payload;
       const ordered = payload.shotIds
         .map((shotId) => (shotMap.get(sceneId) ?? []).find((shot) => shot.id === shotId))
         .filter((shot): shot is Shot => Boolean(shot))
@@ -191,7 +188,6 @@ const buildShotRepository = () => {
 
   return {
     repository,
-    getLastReorderShotIds: (): string[] | null => lastReorderPayload?.shotIds ?? null,
   };
 };
 
@@ -207,19 +203,20 @@ describe('ShotsWorkspace', () => {
       />,
     );
 
-    expect(await screen.findByRole('button', { name: 'Scene 1 2 shots' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Scene 2 1 shots' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Scene 3 0 shots' })).toBeInTheDocument();
+    const sceneSelector = await screen.findByRole('combobox', { name: 'Select scene' });
+    expect(screen.getByRole('option', { name: 'Scene 1 (2 shots)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Scene 2 (1 shots)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Scene 3 (0 shots)' })).toBeInTheDocument();
 
     expect(screen.getByText('Shot One')).toBeInTheDocument();
     expect(screen.queryByText('Shot Three')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Scene 2 1 shots' }));
+    fireEvent.change(sceneSelector, { target: { value: 'scene-2' } });
     expect(await screen.findByText('Shot Three')).toBeInTheDocument();
     expect(screen.queryByText('Shot One')).not.toBeInTheDocument();
   });
 
-  it('supports add, edit, delete, and reorder in selected scene', async () => {
+  it('supports add, edit, and delete in selected scene', async () => {
     const shotRepositoryState = buildShotRepository();
 
     render(
@@ -243,25 +240,30 @@ describe('ShotsWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create shot' }));
 
     expect(await screen.findByText('Shot Four')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Scene 1 3 shots' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Scene 1 (3 shots)' })).toBeInTheDocument();
 
     const createdCard = screen.getByText('Shot Four').closest('article');
     expect(createdCard).not.toBeNull();
-    fireEvent.click(within(createdCard as HTMLElement).getByRole('button', { name: 'Edit' }));
+    fireEvent.click(
+      within(createdCard as HTMLElement).getByRole('button', {
+        name: 'Open actions for Shot Four',
+      }),
+    );
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }));
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Shot Four Updated' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save shot' }));
     expect(await screen.findByText('Shot Four Updated')).toBeInTheDocument();
 
     const editedCard = screen.getByText('Shot Four Updated').closest('article');
     expect(editedCard).not.toBeNull();
-    fireEvent.click(within(editedCard as HTMLElement).getByRole('button', { name: 'Delete' }));
-    await waitFor(() => expect(screen.queryByText('Shot Four Updated')).not.toBeInTheDocument());
-    expect(screen.getByRole('button', { name: 'Scene 1 2 shots' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Move Shot Two up' }));
-    await waitFor(() =>
-      expect(shotRepositoryState.getLastReorderShotIds()).toEqual(['shot-2', 'shot-1']),
+    fireEvent.click(
+      within(editedCard as HTMLElement).getByRole('button', {
+        name: 'Open actions for Shot Four Updated',
+      }),
     );
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
+    await waitFor(() => expect(screen.queryByText('Shot Four Updated')).not.toBeInTheDocument());
+    expect(screen.getByRole('option', { name: 'Scene 1 (2 shots)' })).toBeInTheDocument();
   });
 
   it('generates shots for empty scenes and regenerates existing shots after confirmation', async () => {
@@ -283,21 +285,21 @@ describe('ShotsWorkspace', () => {
         />,
       );
 
-      await screen.findByRole('button', { name: 'Scene 3 0 shots' });
+      const sceneSelector = await screen.findByRole('combobox', { name: 'Select scene' });
 
-      fireEvent.click(screen.getByRole('button', { name: 'Scene 3 0 shots' }));
+      fireEvent.change(sceneSelector, { target: { value: 'scene-3' } });
       fireEvent.click(screen.getByRole('button', { name: 'Generate shots' }));
 
       expect(await screen.findByText('Generated Establishing')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Scene 3 2 shots' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Scene 3 (2 shots)' })).toBeInTheDocument();
       expect(confirmCalls).toEqual([]);
 
-      fireEvent.click(screen.getByRole('button', { name: 'Scene 1 2 shots' }));
+      fireEvent.change(sceneSelector, { target: { value: 'scene-1' } });
       fireEvent.click(screen.getByRole('button', { name: 'Regenerate shots' }));
 
       await waitFor(() => expect(screen.queryByText('Shot One')).not.toBeInTheDocument());
       expect(await screen.findByText('Generated Follow Up')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Scene 1 2 shots' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Scene 1 (2 shots)' })).toBeInTheDocument();
       expect(confirmCalls).toHaveLength(1);
     } finally {
       window.confirm = originalConfirm;
