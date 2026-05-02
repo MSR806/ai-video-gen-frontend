@@ -119,7 +119,7 @@ test('navigates collections, screenplay, and shots tabs for a project workspace'
 
   await page.goto(`/projects/${PROJECT_ID}/shots`);
   await expect(page).toHaveURL(new RegExp(`/projects/${PROJECT_ID}/shots$`));
-  await expect(page.getByRole('heading', { name: 'Scenes' })).toBeVisible();
+  await expect(page.getByLabel('Select scene')).toBeVisible();
   await expect(
     page.getByText('No shots yet for this scene. Generate shots or add one.'),
   ).toBeVisible();

@@ -203,14 +203,15 @@ describe('ShotsWorkspace', () => {
       />,
     );
 
-    expect(await screen.findByRole('button', { name: 'Scene 1 2 shots' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Scene 2 1 shots' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Scene 3 0 shots' })).toBeInTheDocument();
+    const sceneSelector = await screen.findByRole('combobox', { name: 'Select scene' });
+    expect(screen.getByRole('option', { name: 'Scene 1 (2 shots)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Scene 2 (1 shots)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Scene 3 (0 shots)' })).toBeInTheDocument();
 
     expect(screen.getByText('Shot One')).toBeInTheDocument();
     expect(screen.queryByText('Shot Three')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Scene 2 1 shots' }));
+    fireEvent.change(sceneSelector, { target: { value: 'scene-2' } });
     expect(await screen.findByText('Shot Three')).toBeInTheDocument();
     expect(screen.queryByText('Shot One')).not.toBeInTheDocument();
   });
@@ -239,7 +240,7 @@ describe('ShotsWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create shot' }));
 
     expect(await screen.findByText('Shot Four')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Scene 1 3 shots' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Scene 1 (3 shots)' })).toBeInTheDocument();
 
     const createdCard = screen.getByText('Shot Four').closest('article');
     expect(createdCard).not.toBeNull();
@@ -262,7 +263,7 @@ describe('ShotsWorkspace', () => {
     );
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
     await waitFor(() => expect(screen.queryByText('Shot Four Updated')).not.toBeInTheDocument());
-    expect(screen.getByRole('button', { name: 'Scene 1 2 shots' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Scene 1 (2 shots)' })).toBeInTheDocument();
   });
 
   it('generates shots for empty scenes and regenerates existing shots after confirmation', async () => {
@@ -284,21 +285,21 @@ describe('ShotsWorkspace', () => {
         />,
       );
 
-      await screen.findByRole('button', { name: 'Scene 3 0 shots' });
+      const sceneSelector = await screen.findByRole('combobox', { name: 'Select scene' });
 
-      fireEvent.click(screen.getByRole('button', { name: 'Scene 3 0 shots' }));
+      fireEvent.change(sceneSelector, { target: { value: 'scene-3' } });
       fireEvent.click(screen.getByRole('button', { name: 'Generate shots' }));
 
       expect(await screen.findByText('Generated Establishing')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Scene 3 2 shots' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Scene 3 (2 shots)' })).toBeInTheDocument();
       expect(confirmCalls).toEqual([]);
 
-      fireEvent.click(screen.getByRole('button', { name: 'Scene 1 2 shots' }));
+      fireEvent.change(sceneSelector, { target: { value: 'scene-1' } });
       fireEvent.click(screen.getByRole('button', { name: 'Regenerate shots' }));
 
       await waitFor(() => expect(screen.queryByText('Shot One')).not.toBeInTheDocument());
       expect(await screen.findByText('Generated Follow Up')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Scene 1 2 shots' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Scene 1 (2 shots)' })).toBeInTheDocument();
       expect(confirmCalls).toHaveLength(1);
     } finally {
       window.confirm = originalConfirm;

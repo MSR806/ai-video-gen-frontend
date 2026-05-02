@@ -16,7 +16,6 @@ import {
   type ScreenplayRepository,
 } from '@core/screenplay';
 import { ScreenplayRepositoryImpl, ShotRepositoryImpl } from '@infra/repositories';
-import { SceneShotList } from './SceneShotList';
 import { ShotBoard } from './ShotBoard';
 import { EMPTY_SHOT_FORM_VALUES, type ShotFormValues } from './ShotForm';
 import styles from './ShotsWorkspace.module.css';
@@ -263,14 +262,31 @@ export function ShotsWorkspace({
 
   return (
     <div className={styles.workspace}>
-      <SceneShotList
-        scenes={scenes}
-        activeSceneId={activeSceneId}
-        shotCounts={shotCounts}
-        onSceneSelect={setActiveSceneId}
-      />
-
       <div className={styles.boardPane}>
+        {scenes.length > 0 ? (
+          <div className={styles.sceneSelectorRow}>
+            <label className={styles.sceneSelectorLabel} htmlFor="scene-selector">
+              Scene
+            </label>
+            <select
+              id="scene-selector"
+              className={styles.sceneSelector}
+              value={activeSceneId ?? ''}
+              onChange={(event) => setActiveSceneId(event.target.value)}
+              aria-label="Select scene"
+            >
+              {scenes.map((scene) => {
+                const shotCount = shotCounts.get(scene.id) ?? 0;
+                return (
+                  <option key={scene.id} value={scene.id}>
+                    {`${scene.name} (${shotCount} shots)`}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        ) : null}
+
         {errorMessage ? (
           <div className={styles.errorBanner} role="alert">
             <span>{errorMessage}</span>
