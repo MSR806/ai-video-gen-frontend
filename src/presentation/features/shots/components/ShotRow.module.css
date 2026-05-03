@@ -181,6 +181,33 @@
   margin: var(--space-1) 0 0;
 }
 
+.collectionPreview {
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--space-1);
+}
+
+.collectionPreviewImage {
+  width: 6rem;
+  height: 3.5rem;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-elevated) 84%, transparent);
+}
+
+.collectionPreviewState {
+  display: inline-flex;
+  align-items: center;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+  background: color-mix(in srgb, var(--bg-elevated) 68%, transparent);
+}
+
 .tagList span {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);

@@ -1,8 +1,10 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
+import type { CollectionItemRepository } from '@core/collection-item';
 import type { Shot } from '@core/shot';
 import type { ScreenplayScene } from '@core/screenplay';
 import { Button } from '@presentation/components/ui';
+import { useShotCollectionPreviews } from '../hooks/useShotCollectionPreviews';
 import { ShotForm, type ShotFormValues } from './ShotForm';
 import { ShotRow } from './ShotRow';
 import styles from './ShotBoard.module.css';
@@ -18,6 +20,7 @@ interface ShotBoardProps {
   isBulkGeneratingVisuals: boolean;
   formMode: 'create' | 'edit' | null;
   initialFormValues: ShotFormValues;
+  collectionItemRepository: CollectionItemRepository;
   onGenerateShots: () => Promise<void>;
   onToggleSelectAllShots: (selected: boolean) => void;
   onSelectShot: (shotId: string, selected: boolean) => void;
@@ -39,6 +42,7 @@ interface ShotListProps {
   onGenerateVisualForShot: (shotId: string) => Promise<void>;
   onEditShot: (shot: Shot) => void;
   onDeleteShot: (shot: Shot) => Promise<void>;
+  collectionItemRepository: CollectionItemRepository;
 }
 
 function ShotList({
@@ -50,8 +54,10 @@ function ShotList({
   onGenerateVisualForShot,
   onEditShot,
   onDeleteShot,
+  collectionItemRepository,
 }: ShotListProps) {
   const [expandedShotId, setExpandedShotId] = useState<string | null>(null);
+  const previewsByShotId = useShotCollectionPreviews(shots, collectionItemRepository);
 
   return (
     <div className={styles.list}>
@@ -62,6 +68,7 @@ function ShotList({
           isWorking={isWorking}
           isSelected={selectedShotIds.includes(shot.id)}
           visualStatus={shotVisualStatuses[shot.id] ?? (shot.collectionId ? 'image' : 'idle')}
+          collectionPreview={previewsByShotId[shot.id]}
           isExpanded={expandedShotId === shot.id}
           onToggleExpanded={(shotId) => {
             setExpandedShotId((currentShotId) => (currentShotId === shotId ? null : shotId));
@@ -87,6 +94,7 @@ export function ShotBoard({
   isBulkGeneratingVisuals,
   formMode,
   initialFormValues,
+  collectionItemRepository,
   onGenerateShots,
   onToggleSelectAllShots,
   onSelectShot,
@@ -189,6 +197,7 @@ export function ShotBoard({
             onGenerateVisualForShot={onGenerateVisualForShot}
             onEditShot={onEditShot}
             onDeleteShot={onDeleteShot}
+            collectionItemRepository={collectionItemRepository}
           />
         </>
       )}
