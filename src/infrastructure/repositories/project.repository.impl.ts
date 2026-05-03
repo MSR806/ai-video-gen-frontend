@@ -1,4 +1,9 @@
-import type { Project, ProjectCreationPayload, ProjectRepository } from '@core/project';
+import type {
+  Project,
+  ProjectCreationPayload,
+  ProjectRepository,
+  ProjectUpdatePayload,
+} from '@core/project';
 import { BackendApiError, backendApiRequest } from '@infra/http/backend-api';
 
 interface ProjectDto {
@@ -6,9 +11,13 @@ interface ProjectDto {
   name: string;
   description: string;
   status: Project['status'];
+  style?: string | null;
+  aspectRatio?: string;
   createdAt: string;
   updatedAt: string;
 }
+
+const DEFAULT_ASPECT_RATIO = '16:9';
 
 function toProject(dto: ProjectDto): Project {
   return {
@@ -16,6 +25,8 @@ function toProject(dto: ProjectDto): Project {
     name: dto.name,
     description: dto.description,
     status: dto.status,
+    style: dto.style ?? null,
+    aspectRatio: dto.aspectRatio ?? DEFAULT_ASPECT_RATIO,
     createdAt: new Date(dto.createdAt),
     updatedAt: new Date(dto.updatedAt),
   };
@@ -43,17 +54,36 @@ export class ProjectRepositoryImpl implements ProjectRepository {
   }
 
   async create(payload: ProjectCreationPayload): Promise<Project> {
+    const requestBody: Record<string, unknown> = {
+      name: payload.name,
+      description: payload.description,
+      status: payload.status || 'draft',
+      aspectRatio: payload.aspectRatio || DEFAULT_ASPECT_RATIO,
+    };
+
+    if (payload.style !== undefined) {
+      requestBody.style = payload.style;
+    }
+
     const response = await backendApiRequest<ProjectDto>('/api/v1/projects', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        name: payload.name,
-        description: payload.description,
-        status: payload.status || 'draft',
-      }),
+      body: JSON.stringify(requestBody),
     });
+    return toProject(response);
+  }
+
+  async update(id: string, payload: ProjectUpdatePayload): Promise<Project> {
+    const response = await backendApiRequest<ProjectDto>(`/api/v1/projects/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
     return toProject(response);
   }
 }
