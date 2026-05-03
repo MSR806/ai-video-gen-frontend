@@ -7,8 +7,12 @@ import styles from './ShotRow.module.css';
 interface ShotRowProps {
   shot: Shot;
   isWorking: boolean;
+  isSelected: boolean;
+  visualStatus: 'idle' | 'generating' | 'complete' | 'image' | 'failed';
   isExpanded: boolean;
   onToggleExpanded: (shotId: string) => void;
+  onSelectShot: (shotId: string, selected: boolean) => void;
+  onGenerateVisual: (shotId: string) => Promise<void>;
   onEdit: (shot: Shot) => void;
   onDelete: (shot: Shot) => Promise<void>;
 }
@@ -97,8 +101,12 @@ const buildSummaryTags = (shot: Shot): string[] =>
 export function ShotRow({
   shot,
   isWorking,
+  isSelected,
+  visualStatus,
   isExpanded,
   onToggleExpanded,
+  onSelectShot,
+  onGenerateVisual,
   onEdit,
   onDelete,
 }: ShotRowProps) {
@@ -108,6 +116,26 @@ export function ShotRow({
   return (
     <article className={`${styles.row} ${isExpanded ? styles.expanded : ''}`}>
       <div className={styles.summary}>
+        <div className={styles.selectionCell}>
+          <input
+            type="checkbox"
+            className={styles.selectionCheckbox}
+            checked={isSelected}
+            aria-label={`Select ${shot.title}`}
+            onChange={(event) => onSelectShot(shot.id, event.target.checked)}
+          />
+          <span className={`${styles.statusBadge} ${styles[`status${visualStatus}`]}`}>
+            {visualStatus}
+          </span>
+          <button
+            type="button"
+            className={styles.generateButton}
+            disabled={isWorking || visualStatus === 'generating'}
+            onClick={() => void onGenerateVisual(shot.id)}
+          >
+            {visualStatus === 'failed' ? 'Retry' : 'Generate visual'}
+          </button>
+        </div>
         <button
           type="button"
           className={styles.summaryButton}
@@ -159,7 +187,7 @@ export function ShotRow({
             label="Edit"
             className={styles.actionItem}
             onClick={() => onEdit(shot)}
-            disabled={isWorking}
+            disabled={isWorking || visualStatus === 'generating'}
           />
           <div className={styles.menuDivider} role="separator" aria-orientation="horizontal" />
           <DropdownItem
@@ -168,7 +196,7 @@ export function ShotRow({
             className={styles.actionItem}
             danger
             onClick={() => void onDelete(shot)}
-            disabled={isWorking}
+            disabled={isWorking || visualStatus === 'generating'}
           />
         </Dropdown>
       </div>

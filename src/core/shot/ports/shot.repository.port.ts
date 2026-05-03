@@ -20,9 +20,28 @@ export interface ShotReorderPayload {
   shotIds: string[];
 }
 
+export interface GenerateShotVisualsPayload {
+  shotIds: string[];
+  modelKey: 'nano_banana';
+  operationKey: 'text_to_image';
+}
+
+export interface ShotVisualGenerationResult {
+  shotId: string;
+  collectionId: string | null;
+  runId: string | null;
+  status: string;
+  error: string | null;
+}
+
 export interface ShotRepository {
   getBySceneId(projectId: string, sceneId: string): Promise<Shot[]>;
   generate(projectId: string, sceneId: string): Promise<Shot[]>;
+  generateVisuals(
+    projectId: string,
+    sceneId: string,
+    payload: GenerateShotVisualsPayload,
+  ): Promise<ShotVisualGenerationResult[]>;
   create(projectId: string, sceneId: string, payload: ShotCreatePayload): Promise<Shot>;
   update(
     projectId: string,

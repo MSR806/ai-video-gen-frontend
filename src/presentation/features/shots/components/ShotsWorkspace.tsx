@@ -5,9 +5,12 @@ import {
   CreateShotUseCase,
   DeleteShotUseCase,
   GenerateSceneShotsUseCase,
+  GenerateShotVisualsUseCase,
   GetSceneShotsUseCase,
+  type GenerateShotVisualsPayload,
   type Shot,
   type ShotRepository,
+  type ShotVisualGenerationResult,
   UpdateShotUseCase,
 } from '@core/shot';
 import {
@@ -29,6 +32,15 @@ interface ShotsWorkspaceProps {
 }
 
 type ShotMap = Record<string, Shot[]>;
+type ShotVisualStatus = 'idle' | 'generating' | 'complete' | 'image' | 'failed';
+
+const VISUAL_GENERATION_PAYLOAD_DEFAULTS: Pick<
+  GenerateShotVisualsPayload,
+  'modelKey' | 'operationKey'
+> = {
+  modelKey: 'nano_banana',
+  operationKey: 'text_to_image',
+};
 
 const reindexShotsInCurrentOrder = (shots: Shot[]): Shot[] => {
   return shots.map((shot, index) => ({
@@ -76,6 +88,13 @@ export function ShotsWorkspace({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
+  const [selectedShotIdsByScene, setSelectedShotIdsByScene] = useState<Record<string, string[]>>(
+    {},
+  );
+  const [shotVisualStatusesByScene, setShotVisualStatusesByScene] = useState<
+    Record<string, Record<string, ShotVisualStatus>>
+  >({});
+  const [isBulkGeneratingVisuals, setIsBulkGeneratingVisuals] = useState(false);
 
   const loadWorkspace = useCallback(async () => {
     setIsLoading(true);
@@ -102,8 +121,25 @@ export function ShotsWorkspace({
       );
 
       const nextShotsByScene = Object.fromEntries(shotEntries);
+      const nextShotVisualStatusesByScene: Record<
+        string,
+        Record<string, ShotVisualStatus>
+      > = Object.fromEntries(
+        loadedScenes.map((scene) => [
+          scene.id,
+          Object.fromEntries(
+            (nextShotsByScene[scene.id] ?? []).map((shot) => [
+              shot.id,
+              shot.collectionId ? 'image' : 'idle',
+            ]),
+          ) as Record<string, ShotVisualStatus>,
+        ]),
+      );
+
       setScenes(loadedScenes);
       setShotsByScene(nextShotsByScene);
+      setSelectedShotIdsByScene(Object.fromEntries(loadedScenes.map((scene) => [scene.id, []])));
+      setShotVisualStatusesByScene(nextShotVisualStatusesByScene);
       setActiveSceneId((previous) =>
         previous && loadedScenes.some((scene) => scene.id === previous)
           ? previous
@@ -138,6 +174,8 @@ export function ShotsWorkspace({
     [activeSceneShots, editingShotId],
   );
   const initialFormValues = editingShot ? shotToFormValues(editingShot) : EMPTY_SHOT_FORM_VALUES;
+  const selectedShotIds = activeSceneId ? (selectedShotIdsByScene[activeSceneId] ?? []) : [];
+  const shotVisualStatuses = activeSceneId ? (shotVisualStatusesByScene[activeSceneId] ?? {}) : {};
 
   const resetFormState = useCallback(() => {
     setFormMode(null);
@@ -163,6 +201,13 @@ export function ShotsWorkspace({
         setShotsByScene((previous) => ({
           ...previous,
           [activeSceneId]: sortAndReindexShots([...(previous[activeSceneId] ?? []), createdShot]),
+        }));
+        setShotVisualStatusesByScene((previous) => ({
+          ...previous,
+          [activeSceneId]: {
+            ...(previous[activeSceneId] ?? {}),
+            [createdShot.id]: createdShot.collectionId ? 'image' : 'idle',
+          },
         }));
       } else if (formMode === 'edit' && editingShotId) {
         const updateShotUseCase = new UpdateShotUseCase(shotsRepo);
@@ -209,6 +254,18 @@ export function ShotsWorkspace({
           (previous[activeSceneId] ?? []).filter((currentShot) => currentShot.id !== shot.id),
         ),
       }));
+      setSelectedShotIdsByScene((previous) => ({
+        ...previous,
+        [activeSceneId]: (previous[activeSceneId] ?? []).filter((id) => id !== shot.id),
+      }));
+      setShotVisualStatusesByScene((previous) => {
+        const sceneStatuses = { ...(previous[activeSceneId] ?? {}) };
+        delete sceneStatuses[shot.id];
+        return {
+          ...previous,
+          [activeSceneId]: sceneStatuses,
+        };
+      });
 
       if (editingShotId === shot.id) {
         resetFormState();
@@ -248,11 +305,145 @@ export function ShotsWorkspace({
         ...previous,
         [activeSceneId]: sortAndReindexShots(generatedShots),
       }));
+      setSelectedShotIdsByScene((previous) => ({
+        ...previous,
+        [activeSceneId]: [],
+      }));
+      setShotVisualStatusesByScene((previous) => ({
+        ...previous,
+        [activeSceneId]: Object.fromEntries(
+          generatedShots.map((shot) => [shot.id, shot.collectionId ? 'image' : 'idle']),
+        ) as Record<string, ShotVisualStatus>,
+      }));
     } catch (error) {
       console.error('Failed to generate shots:', error);
       setErrorMessage('Failed to generate shots. Please try again.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const updateShotStatuses = useCallback(
+    (
+      sceneId: string,
+      shotIds: string[],
+      resultByShotId?: Map<string, ShotVisualGenerationResult>,
+      failureFallback = false,
+    ) => {
+      setShotVisualStatusesByScene((previous) => {
+        const currentSceneStatuses = previous[sceneId] ?? {};
+        const nextSceneStatuses = { ...currentSceneStatuses };
+
+        shotIds.forEach((shotId) => {
+          const responseEntry = resultByShotId?.get(shotId);
+          if (!responseEntry) {
+            nextSceneStatuses[shotId] = failureFallback
+              ? 'failed'
+              : (currentSceneStatuses[shotId] ?? 'idle');
+            return;
+          }
+
+          if (responseEntry.error || responseEntry.status.toLowerCase().includes('fail')) {
+            nextSceneStatuses[shotId] = 'failed';
+            return;
+          }
+
+          if (responseEntry.collectionId) {
+            nextSceneStatuses[shotId] = 'image';
+            return;
+          }
+
+          nextSceneStatuses[shotId] = 'complete';
+        });
+
+        return {
+          ...previous,
+          [sceneId]: nextSceneStatuses,
+        };
+      });
+    },
+    [],
+  );
+
+  const requestGenerateVisuals = useCallback(
+    async (sceneId: string, shotIds: string[]) => {
+      setShotVisualStatusesByScene((previous) => {
+        const sceneStatuses = previous[sceneId] ?? {};
+        const nextSceneStatuses = { ...sceneStatuses };
+        shotIds.forEach((shotId) => {
+          nextSceneStatuses[shotId] = 'generating';
+        });
+        return {
+          ...previous,
+          [sceneId]: nextSceneStatuses,
+        };
+      });
+
+      try {
+        const generateShotVisualsUseCase = new GenerateShotVisualsUseCase(shotsRepo);
+        const result = await generateShotVisualsUseCase.execute(projectId, sceneId, {
+          shotIds,
+          ...VISUAL_GENERATION_PAYLOAD_DEFAULTS,
+        });
+        const resultByShotId = new Map(result.map((entry) => [entry.shotId, entry]));
+        updateShotStatuses(sceneId, shotIds, resultByShotId, true);
+      } catch (error) {
+        console.error('Failed to generate visuals:', error);
+        updateShotStatuses(sceneId, shotIds, undefined, true);
+        setErrorMessage('Failed to generate visuals. Please try again.');
+      }
+    },
+    [projectId, shotsRepo, updateShotStatuses],
+  );
+
+  const handleSelectShot = (shotId: string, selected: boolean): void => {
+    if (!activeSceneId) {
+      return;
+    }
+
+    setSelectedShotIdsByScene((previous) => {
+      const current = previous[activeSceneId] ?? [];
+      const next = selected
+        ? Array.from(new Set([...current, shotId]))
+        : current.filter((id) => id !== shotId);
+      return {
+        ...previous,
+        [activeSceneId]: next,
+      };
+    });
+  };
+
+  const handleToggleSelectAllShots = (selected: boolean): void => {
+    if (!activeSceneId) {
+      return;
+    }
+
+    setSelectedShotIdsByScene((previous) => ({
+      ...previous,
+      [activeSceneId]: selected ? activeSceneShots.map((shot) => shot.id) : [],
+    }));
+  };
+
+  const handleGenerateVisualForShot = async (shotId: string): Promise<void> => {
+    if (!activeSceneId) {
+      return;
+    }
+
+    setErrorMessage(null);
+    await requestGenerateVisuals(activeSceneId, [shotId]);
+  };
+
+  const handleGenerateVisualsForSelected = async (): Promise<void> => {
+    if (!activeSceneId || selectedShotIds.length === 0) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setIsBulkGeneratingVisuals(true);
+    try {
+      await requestGenerateVisuals(activeSceneId, selectedShotIds);
+    } finally {
+      setIsBulkGeneratingVisuals(false);
     }
   };
 
@@ -302,9 +493,16 @@ export function ShotsWorkspace({
           isSaving={isSaving}
           isWorking={isWorking || isGenerating}
           isGenerating={isGenerating}
+          selectedShotIds={selectedShotIds}
+          shotVisualStatuses={shotVisualStatuses}
+          isBulkGeneratingVisuals={isBulkGeneratingVisuals}
           formMode={formMode}
           initialFormValues={initialFormValues}
           onGenerateShots={handleGenerateShots}
+          onToggleSelectAllShots={handleToggleSelectAllShots}
+          onSelectShot={handleSelectShot}
+          onGenerateVisualForShot={handleGenerateVisualForShot}
+          onGenerateVisualsForSelected={handleGenerateVisualsForSelected}
           onOpenCreate={() => {
             setEditingShotId(null);
             setFormMode('create');

@@ -170,4 +170,72 @@ describe('ShotRepositoryImpl', () => {
     expect(requestMethod).toBe('POST');
     expect(shots.map((shot) => shot.id)).toEqual(['shot-1', 'shot-2']);
   });
+
+  it('posts generate visuals payload and returns accepted runs', async () => {
+    let requestPath = '';
+    let requestMethod = '';
+    let requestBody: Record<string, unknown> | null = null;
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      requestPath = String(input);
+      requestMethod = String(init?.method);
+      requestBody = JSON.parse(String(init?.body));
+
+      return new Response(
+        JSON.stringify([
+          {
+            shotId: 'shot-1',
+            collectionId: 'collection-11',
+            runId: 'run-11',
+            status: 'accepted',
+            error: null,
+          },
+          {
+            shotId: 'shot-2',
+            collectionId: null,
+            runId: 'run-12',
+            status: 'failed',
+            error: 'prompt unavailable',
+          },
+        ]),
+        {
+          status: 202,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+    }) as typeof fetch;
+
+    const repository = new ShotRepositoryImpl();
+    const result = await repository.generateVisuals('project-1', 'scene-1', {
+      shotIds: ['shot-1', 'shot-2'],
+      modelKey: 'nano_banana',
+      operationKey: 'text_to_image',
+    });
+
+    expect(requestPath).toContain(
+      '/api/v1/projects/project-1/screenplays/scenes/scene-1/shots/generate-visuals',
+    );
+    expect(requestMethod).toBe('POST');
+    expect(requestBody).toEqual({
+      shotIds: ['shot-1', 'shot-2'],
+      modelKey: 'nano_banana',
+      operationKey: 'text_to_image',
+    });
+    expect(result).toEqual([
+      {
+        shotId: 'shot-1',
+        collectionId: 'collection-11',
+        runId: 'run-11',
+        status: 'accepted',
+        error: null,
+      },
+      {
+        shotId: 'shot-2',
+        collectionId: null,
+        runId: 'run-12',
+        status: 'failed',
+        error: 'prompt unavailable',
+      },
+    ]);
+  });
 });
