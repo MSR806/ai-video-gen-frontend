@@ -125,7 +125,7 @@ const buildScreenplayRepository = (): ScreenplayRepository => ({
   },
 });
 
-const buildShotRepository = () => {
+const buildShotRepository = (options: { attachInitialCollectionIds?: boolean } = {}) => {
   const shotMap = new Map<string, Shot[]>([
     [
       'scene-1',
@@ -133,7 +133,7 @@ const buildShotRepository = () => {
         {
           id: 'shot-1',
           sceneId: 'scene-1',
-          collectionId: 'collection-shot-1',
+          ...(options.attachInitialCollectionIds ? { collectionId: 'collection-shot-1' } : {}),
           orderIndex: 1,
           title: 'Shot One',
           description: 'A wide setup',
@@ -144,7 +144,7 @@ const buildShotRepository = () => {
         {
           id: 'shot-2',
           sceneId: 'scene-1',
-          collectionId: 'collection-shot-2',
+          ...(options.attachInitialCollectionIds ? { collectionId: 'collection-shot-2' } : {}),
           orderIndex: 2,
           title: 'Shot Two',
           description: 'A push in',
@@ -574,7 +574,7 @@ describe('ShotsWorkspace', () => {
   });
 
   it('shows latest linked image and handles empty, generating, and failed states', async () => {
-    const shotRepositoryState = buildShotRepository();
+    const shotRepositoryState = buildShotRepository({ attachInitialCollectionIds: true });
     const collectionItemRepositoryState = buildCollectionItemRepository({
       'collection-shot-1': [
         buildCollectionItem({
