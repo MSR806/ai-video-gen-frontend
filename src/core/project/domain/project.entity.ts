@@ -12,6 +12,8 @@ export interface Project {
   name: string;
   description: string;
   status: ProjectStatus;
+  style?: string | null;
+  aspectRatio: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,4 +25,14 @@ export interface ProjectCreationPayload {
   name: string;
   description: string;
   status?: ProjectStatus;
+  style?: string | null;
+  aspectRatio?: string;
+}
+
+export interface ProjectUpdatePayload {
+  name?: string;
+  description?: string;
+  status?: ProjectStatus;
+  style?: string | null;
+  aspectRatio?: string;
 }

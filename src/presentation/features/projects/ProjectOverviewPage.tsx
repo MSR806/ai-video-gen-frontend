@@ -1,7 +1,11 @@
+'use client';
+
 import type { Project } from '@core/project';
+import type { ProjectUpdatePayload } from '@core/project';
 import { Badge } from '@presentation/components/ui/Badge';
 import { Card } from '@presentation/components/ui/Card';
 import Link from 'next/link';
+import { useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, ArrowRight, Clapperboard, FolderKanban, NotebookPen } from 'lucide-react';
 import { getProjectCollectionsPath, getProjectScreenplayPath, getProjectShotsPath } from './routes';
@@ -9,6 +13,7 @@ import styles from './ProjectOverviewPage.module.css';
 
 interface ProjectOverviewPageProps {
   project: Project;
+  onUpdateProject?: (projectId: string, payload: ProjectUpdatePayload) => Promise<void>;
 }
 
 const STATUS_LABELS: Record<Project['status'], string> = {
@@ -49,7 +54,37 @@ const ROUTE_ITEMS: RouteItem[] = [
   },
 ];
 
-export function ProjectOverviewPage({ project }: ProjectOverviewPageProps) {
+export function ProjectOverviewPage({ project, onUpdateProject }: ProjectOverviewPageProps) {
+  const [styleValue, setStyleValue] = useState(project.style ?? '');
+  const [aspectRatioValue, setAspectRatioValue] = useState(project.aspectRatio ?? '16:9');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  const handleSaveSettings = async () => {
+    if (!onUpdateProject || isSaving) {
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveFeedback(null);
+
+    try {
+      await onUpdateProject(project.id, {
+        style: styleValue.trim().length > 0 ? styleValue.trim() : null,
+        aspectRatio: aspectRatioValue,
+      });
+
+      setSaveFeedback({ type: 'success', message: 'Settings saved.' });
+    } catch {
+      setSaveFeedback({ type: 'error', message: 'Failed to save settings.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <main className={styles.container}>
       <div className={styles.pageHeader}>
@@ -68,6 +103,68 @@ export function ProjectOverviewPage({ project }: ProjectOverviewPageProps) {
           <Badge variant={project.status}>{STATUS_LABELS[project.status]}</Badge>
         </div>
         <p className={styles.projectDescription}>{project.description}</p>
+      </section>
+
+      <section className={styles.settingsSection} aria-labelledby="project-settings-title">
+        <div className={styles.routeSectionHeader}>
+          <h2 id="project-settings-title" className={styles.sectionTitle}>
+            Project Settings
+          </h2>
+          <p className={styles.sectionSubtitle}>
+            Set visual direction and frame format for outputs.
+          </p>
+        </div>
+
+        <Card className={styles.settingsCard}>
+          <label className={styles.fieldLabel} htmlFor="project-style">
+            Style
+          </label>
+          <textarea
+            id="project-style"
+            className={styles.textarea}
+            value={styleValue}
+            onChange={(event) => setStyleValue(event.target.value)}
+            placeholder="Optional: e.g., cinematic realism, natural light, soft contrast, documentary pacing"
+            rows={4}
+          />
+
+          <label className={styles.fieldLabel} htmlFor="project-aspect-ratio">
+            Aspect ratio
+          </label>
+          <select
+            id="project-aspect-ratio"
+            className={styles.select}
+            value={aspectRatioValue}
+            onChange={(event) => setAspectRatioValue(event.target.value)}
+          >
+            <option value="16:9">16:9</option>
+            <option value="4:3">4:3</option>
+            <option value="1:1">1:1</option>
+            <option value="9:16">9:16</option>
+          </select>
+
+          <button
+            type="button"
+            className={styles.saveButton}
+            onClick={handleSaveSettings}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save settings'}
+          </button>
+
+          {saveFeedback ? (
+            <p
+              role="status"
+              className={
+                saveFeedback.type === 'error'
+                  ? styles.saveFeedbackError
+                  : styles.saveFeedbackSuccess
+              }
+            >
+              {saveFeedback.message}
+            </p>
+          ) : null}
+        </Card>
       </section>
 
       <section className={styles.routeSection}>

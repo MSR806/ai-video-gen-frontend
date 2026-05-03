@@ -13,6 +13,7 @@ describe('ShotRepositoryImpl', () => {
           {
             id: 'shot-2',
             sceneId: 'scene-1',
+            collectionId: 'collection-7',
             orderIndex: 2,
             title: 'Close-up on hand',
             description: 'Character opens a letter.',
@@ -23,6 +24,7 @@ describe('ShotRepositoryImpl', () => {
           {
             id: 'shot-1',
             sceneId: 'scene-1',
+            collectionId: null,
             orderIndex: 1,
             title: 'Wide hallway',
             description: 'Character enters frame.',
@@ -42,6 +44,10 @@ describe('ShotRepositoryImpl', () => {
 
     expect(shots.map((shot) => shot.id)).toEqual(['shot-1', 'shot-2']);
     expect(shots[0]?.cameraFraming).toBe('Wide');
+    expect((shots[0] as unknown as { collectionId: string | null }).collectionId).toBeNull();
+    expect((shots[1] as unknown as { collectionId: string | null }).collectionId).toBe(
+      'collection-7',
+    );
   });
 
   it('posts create payload to scene shots endpoint', async () => {

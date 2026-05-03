@@ -11,6 +11,8 @@ interface ShotApiResponse {
   id: string;
   sceneId?: string;
   scene_id?: string;
+  collectionId?: string | null;
+  collection_id?: string | null;
   orderIndex?: number;
   order_index?: number;
   title?: string;
@@ -32,15 +34,29 @@ type ShotMutationResponse = ShotApiResponse | { shot: ShotApiResponse };
 const asOptionalString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
+const asNullableString = (value: unknown): string | null | undefined => {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  return undefined;
+};
+
 const asRequiredString = (value: unknown): string => (typeof value === 'string' ? value : '');
 
 const asOrderIndex = (value: unknown, fallback: number): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 
 const mapShotFromApi = (payload: ShotApiResponse, fallbackOrderIndex: number): Shot => {
+  const collectionIdValue =
+    payload.collectionId !== undefined ? payload.collectionId : payload.collection_id;
+
   return {
     id: payload.id,
     sceneId: asRequiredString(payload.sceneId ?? payload.scene_id),
+    collectionId: asNullableString(collectionIdValue),
     orderIndex: asOrderIndex(payload.orderIndex ?? payload.order_index, fallbackOrderIndex),
     title: asRequiredString(payload.title),
     description: asRequiredString(payload.description),

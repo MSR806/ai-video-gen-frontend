@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { CreateProjectUseCase } from './create-project.use-case';
 import { GetAllProjectsUseCase } from './get-all-projects.use-case';
 import { GetProjectByIdUseCase } from './get-project-by-id.use-case';
+import { UpdateProjectUseCase } from './update-project.use-case';
 import type { Project, ProjectCreationPayload, ProjectRepository } from '../index';
 
 const sampleProject: Project = {
@@ -9,6 +10,8 @@ const sampleProject: Project = {
   name: 'Project One',
   description: 'Description',
   status: 'draft',
+  style: null,
+  aspectRatio: '16:9',
   createdAt: new Date('2025-01-01T00:00:00.000Z'),
   updatedAt: new Date('2025-01-02T00:00:00.000Z'),
 };
@@ -29,6 +32,7 @@ describe('project use cases', () => {
         calls.push(payload);
         return sampleProject;
       },
+      update: async () => sampleProject,
     };
 
     const useCase = new CreateProjectUseCase(repository);
@@ -46,6 +50,7 @@ describe('project use cases', () => {
       create: async () => {
         throw failure;
       },
+      update: async () => sampleProject,
     };
 
     const useCase = new CreateProjectUseCase(repository);
@@ -61,6 +66,7 @@ describe('project use cases', () => {
       },
       getById: async () => null,
       create: async () => sampleProject,
+      update: async () => sampleProject,
     };
 
     const useCase = new GetAllProjectsUseCase(repository);
@@ -78,6 +84,7 @@ describe('project use cases', () => {
       },
       getById: async () => null,
       create: async () => sampleProject,
+      update: async () => sampleProject,
     };
 
     const useCase = new GetAllProjectsUseCase(repository);
@@ -93,6 +100,7 @@ describe('project use cases', () => {
         return sampleProject;
       },
       create: async () => sampleProject,
+      update: async () => sampleProject,
     };
 
     const useCase = new GetProjectByIdUseCase(repository);
@@ -110,9 +118,30 @@ describe('project use cases', () => {
         throw failure;
       },
       create: async () => sampleProject,
+      update: async () => sampleProject,
     };
 
     const useCase = new GetProjectByIdUseCase(repository);
     await expect(useCase.execute('project-1')).rejects.toBe(failure);
+  });
+
+  it('UpdateProjectUseCase delegates id/payload to repository and returns project', async () => {
+    const calls: Array<{ id: string; payload: Record<string, unknown> }> = [];
+    const repository: ProjectRepository = {
+      getAllProjects: async () => [],
+      getById: async () => null,
+      create: async () => sampleProject,
+      update: async (id, payload) => {
+        calls.push({ id, payload });
+        return sampleProject;
+      },
+    };
+
+    const useCase = new UpdateProjectUseCase(repository);
+    const payload = { style: 'anime storyboard', aspectRatio: '9:16' };
+    const result = await useCase.execute('project-1', payload);
+
+    expect(calls).toEqual([{ id: 'project-1', payload }]);
+    expect(result).toEqual(sampleProject);
   });
 });
