@@ -2,10 +2,12 @@ import { describe, expect, it } from 'bun:test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { Screenplay, ScreenplayRepository } from '@core/screenplay';
 import type {
+  GenerateShotVisualsPayload,
   Shot,
   ShotCreatePayload,
   ShotReorderPayload,
   ShotRepository,
+  ShotVisualGenerationResult,
   ShotUpdatePayload,
 } from '@core/shot';
 import { ShotsWorkspace } from './ShotsWorkspace';
@@ -104,6 +106,7 @@ const buildShotRepository = () => {
 
   let createdCount = 0;
   let generatedCount = 0;
+  const visualGenerationCalls: GenerateShotVisualsPayload[] = [];
   const repository: ShotRepository = {
     async getBySceneId(_projectId: string, sceneId: string): Promise<Shot[]> {
       return [...(shotMap.get(sceneId) ?? [])];
@@ -184,10 +187,28 @@ const buildShotRepository = () => {
       shotMap.set(sceneId, generatedShots);
       return generatedShots;
     },
+    async generateVisuals(
+      projectId: string,
+      sceneId: string,
+      payload: GenerateShotVisualsPayload,
+    ): Promise<ShotVisualGenerationResult[]> {
+      void projectId;
+      void sceneId;
+      visualGenerationCalls.push(payload);
+
+      return payload.shotIds.map((shotId) => ({
+        shotId,
+        collectionId: shotId.endsWith('2') ? null : `collection-${shotId}`,
+        runId: `run-${shotId}`,
+        status: shotId.endsWith('2') ? 'failed' : 'accepted',
+        error: shotId.endsWith('2') ? 'Generation failed in test' : null,
+      }));
+    },
   };
 
   return {
     repository,
+    visualGenerationCalls,
   };
 };
 
@@ -405,5 +426,45 @@ describe('ShotsWorkspace', () => {
     } finally {
       window.confirm = originalConfirm;
     }
+  });
+
+  it('supports selecting shots and generating visuals in bulk and per shot', async () => {
+    const shotRepositoryState = buildShotRepository();
+
+    render(
+      <ShotsWorkspace
+        projectId="project-1"
+        screenplayRepository={buildScreenplayRepository()}
+        shotRepository={shotRepositoryState.repository}
+      />,
+    );
+
+    await screen.findByText('Shot One');
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select all shots' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Generate selected visuals (2)' }));
+
+    await waitFor(() => expect(screen.getByText('image')).toBeInTheDocument());
+    expect(screen.getByText('failed')).toBeInTheDocument();
+    expect(shotRepositoryState.visualGenerationCalls[0]).toEqual({
+      shotIds: ['shot-1', 'shot-2'],
+      modelKey: 'nano_banana',
+      operationKey: 'text_to_image',
+    });
+
+    const failedRow = screen.getByText('Shot Two').closest('article');
+    expect(failedRow).not.toBeNull();
+    fireEvent.click(
+      within(failedRow as HTMLElement).getByRole('button', {
+        name: 'Retry',
+      }),
+    );
+
+    await waitFor(() => expect(shotRepositoryState.visualGenerationCalls).toHaveLength(2));
+    expect(shotRepositoryState.visualGenerationCalls[1]).toEqual({
+      shotIds: ['shot-2'],
+      modelKey: 'nano_banana',
+      operationKey: 'text_to_image',
+    });
   });
 });

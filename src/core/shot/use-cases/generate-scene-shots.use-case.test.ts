@@ -40,6 +40,9 @@ describe('GenerateSceneShotsUseCase', () => {
         calls.push({ projectId, sceneId });
         return expectedShots;
       },
+      async generateVisuals() {
+        throw new Error('Not implemented in test');
+      },
     };
 
     const useCase = new GenerateSceneShotsUseCase(repository);

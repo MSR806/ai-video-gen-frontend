@@ -1,8 +1,10 @@
 import type {
+  GenerateShotVisualsPayload,
   Shot,
   ShotCreatePayload,
   ShotReorderPayload,
   ShotRepository,
+  ShotVisualGenerationResult,
   ShotUpdatePayload,
 } from '@core/shot';
 import { backendApiRequest } from '@infra/http/backend-api';
@@ -30,6 +32,16 @@ interface ShotApiResponse {
 
 type ShotListResponse = ShotApiResponse[] | { shots: ShotApiResponse[] };
 type ShotMutationResponse = ShotApiResponse | { shot: ShotApiResponse };
+type ShotVisualGenerationResponse = Array<{
+  shotId?: string;
+  shot_id?: string;
+  collectionId?: string | null;
+  collection_id?: string | null;
+  runId?: string;
+  run_id?: string;
+  status?: string;
+  error?: string | null;
+}>;
 
 const asOptionalString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
@@ -118,6 +130,36 @@ export class ShotRepositoryImpl implements ShotRepository {
     );
 
     return mapAndSortShotList(response);
+  }
+
+  async generateVisuals(
+    projectId: string,
+    sceneId: string,
+    payload: GenerateShotVisualsPayload,
+  ): Promise<ShotVisualGenerationResult[]> {
+    const response = await backendApiRequest<ShotVisualGenerationResponse>(
+      `${getSceneShotsBasePath(projectId, sceneId)}/generate-visuals`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      },
+    );
+
+    return response.map((item) => {
+      const collectionIdValue =
+        item.collectionId !== undefined ? item.collectionId : item.collection_id;
+
+      return {
+        shotId: asRequiredString(item.shotId ?? item.shot_id),
+        collectionId: asNullableString(collectionIdValue) ?? null,
+        runId: asNullableString(item.runId ?? item.run_id) ?? null,
+        status: asRequiredString(item.status),
+        error: asNullableString(item.error) ?? null,
+      };
+    });
   }
 
   async create(projectId: string, sceneId: string, payload: ShotCreatePayload): Promise<Shot> {

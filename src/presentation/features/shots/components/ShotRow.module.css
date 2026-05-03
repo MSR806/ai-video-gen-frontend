@@ -13,10 +13,67 @@
 
 .summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3);
+}
+
+.selectionCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.selectionCheckbox {
+  accent-color: var(--accent-primary);
+}
+
+.statusBadge {
+  border-radius: var(--radius-full);
+  padding: 0.1rem var(--space-2);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.statusidle {
+  background: color-mix(in srgb, var(--bg-elevated) 76%, transparent);
+}
+
+.statusgenerating {
+  border-color: color-mix(in srgb, var(--accent-primary) 45%, var(--border-default));
+  color: var(--accent-primary);
+}
+
+.statuscomplete {
+  border-color: color-mix(in srgb, var(--status-success) 45%, var(--border-default));
+  color: var(--status-success);
+}
+
+.statusimage {
+  border-color: color-mix(in srgb, var(--accent-secondary) 48%, var(--border-default));
+  color: var(--accent-secondary);
+}
+
+.statusfailed {
+  border-color: color-mix(in srgb, var(--status-error) 45%, var(--border-default));
+  color: var(--status-error);
+}
+
+.generateButton {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: var(--font-size-xs);
+  padding: 0.2rem var(--space-2);
+}
+
+.generateButton:disabled {
+  opacity: 0.55;
 }
 
 .menuButton {
@@ -213,6 +270,13 @@
 @media (max-width: 760px) {
   .summary {
     align-items: flex-start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .selectionCell {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
   }
 
   .orderBadge {

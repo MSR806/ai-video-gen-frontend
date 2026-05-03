@@ -432,6 +432,39 @@ export async function startMockBackendServer(
       return;
     }
 
+    const generateShotVisualsPathMatch = pathname.match(
+      /^\/api\/v1\/projects\/([^/]+)\/screenplays\/scenes\/([^/]+)\/shots\/generate-visuals$/,
+    );
+    if (method === 'POST' && generateShotVisualsPathMatch) {
+      const [, projectId, sceneId] = generateShotVisualsPathMatch;
+      const screenplay = fixture.screenplaysByProject[projectId];
+      if (!screenplay) {
+        notFound(response, 'Screenplay not found');
+        return;
+      }
+
+      const hasScene = screenplay.scenes.some((scene) => scene.id === sceneId);
+      if (!hasScene) {
+        notFound(response, 'Screenplay scene not found');
+        return;
+      }
+
+      const body = await readJsonBody(request);
+      const shotIds = Array.isArray(body.shotIds)
+        ? body.shotIds.filter((value): value is string => typeof value === 'string')
+        : [];
+      const result = shotIds.map((shotId, index) => ({
+        shotId,
+        collectionId: `collection-${shotId}`,
+        runId: `run-${sceneId}-${index + 1}`,
+        status: 'accepted',
+        error: null,
+      }));
+
+      json(response, 202, result);
+      return;
+    }
+
     const collectionContentsMatch = pathname.match(/^\/api\/v1\/collections\/([^/]+)\/items$/);
     if (method === 'GET' && collectionContentsMatch) {
       const [, collectionId] = collectionContentsMatch;
