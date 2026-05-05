@@ -571,9 +571,14 @@ describe('ShotsWorkspace', () => {
         within(shotThreeRow.closest('article') as HTMLElement).getByRole('img'),
       ).toHaveAttribute('src', expect.stringContaining('shot-3-ready.png'));
     });
+    expect(
+      within(shotThreeRow.closest('article') as HTMLElement).queryByRole('button', {
+        name: 'Show next media for Shot Three',
+      }),
+    ).not.toBeInTheDocument();
   });
 
-  it('shows latest linked image and handles empty, generating, and failed states', async () => {
+  it('shows latest linked media (including video thumbnails) and handles empty, generating, and failed states', async () => {
     const shotRepositoryState = buildShotRepository({ attachInitialCollectionIds: true });
     const collectionItemRepositoryState = buildCollectionItemRepository({
       'collection-shot-1': [
@@ -589,6 +594,27 @@ describe('ShotsWorkspace', () => {
           status: 'READY',
           name: 'Latest concept frame',
           url: 'https://example.com/latest-shot-1.png',
+        }),
+        buildCollectionItem({
+          id: 'item-older-ready',
+          collectionId: 'collection-shot-1',
+          status: 'READY',
+          name: 'Older concept frame',
+          url: 'https://example.com/older-shot-1.png',
+        }),
+        buildCollectionItem({
+          id: 'item-video-ready',
+          collectionId: 'collection-shot-1',
+          mediaType: 'video',
+          status: 'READY',
+          name: 'Animated pass',
+          url: 'https://example.com/shot-1.mp4',
+          metadata: {
+            width: 1024,
+            height: 576,
+            format: 'mp4',
+            thumbnailUrl: 'https://example.com/shot-1-thumb.png',
+          },
         }),
       ],
       'collection-shot-2': [
@@ -621,7 +647,64 @@ describe('ShotsWorkspace', () => {
         'https://example.com/latest-shot-1.png',
       );
     });
+    const openCollectionLink = within(shotOneRow).getByRole('link', {
+      name: 'Open collection for Shot One',
+    });
+    expect(openCollectionLink).toHaveAttribute(
+      'href',
+      '/projects/project-1/collections/collection-shot-1',
+    );
+    expect(
+      within(shotOneRow).queryByRole('button', { name: 'Show previous media for Shot One' }),
+    ).toBeInTheDocument();
+    expect(
+      within(shotOneRow).queryByRole('button', { name: 'Show next media for Shot One' }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      within(shotOneRow).getByRole('button', { name: 'Show next media for Shot One' }),
+    );
+    await waitFor(() => {
+      expect(within(shotOneRow).getByRole('img')).toHaveAttribute(
+        'src',
+        'https://example.com/older-shot-1.png',
+      );
+    });
+
+    fireEvent.click(
+      within(shotOneRow).getByRole('button', { name: 'Show next media for Shot One' }),
+    );
+    await waitFor(() => {
+      expect(within(shotOneRow).getByRole('img')).toHaveAttribute(
+        'src',
+        'https://example.com/shot-1-thumb.png',
+      );
+    });
+
+    fireEvent.click(
+      within(shotOneRow).getByRole('button', { name: 'Show previous media for Shot One' }),
+    );
+    await waitFor(() => {
+      expect(within(shotOneRow).getByRole('img')).toHaveAttribute(
+        'src',
+        'https://example.com/older-shot-1.png',
+      );
+    });
+
+    fireEvent.click(
+      within(shotOneRow).getByRole('button', { name: 'Show previous media for Shot One' }),
+    );
+    await waitFor(() => {
+      expect(within(shotOneRow).getByRole('img')).toHaveAttribute(
+        'src',
+        'https://example.com/latest-shot-1.png',
+      );
+    });
+
     expect(within(shotTwoRow).getByText('Generating image')).toBeInTheDocument();
+    expect(
+      within(shotTwoRow).queryByRole('button', { name: 'Show next media for Shot Two' }),
+    ).not.toBeInTheDocument();
     expect(collectionItemRepositoryState.getCalls.sort()).toEqual([
       'collection-shot-1',
       'collection-shot-2',

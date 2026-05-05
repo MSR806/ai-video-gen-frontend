@@ -1,12 +1,15 @@
-import { ChevronDown, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import Image from 'next/image';
-import { useId, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Dropdown, DropdownItem } from '@presentation/components/ui';
 import type { Shot } from '@core/shot';
+import { getProjectCollectionPath } from '@presentation/features/projects/routes';
 import type { ShotCollectionPreview } from '../hooks/useShotCollectionPreviews';
 import styles from './ShotRow.module.css';
 
 interface ShotRowProps {
+  projectId: string;
   shot: Shot;
   isWorking: boolean;
   isSelected: boolean;
@@ -102,6 +105,7 @@ const buildSummaryTags = (shot: Shot): string[] =>
     .slice(0, 3);
 
 export function ShotRow({
+  projectId,
   shot,
   isWorking,
   isSelected,
@@ -116,16 +120,33 @@ export function ShotRow({
 }: ShotRowProps) {
   const detailsId = useId();
   const [failedImageUrls, setFailedImageUrls] = useState<Record<string, true>>({});
+  const [activePreviewMediaId, setActivePreviewMediaId] = useState<string | null>(null);
   const summaryTags = buildSummaryTags(shot);
   const shouldShowPreview = Boolean(shot.collectionId && collectionPreview);
 
+  const readyMediaItems = useMemo(
+    () => (collectionPreview?.state === 'ready' ? collectionPreview.mediaItems : []),
+    [collectionPreview],
+  );
+
+  const selectedPreviewIndex = readyMediaItems.findIndex(
+    (mediaItem) => mediaItem.id === activePreviewMediaId,
+  );
+  const activePreviewIndex = selectedPreviewIndex >= 0 ? selectedPreviewIndex : 0;
+  const activeMediaItem = readyMediaItems[activePreviewIndex] ?? null;
+  const hasMultipleMediaItems = readyMediaItems.length > 1;
+
   const imageLoadFailed =
-    collectionPreview?.state === 'ready'
-      ? Boolean(failedImageUrls[collectionPreview.imageUrl])
+    collectionPreview?.state === 'ready' && activeMediaItem
+      ? Boolean(failedImageUrls[activeMediaItem.previewUrl])
       : false;
   const previewState: ShotCollectionPreview | undefined = imageLoadFailed
     ? { state: 'failed', message: 'Unable to load image' }
     : collectionPreview;
+
+  const collectionPath = shot.collectionId
+    ? getProjectCollectionPath(projectId, shot.collectionId)
+    : null;
 
   return (
     <article className={`${styles.row} ${isExpanded ? styles.expanded : ''}`}>
@@ -150,59 +171,105 @@ export function ShotRow({
             {visualStatus === 'failed' ? 'Retry' : 'Generate visual'}
           </button>
         </div>
-        <button
-          type="button"
-          className={styles.summaryButton}
-          aria-expanded={isExpanded}
-          aria-controls={detailsId}
-          aria-label={
-            isExpanded ? `Hide details for ${shot.title}` : `Show details for ${shot.title}`
-          }
-          onClick={() => onToggleExpanded(shot.id)}
-        >
-          <ChevronDown
-            className={styles.expandIcon}
-            aria-hidden="true"
-            size={18}
-            strokeWidth={2.4}
-          />
+        <div className={styles.summaryMain}>
+          <button
+            type="button"
+            className={styles.summaryButton}
+            aria-expanded={isExpanded}
+            aria-controls={detailsId}
+            aria-label={
+              isExpanded ? `Hide details for ${shot.title}` : `Show details for ${shot.title}`
+            }
+            onClick={() => onToggleExpanded(shot.id)}
+          >
+            <ChevronDown
+              className={styles.expandIcon}
+              aria-hidden="true"
+              size={18}
+              strokeWidth={2.4}
+            />
 
-          <span className={styles.orderBadge}>#{shot.orderIndex}</span>
+            <span className={styles.orderBadge}>#{shot.orderIndex}</span>
 
-          <span className={styles.summaryCopy}>
-            <span className={styles.title}>{shot.title}</span>
-            <span className={styles.preview}>{shot.description}</span>
-            {shouldShowPreview ? (
-              <span className={styles.collectionPreview}>
-                {previewState?.state === 'ready' ? (
-                  <Image
-                    src={previewState.imageUrl}
-                    alt={`Latest image for ${shot.title}: ${previewState.itemName}`}
-                    className={styles.collectionPreviewImage}
-                    width={192}
-                    height={112}
-                    unoptimized
-                    onError={() => {
-                      setFailedImageUrls((previous) => ({
-                        ...previous,
-                        [previewState.imageUrl]: true,
-                      }));
-                    }}
-                  />
-                ) : (
-                  <span className={styles.collectionPreviewState}>{previewState?.message}</span>
-                )}
-              </span>
-            ) : null}
-            {summaryTags.length > 0 ? (
-              <span className={styles.tagList} aria-label={`Shot ${shot.orderIndex} summary`}>
-                {summaryTags.map((tag) => (
-                  <span key={tag}>{tag}</span>
-                ))}
-              </span>
-            ) : null}
-          </span>
-        </button>
+            <span className={styles.summaryCopy}>
+              <span className={styles.title}>{shot.title}</span>
+              <span className={styles.preview}>{shot.description}</span>
+              {summaryTags.length > 0 ? (
+                <span className={styles.tagList} aria-label={`Shot ${shot.orderIndex} summary`}>
+                  {summaryTags.map((tag) => (
+                    <span key={tag}>{tag}</span>
+                  ))}
+                </span>
+              ) : null}
+            </span>
+          </button>
+
+          {shouldShowPreview ? (
+            <span className={styles.collectionPreview}>
+              {previewState?.state === 'ready' && activeMediaItem && collectionPath ? (
+                <>
+                  <Link
+                    href={collectionPath}
+                    className={styles.collectionPreviewLink}
+                    aria-label={`Open collection for ${shot.title}`}
+                  >
+                    <Image
+                      src={activeMediaItem.previewUrl}
+                      alt={`Generated media ${activePreviewIndex + 1} of ${readyMediaItems.length} for ${shot.title}: ${activeMediaItem.name}`}
+                      className={styles.collectionPreviewImage}
+                      width={192}
+                      height={112}
+                      unoptimized
+                      onError={() => {
+                        setFailedImageUrls((previous) => ({
+                          ...previous,
+                          [activeMediaItem.previewUrl]: true,
+                        }));
+                      }}
+                    />
+                  </Link>
+                  {hasMultipleMediaItems ? (
+                    <span className={styles.collectionPreviewControls}>
+                      <button
+                        type="button"
+                        className={styles.previewNavButton}
+                        onClick={() => {
+                          const previousIndex =
+                            activePreviewIndex === 0
+                              ? readyMediaItems.length - 1
+                              : activePreviewIndex - 1;
+                          setActivePreviewMediaId(readyMediaItems[previousIndex]?.id ?? null);
+                        }}
+                        aria-label={`Show previous media for ${shot.title}`}
+                      >
+                        <ChevronLeft aria-hidden="true" size={14} strokeWidth={2.6} />
+                      </button>
+                      <span className={styles.previewCounter}>
+                        {activePreviewIndex + 1}/{readyMediaItems.length}
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.previewNavButton}
+                        onClick={() => {
+                          const nextIndex =
+                            activePreviewIndex === readyMediaItems.length - 1
+                              ? 0
+                              : activePreviewIndex + 1;
+                          setActivePreviewMediaId(readyMediaItems[nextIndex]?.id ?? null);
+                        }}
+                        aria-label={`Show next media for ${shot.title}`}
+                      >
+                        <ChevronRight aria-hidden="true" size={14} strokeWidth={2.6} />
+                      </button>
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span className={styles.collectionPreviewState}>{previewState?.message}</span>
+              )}
+            </span>
+          ) : null}
+        </div>
 
         <Dropdown
           menuClassName={styles.actionMenu}

@@ -10,8 +10,12 @@ export type ShotCollectionPreview =
   | {
       state: 'ready';
       message: string;
-      imageUrl: string;
-      itemName: string;
+      mediaItems: {
+        id: string;
+        name: string;
+        mediaType: 'image' | 'video';
+        previewUrl: string;
+      }[];
     }
   | {
       state: 'generating' | 'empty' | 'failed';
@@ -29,21 +33,69 @@ const normalizeUrl = (url: string | null | undefined): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const toPreviewUrl = (
+  item: Awaited<ReturnType<GetCollectionItemsUseCase['execute']>>[number],
+): string | null => {
+  if (item.mediaType === 'video') {
+    const thumbnailUrl = normalizeUrl(item.metadata.thumbnailUrl);
+    if (thumbnailUrl) {
+      return thumbnailUrl;
+    }
+  }
+
+  return normalizeUrl(item.url);
+};
+
 const buildCollectionPreview = (
   items: Awaited<ReturnType<GetCollectionItemsUseCase['execute']>>,
 ): ShotCollectionPreview => {
   const imageItems = items.filter((item) => item.mediaType === 'image');
 
-  const latestReadyImage = imageItems.find(
-    (item) => item.status === 'READY' && normalizeUrl(item.url) !== null,
-  );
+  const readyMediaItems = items
+    .filter((item) => {
+      if (item.status !== 'READY') {
+        return false;
+      }
 
-  if (latestReadyImage) {
+      if (item.mediaType === 'image') {
+        return Boolean(normalizeUrl(item.url));
+      }
+
+      if (item.mediaType === 'video') {
+        return Boolean(normalizeUrl(item.metadata.thumbnailUrl));
+      }
+
+      return false;
+    })
+    .map((item) => {
+      const previewUrl = toPreviewUrl(item);
+      if (!previewUrl) {
+        return null;
+      }
+
+      return {
+        id: item.id,
+        name: item.name.trim() || 'Generated image',
+        mediaType: item.mediaType,
+        previewUrl,
+      };
+    })
+    .filter(
+      (
+        mediaItem,
+      ): mediaItem is {
+        id: string;
+        name: string;
+        mediaType: 'image' | 'video';
+        previewUrl: string;
+      } => Boolean(mediaItem),
+    );
+
+  if (readyMediaItems.length > 0) {
     return {
       state: 'ready',
       message: 'Latest image',
-      imageUrl: normalizeUrl(latestReadyImage.url) ?? '',
-      itemName: latestReadyImage.name.trim() || 'Generated image',
+      mediaItems: readyMediaItems,
     };
   }
 
