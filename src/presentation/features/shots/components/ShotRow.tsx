@@ -1,7 +1,9 @@
 import { ChevronDown, MoreVertical, Pencil, Trash2 } from 'lucide-react';
-import { useId } from 'react';
+import Image from 'next/image';
+import { useId, useState } from 'react';
 import { Dropdown, DropdownItem } from '@presentation/components/ui';
 import type { Shot } from '@core/shot';
+import type { ShotCollectionPreview } from '../hooks/useShotCollectionPreviews';
 import styles from './ShotRow.module.css';
 
 interface ShotRowProps {
@@ -9,6 +11,7 @@ interface ShotRowProps {
   isWorking: boolean;
   isSelected: boolean;
   visualStatus: 'idle' | 'generating' | 'complete' | 'image' | 'failed';
+  collectionPreview?: ShotCollectionPreview;
   isExpanded: boolean;
   onToggleExpanded: (shotId: string) => void;
   onSelectShot: (shotId: string, selected: boolean) => void;
@@ -103,6 +106,7 @@ export function ShotRow({
   isWorking,
   isSelected,
   visualStatus,
+  collectionPreview,
   isExpanded,
   onToggleExpanded,
   onSelectShot,
@@ -111,7 +115,17 @@ export function ShotRow({
   onDelete,
 }: ShotRowProps) {
   const detailsId = useId();
+  const [failedImageUrls, setFailedImageUrls] = useState<Record<string, true>>({});
   const summaryTags = buildSummaryTags(shot);
+  const shouldShowPreview = Boolean(shot.collectionId && collectionPreview);
+
+  const imageLoadFailed =
+    collectionPreview?.state === 'ready'
+      ? Boolean(failedImageUrls[collectionPreview.imageUrl])
+      : false;
+  const previewState: ShotCollectionPreview | undefined = imageLoadFailed
+    ? { state: 'failed', message: 'Unable to load image' }
+    : collectionPreview;
 
   return (
     <article className={`${styles.row} ${isExpanded ? styles.expanded : ''}`}>
@@ -158,6 +172,28 @@ export function ShotRow({
           <span className={styles.summaryCopy}>
             <span className={styles.title}>{shot.title}</span>
             <span className={styles.preview}>{shot.description}</span>
+            {shouldShowPreview ? (
+              <span className={styles.collectionPreview}>
+                {previewState?.state === 'ready' ? (
+                  <Image
+                    src={previewState.imageUrl}
+                    alt={`Latest image for ${shot.title}: ${previewState.itemName}`}
+                    className={styles.collectionPreviewImage}
+                    width={192}
+                    height={112}
+                    unoptimized
+                    onError={() => {
+                      setFailedImageUrls((previous) => ({
+                        ...previous,
+                        [previewState.imageUrl]: true,
+                      }));
+                    }}
+                  />
+                ) : (
+                  <span className={styles.collectionPreviewState}>{previewState?.message}</span>
+                )}
+              </span>
+            ) : null}
             {summaryTags.length > 0 ? (
               <span className={styles.tagList} aria-label={`Shot ${shot.orderIndex} summary`}>
                 {summaryTags.map((tag) => (

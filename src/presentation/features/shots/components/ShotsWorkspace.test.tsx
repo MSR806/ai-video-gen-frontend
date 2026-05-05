@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { CollectionItem, CollectionItemRepository } from '@core/collection-item';
 import type { Screenplay, ScreenplayRepository } from '@core/screenplay';
 import type {
   GenerateShotVisualsPayload,
@@ -11,6 +12,70 @@ import type {
   ShotUpdatePayload,
 } from '@core/shot';
 import { ShotsWorkspace } from './ShotsWorkspace';
+
+const buildCollectionItem = (overrides: Partial<CollectionItem>): CollectionItem => ({
+  id: 'item-1',
+  projectId: 'project-1',
+  collectionId: 'collection-1',
+  isFavorite: false,
+  runId: null,
+  generationRunOutputId: null,
+  mediaType: 'image',
+  status: 'READY',
+  name: 'Reference',
+  description: '',
+  url: 'https://example.com/image.png',
+  metadata: {
+    width: 1024,
+    height: 576,
+    format: 'png',
+    thumbnailUrl: 'https://example.com/thumb.png',
+  },
+  generationErrorMessage: null,
+  ...overrides,
+});
+
+const buildCollectionItemRepository = (
+  byCollectionId: Record<string, CollectionItem[]> = {},
+): { repository: CollectionItemRepository; getCalls: string[] } => {
+  const getCalls: string[] = [];
+
+  const repository: CollectionItemRepository = {
+    async getByCollectionId(collectionId: string): Promise<CollectionItem[]> {
+      getCalls.push(collectionId);
+      return [...(byCollectionId[collectionId] ?? [])];
+    },
+    async getContentsByCollectionId() {
+      throw new Error('Not implemented in test');
+    },
+    async getById() {
+      throw new Error('Not implemented in test');
+    },
+    async setFavorite() {
+      throw new Error('Not implemented in test');
+    },
+    async create() {
+      throw new Error('Not implemented in test');
+    },
+    async delete() {
+      throw new Error('Not implemented in test');
+    },
+    async upload() {
+      throw new Error('Not implemented in test');
+    },
+    async getGenerationCapabilities() {
+      throw new Error('Not implemented in test');
+    },
+    async generateWithAI() {
+      throw new Error('Not implemented in test');
+    },
+    async getGenerationRun() {
+      throw new Error('Not implemented in test');
+    },
+  };
+
+  return { repository, getCalls };
+};
 
 const buildScreenplayRepository = (): ScreenplayRepository => ({
   async getByProjectId(): Promise<Screenplay> {
@@ -60,7 +125,7 @@ const buildScreenplayRepository = (): ScreenplayRepository => ({
   },
 });
 
-const buildShotRepository = () => {
+const buildShotRepository = (options: { attachInitialCollectionIds?: boolean } = {}) => {
   const shotMap = new Map<string, Shot[]>([
     [
       'scene-1',
@@ -68,6 +133,7 @@ const buildShotRepository = () => {
         {
           id: 'shot-1',
           sceneId: 'scene-1',
+          ...(options.attachInitialCollectionIds ? { collectionId: 'collection-shot-1' } : {}),
           orderIndex: 1,
           title: 'Shot One',
           description: 'A wide setup',
@@ -78,6 +144,7 @@ const buildShotRepository = () => {
         {
           id: 'shot-2',
           sceneId: 'scene-1',
+          ...(options.attachInitialCollectionIds ? { collectionId: 'collection-shot-2' } : {}),
           orderIndex: 2,
           title: 'Shot Two',
           description: 'A push in',
@@ -215,12 +282,14 @@ const buildShotRepository = () => {
 describe('ShotsWorkspace', () => {
   it('renders collapsed shot rows with compact tags and toggles expanded details', async () => {
     const shotRepositoryState = buildShotRepository();
+    const collectionItemRepositoryState = buildCollectionItemRepository();
 
     render(
       <ShotsWorkspace
         projectId="project-1"
         screenplayRepository={buildScreenplayRepository()}
         shotRepository={shotRepositoryState.repository}
+        collectionItemRepository={collectionItemRepositoryState.repository}
       />,
     );
 
@@ -291,12 +360,14 @@ describe('ShotsWorkspace', () => {
 
   it('shows scene shot counts and toggles visible scene shots', async () => {
     const shotRepositoryState = buildShotRepository();
+    const collectionItemRepositoryState = buildCollectionItemRepository();
 
     render(
       <ShotsWorkspace
         projectId="project-1"
         screenplayRepository={buildScreenplayRepository()}
         shotRepository={shotRepositoryState.repository}
+        collectionItemRepository={collectionItemRepositoryState.repository}
       />,
     );
 
@@ -315,12 +386,14 @@ describe('ShotsWorkspace', () => {
 
   it('supports add, edit, and delete in selected scene', async () => {
     const shotRepositoryState = buildShotRepository();
+    const collectionItemRepositoryState = buildCollectionItemRepository();
 
     render(
       <ShotsWorkspace
         projectId="project-1"
         screenplayRepository={buildScreenplayRepository()}
         shotRepository={shotRepositoryState.repository}
+        collectionItemRepository={collectionItemRepositoryState.repository}
       />,
     );
 
@@ -365,6 +438,7 @@ describe('ShotsWorkspace', () => {
 
   it('generates shots for empty scenes and regenerates existing shots after confirmation', async () => {
     const shotRepositoryState = buildShotRepository();
+    const collectionItemRepositoryState = buildCollectionItemRepository();
     const originalConfirm = window.confirm;
     const confirmCalls: string[] = [];
 
@@ -379,6 +453,7 @@ describe('ShotsWorkspace', () => {
           projectId="project-1"
           screenplayRepository={buildScreenplayRepository()}
           shotRepository={shotRepositoryState.repository}
+          collectionItemRepository={collectionItemRepositoryState.repository}
         />,
       );
 
@@ -405,6 +480,7 @@ describe('ShotsWorkspace', () => {
 
   it('does not regenerate shots when confirmation is cancelled', async () => {
     const shotRepositoryState = buildShotRepository();
+    const collectionItemRepositoryState = buildCollectionItemRepository();
     const originalConfirm = window.confirm;
     window.confirm = () => false;
 
@@ -414,6 +490,7 @@ describe('ShotsWorkspace', () => {
           projectId="project-1"
           screenplayRepository={buildScreenplayRepository()}
           shotRepository={shotRepositoryState.repository}
+          collectionItemRepository={collectionItemRepositoryState.repository}
         />,
       );
 
@@ -430,12 +507,23 @@ describe('ShotsWorkspace', () => {
 
   it('supports selecting shots and generating visuals in bulk and per shot', async () => {
     const shotRepositoryState = buildShotRepository();
+    const collectionItemRepositoryState = buildCollectionItemRepository({
+      'collection-shot-3': [
+        buildCollectionItem({
+          id: 'item-shot-3-ready',
+          collectionId: 'collection-shot-3',
+          name: 'Generated Shot Three Frame',
+          url: 'https://example.com/shot-3-ready.png',
+        }),
+      ],
+    });
 
     render(
       <ShotsWorkspace
         projectId="project-1"
         screenplayRepository={buildScreenplayRepository()}
         shotRepository={shotRepositoryState.repository}
+        collectionItemRepository={collectionItemRepositoryState.repository}
       />,
     );
 
@@ -466,5 +554,77 @@ describe('ShotsWorkspace', () => {
       modelKey: 'nano_banana',
       operationKey: 'text_to_image',
     });
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Select scene' }), {
+      target: { value: 'scene-2' },
+    });
+    const shotThreeRow = await screen.findByText('Shot Three');
+    fireEvent.click(
+      within(shotThreeRow.closest('article') as HTMLElement).getByRole('button', {
+        name: 'Generate visual',
+      }),
+    );
+
+    await waitFor(() => expect(shotRepositoryState.visualGenerationCalls).toHaveLength(3));
+    await waitFor(() => {
+      expect(
+        within(shotThreeRow.closest('article') as HTMLElement).getByRole('img'),
+      ).toHaveAttribute('src', expect.stringContaining('shot-3-ready.png'));
+    });
+  });
+
+  it('shows latest linked image and handles empty, generating, and failed states', async () => {
+    const shotRepositoryState = buildShotRepository({ attachInitialCollectionIds: true });
+    const collectionItemRepositoryState = buildCollectionItemRepository({
+      'collection-shot-1': [
+        buildCollectionItem({
+          id: 'item-failed',
+          collectionId: 'collection-shot-1',
+          status: 'FAILED',
+          url: null,
+        }),
+        buildCollectionItem({
+          id: 'item-latest-ready',
+          collectionId: 'collection-shot-1',
+          status: 'READY',
+          name: 'Latest concept frame',
+          url: 'https://example.com/latest-shot-1.png',
+        }),
+      ],
+      'collection-shot-2': [
+        buildCollectionItem({
+          id: 'item-generating',
+          collectionId: 'collection-shot-2',
+          status: 'GENERATING',
+          url: null,
+        }),
+      ],
+    });
+
+    render(
+      <ShotsWorkspace
+        projectId="project-1"
+        screenplayRepository={buildScreenplayRepository()}
+        shotRepository={shotRepositoryState.repository}
+        collectionItemRepository={collectionItemRepositoryState.repository}
+      />,
+    );
+
+    await screen.findByText('Shot One');
+
+    const shotOneRow = screen.getByText('Shot One').closest('article') as HTMLElement;
+    const shotTwoRow = screen.getByText('Shot Two').closest('article') as HTMLElement;
+
+    await waitFor(() => {
+      expect(within(shotOneRow).getByRole('img')).toHaveAttribute(
+        'src',
+        'https://example.com/latest-shot-1.png',
+      );
+    });
+    expect(within(shotTwoRow).getByText('Generating image')).toBeInTheDocument();
+    expect(collectionItemRepositoryState.getCalls.sort()).toEqual([
+      'collection-shot-1',
+      'collection-shot-2',
+    ]);
   });
 });

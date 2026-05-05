@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { CollectionItemRepository } from '@core/collection-item';
 import {
   CreateShotUseCase,
   DeleteShotUseCase,
@@ -18,7 +19,11 @@ import {
   type ScreenplayScene,
   type ScreenplayRepository,
 } from '@core/screenplay';
-import { ScreenplayRepositoryImpl, ShotRepositoryImpl } from '@infra/repositories';
+import {
+  CollectionItemRepositoryImpl,
+  ScreenplayRepositoryImpl,
+  ShotRepositoryImpl,
+} from '@infra/repositories';
 import { ShotBoard } from './ShotBoard';
 import { EMPTY_SHOT_FORM_VALUES, type ShotFormValues } from './ShotForm';
 import styles from './ShotsWorkspace.module.css';
@@ -27,8 +32,10 @@ interface ShotsWorkspaceProps {
   projectId: string;
   screenplayRepository?: ScreenplayRepository;
   shotRepository?: ShotRepository;
+  collectionItemRepository?: CollectionItemRepository;
   createScreenplayRepository?: () => ScreenplayRepository;
   createShotRepository?: () => ShotRepository;
+  createCollectionItemRepository?: () => CollectionItemRepository;
 }
 
 type ShotMap = Record<string, Shot[]>;
@@ -66,8 +73,10 @@ export function ShotsWorkspace({
   projectId,
   screenplayRepository,
   shotRepository,
+  collectionItemRepository,
   createScreenplayRepository,
   createShotRepository,
+  createCollectionItemRepository,
 }: ShotsWorkspaceProps) {
   const screenplayRepo = useMemo(
     () => screenplayRepository ?? createScreenplayRepository?.() ?? new ScreenplayRepositoryImpl(),
@@ -76,6 +85,13 @@ export function ShotsWorkspace({
   const shotsRepo = useMemo(
     () => shotRepository ?? createShotRepository?.() ?? new ShotRepositoryImpl(),
     [createShotRepository, shotRepository],
+  );
+  const collectionItemsRepo = useMemo(
+    () =>
+      collectionItemRepository ??
+      createCollectionItemRepository?.() ??
+      new CollectionItemRepositoryImpl(),
+    [collectionItemRepository, createCollectionItemRepository],
   );
 
   const [scenes, setScenes] = useState<ScreenplayScene[]>([]);
@@ -386,6 +402,19 @@ export function ShotsWorkspace({
           ...VISUAL_GENERATION_PAYLOAD_DEFAULTS,
         });
         const resultByShotId = new Map(result.map((entry) => [entry.shotId, entry]));
+        setShotsByScene((previous) => ({
+          ...previous,
+          [sceneId]: (previous[sceneId] ?? []).map((shot) => {
+            const responseEntry = resultByShotId.get(shot.id);
+            if (!responseEntry?.collectionId) {
+              return shot;
+            }
+            return {
+              ...shot,
+              collectionId: responseEntry.collectionId,
+            };
+          }),
+        }));
         updateShotStatuses(sceneId, shotIds, resultByShotId, true);
       } catch (error) {
         console.error('Failed to generate visuals:', error);
@@ -498,6 +527,7 @@ export function ShotsWorkspace({
           isBulkGeneratingVisuals={isBulkGeneratingVisuals}
           formMode={formMode}
           initialFormValues={initialFormValues}
+          collectionItemRepository={collectionItemsRepo}
           onGenerateShots={handleGenerateShots}
           onToggleSelectAllShots={handleToggleSelectAllShots}
           onSelectShot={handleSelectShot}
