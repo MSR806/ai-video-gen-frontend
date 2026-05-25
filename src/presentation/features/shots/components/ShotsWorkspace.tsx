@@ -517,6 +517,7 @@ export function ShotsWorkspace({
         ) : null}
 
         <ShotBoard
+          projectId={projectId}
           activeScene={activeScene}
           shots={activeSceneShots}
           isSaving={isSaving}

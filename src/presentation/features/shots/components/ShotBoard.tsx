@@ -10,6 +10,7 @@ import { ShotRow } from './ShotRow';
 import styles from './ShotBoard.module.css';
 
 interface ShotBoardProps {
+  projectId: string;
   activeScene: ScreenplayScene | null;
   shots: Shot[];
   isSaving: boolean;
@@ -34,6 +35,7 @@ interface ShotBoardProps {
 }
 
 interface ShotListProps {
+  projectId: string;
   shots: Shot[];
   isWorking: boolean;
   selectedShotIds: string[];
@@ -46,6 +48,7 @@ interface ShotListProps {
 }
 
 function ShotList({
+  projectId,
   shots,
   isWorking,
   selectedShotIds,
@@ -64,6 +67,7 @@ function ShotList({
       {shots.map((shot) => (
         <ShotRow
           key={shot.id}
+          projectId={projectId}
           shot={shot}
           isWorking={isWorking}
           isSelected={selectedShotIds.includes(shot.id)}
@@ -84,6 +88,7 @@ function ShotList({
 }
 
 export function ShotBoard({
+  projectId,
   activeScene,
   shots,
   isSaving,
@@ -189,6 +194,7 @@ export function ShotBoard({
           </div>
           <ShotList
             key={activeScene.id}
+            projectId={projectId}
             shots={shots}
             isWorking={isWorking}
             selectedShotIds={selectedShotIds}
