@@ -1,14 +1,14 @@
 .row {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--bg-raised) 88%, var(--bg-elevated));
+  background: var(--bg-raised);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
 .row.expanded {
   border-color: var(--border-default);
-  background: color-mix(in srgb, var(--bg-raised) 82%, var(--bg-elevated));
+  background: var(--bg-raised);
 }
 
 .summary {
@@ -40,26 +40,26 @@
 }
 
 .statusidle {
-  background: color-mix(in srgb, var(--bg-elevated) 76%, transparent);
+  background: var(--bg-elevated);
 }
 
 .statusgenerating {
-  border-color: color-mix(in srgb, var(--accent-primary) 45%, var(--border-default));
+  border-color: var(--accent-primary-muted);
   color: var(--accent-primary);
 }
 
 .statuscomplete {
-  border-color: color-mix(in srgb, var(--status-success) 45%, var(--border-default));
+  border-color: var(--status-success);
   color: var(--status-success);
 }
 
 .statusimage {
-  border-color: color-mix(in srgb, var(--accent-secondary) 48%, var(--border-default));
+  border-color: var(--accent-secondary);
   color: var(--accent-secondary);
 }
 
 .statusfailed {
-  border-color: color-mix(in srgb, var(--status-error) 45%, var(--border-default));
+  border-color: var(--status-error);
   color: var(--status-error);
 }
 
@@ -81,7 +81,7 @@
   height: 2rem;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--bg-elevated) 76%, transparent);
+  background: var(--bg-elevated);
   color: var(--text-secondary);
   padding: 0;
 }
@@ -131,7 +131,7 @@
   height: 2rem;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--bg-elevated) 76%, transparent);
+  background: var(--bg-elevated);
   color: var(--text-secondary);
   padding: 0.4rem;
   transition: transform var(--transition-fast);
@@ -211,7 +211,7 @@
   object-fit: cover;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--bg-elevated) 84%, transparent);
+  background: var(--bg-elevated);
 }
 
 .collectionPreviewState {
@@ -223,7 +223,7 @@
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   line-height: 1.4;
-  background: color-mix(in srgb, var(--bg-elevated) 68%, transparent);
+  background: var(--bg-elevated);
 }
 
 .collectionPreviewControls {
@@ -237,7 +237,7 @@
   height: 1.4rem;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--bg-elevated) 76%, transparent);
+  background: var(--bg-elevated);
   color: var(--text-secondary);
   display: inline-flex;
   align-items: center;
@@ -267,7 +267,7 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   padding: 0.12rem var(--space-2);
-  background: color-mix(in srgb, var(--bg-elevated) 64%, transparent);
+  background: var(--bg-elevated);
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   line-height: 1.5;
@@ -304,7 +304,7 @@
 .details {
   border-top: 1px solid var(--border-subtle);
   padding: var(--space-4) var(--space-4) var(--space-4) calc(4.25rem + var(--space-6));
-  background: color-mix(in srgb, var(--bg-base) 38%, transparent);
+  background: var(--bg-muted);
 }
 
 .description {

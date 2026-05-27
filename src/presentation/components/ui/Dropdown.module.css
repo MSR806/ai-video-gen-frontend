@@ -10,7 +10,7 @@
   min-height: 2rem;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--bg-base));
+  background: var(--bg-elevated);
   padding: 0;
   color: var(--text-primary);
   font: inherit;
@@ -23,8 +23,7 @@
 }
 
 .trigger:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent-primary) 30%, var(--border-default));
-  background: color-mix(in srgb, var(--accent-primary-muted) 32%, var(--bg-elevated));
+  border-color: var(--border-default);
 }
 
 .trigger:disabled {
@@ -38,7 +37,7 @@
   right: 0;
   min-width: 13rem;
   max-width: min(18rem, calc(100vw - var(--space-6)));
-  background: color-mix(in srgb, var(--bg-elevated) 94%, var(--bg-base));
+  background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
@@ -47,18 +46,8 @@
   gap: var(--space-1);
   overflow: clip;
   z-index: 1000;
-  backdrop-filter: blur(8px);
   transform-origin: top right;
   animation: menuDown var(--transition-normal);
-}
-
-.menu::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1px;
-  background: color-mix(in srgb, var(--accent-primary) 55%, transparent);
-  pointer-events: none;
 }
 
 .menuUp {
@@ -114,9 +103,7 @@
 }
 
 .item:hover {
-  background: color-mix(in srgb, var(--accent-primary-muted) 48%, var(--bg-elevated));
-  border-color: color-mix(in srgb, var(--accent-primary) 34%, var(--border-subtle));
-  transform: translateY(-1px);
+  background: var(--accent-primary-muted);
 }
 
 .item:disabled {
@@ -153,8 +140,8 @@
 }
 
 .itemDanger:hover {
-  background: color-mix(in srgb, var(--status-error-muted) 56%, var(--bg-elevated));
-  border-color: color-mix(in srgb, var(--status-error) 36%, var(--border-subtle));
+  background: var(--status-error-muted);
+  border-color: var(--status-error);
 }
 
 .item:focus-visible,

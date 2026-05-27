@@ -15,7 +15,7 @@
 
 .backLink {
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-raised) 92%, var(--bg-elevated));
+  background: var(--bg-raised);
   color: var(--text-primary);
   border-radius: var(--radius-full);
   padding: var(--space-2) var(--space-4);
@@ -34,8 +34,8 @@
 }
 
 .backLink:hover {
-  background: color-mix(in srgb, var(--accent-primary-muted) 56%, var(--bg-elevated));
-  border-color: color-mix(in srgb, var(--accent-primary) 42%, var(--border-default));
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
   color: var(--accent-primary);
   transform: translateY(-1px);
 }
@@ -48,44 +48,19 @@
 .summaryCard {
   position: relative;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border-accent) 52%, var(--border-default));
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-xl);
   padding: clamp(var(--space-6), 3vw, var(--space-8));
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  background:
-    radial-gradient(
-      105% 120% at 0% 0%,
-      color-mix(in srgb, var(--accent-primary-muted) 80%, transparent),
-      transparent 62%
-    ),
-    linear-gradient(
-      165deg,
-      color-mix(in srgb, var(--bg-elevated) 90%, var(--accent-primary-muted)) 0%,
-      color-mix(in srgb, var(--bg-raised) 96%, var(--accent-primary) 4%) 58%,
-      var(--bg-base) 100%
-    );
+  background: var(--bg-elevated);
   box-shadow: var(--shadow-lg);
-}
-
-.summaryCard::after {
-  content: '';
-  position: absolute;
-  width: 18rem;
-  height: 18rem;
-  right: -7rem;
-  bottom: -7rem;
-  border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--accent-primary) 22%, transparent);
-  filter: blur(11px);
-  opacity: 0.58;
-  pointer-events: none;
 }
 
 .overline {
   margin: 0;
-  color: color-mix(in srgb, var(--accent-primary-hover) 84%, var(--text-primary));
+  color: var(--accent-primary-hover);
   font-size: var(--font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.09em;
@@ -172,8 +147,8 @@
 .saveButton {
   align-self: flex-start;
   border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 40%, var(--border-default));
-  background: color-mix(in srgb, var(--accent-primary-muted) 72%, var(--bg-elevated));
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
   color: var(--text-primary);
   padding: var(--space-2) var(--space-4);
   font-size: var(--font-size-sm);
@@ -187,7 +162,7 @@
 
 .saveButton:hover {
   border-color: var(--border-accent);
-  background: color-mix(in srgb, var(--accent-primary-muted) 82%, var(--bg-elevated));
+  background: var(--bg-elevated);
   transform: translateY(-1px);
 }
 
@@ -254,7 +229,7 @@
 
 .routeCard {
   position: relative;
-  border-color: color-mix(in srgb, var(--border-default) 90%, var(--border-subtle));
+  border-color: var(--border-default);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -265,12 +240,12 @@
   width: 2.1rem;
   height: 2.1rem;
   border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--border-accent) 62%, var(--border-default));
+  border: 1px solid var(--border-strong);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary-muted) 75%, var(--bg-elevated));
+  background: var(--bg-elevated);
 }
 
 .routeLabel {

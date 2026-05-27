@@ -38,7 +38,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
-  background: color-mix(in srgb, var(--bg-raised) 88%, var(--bg-elevated));
+  background: var(--bg-raised);
 }
 
 .formTitle {
@@ -53,7 +53,7 @@
   border: 1px dashed var(--border-default);
   border-radius: var(--radius-md);
   padding: var(--space-4);
-  background: color-mix(in srgb, var(--bg-base) 80%, var(--bg-elevated));
+  background: var(--bg-base);
 }
 
 .list {

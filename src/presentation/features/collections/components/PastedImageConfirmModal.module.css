@@ -14,11 +14,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  background: linear-gradient(
-    165deg,
-    color-mix(in srgb, var(--bg-elevated) 92%, var(--bg-raised)) 0%,
-    color-mix(in srgb, var(--bg-base) 94%, var(--bg-raised)) 100%
-  );
+  background: var(--bg-elevated);
   box-shadow: var(--shadow-sm);
 }
 
@@ -27,7 +23,7 @@
   width: 100%;
   max-height: 360px;
   object-fit: contain;
-  background: color-mix(in srgb, var(--bg-base) 95%, var(--bg-canvas));
+  background: var(--bg-base);
 }
 
 .fileName {

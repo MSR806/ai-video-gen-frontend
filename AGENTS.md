@@ -199,30 +199,47 @@ Prefer avoiding circular feature dependencies. If two features need the same gen
 
 ## 🎨 Styling Rules
 
-### Color Management
+### Design Tokens — The Single Source of Truth
 
-- All colors are defined as **CSS custom properties** in `@presentation/styles/globals.css`
-- Default theme direction is **Catppuccin Macchiato** through semantic tokens (not direct palette literals in components)
-- Theme baseline was introduced in commit `460b2f4` (`feat: migrated to Catppuccin Macchiato theme`); preserve this palette unless a redesign is explicitly requested
-- **Never use hardcoded hex values** in components — always use `var(--token-name)`
-- Use semantic naming: `--bg-raised` not `--dark-gray`
+**Before writing any CSS, read [`src/presentation/styles/TOKENS.md`](src/presentation/styles/TOKENS.md).** It catalogues every available token (backgrounds, text, borders, accent, status, shadows, spacing, radii, motion, typography, focus ring) with the **intended use case** for each.
 
-### Color Token Hierarchy
+- All colours, spacing, radii, shadows, and typography values are defined as **CSS custom properties** in `src/presentation/styles/globals.css`
+- The only file allowed to contain raw colour values (hex / rgb / hsl) is `globals.css`. Everywhere else uses `var(--token-name)`
+- Current palette is a **pitch-black minimalist** theme: pure `#000` canvas, neutral grey ramp, soft mint-green primary accent (`#86efac`) reserved for primary actions and focus rings. Preserve this direction unless a redesign is explicitly requested
+- Use semantic naming when adding tokens: `--bg-raised`, not `--dark-grey`
 
-- `--bg-*`: Background colors (base → raised → elevated)
-- `--text-*`: Text colors (primary → secondary → muted)
-- `--border-*`: Border colors (subtle → default → strong)
-- `--accent-*`: Brand/action colors
-- `--status-*`: Feedback colors (error, success, warning)
-- `--overlay-*`: Media overlays, badge chips, and destructive hover layers
-- `--shadow-*`: Elevation and accent glow shadows
+### Token Categories (see TOKENS.md for full details)
 
-### Dark Mode Guidelines
+- `--bg-*` — Background ramp (canvas → base → muted → raised → elevated)
+- `--overlay-*` / `--bg-overlay` / `--bg-glass` — Semi-transparent overlays
+- `--text-*` — Text hierarchy (primary → secondary → muted → subtle → disabled)
+- `--border-*` / `--divider-*` — Borders and rules
+- `--accent-*` — **Primary action only**. Mint green; never for decoration
+- `--status-*` — Error / success / warning indicators (functional only)
+- `--shadow-*` — Neutral elevation shadows. `--shadow-accent` is intentionally `none`
+- `--space-*` (1–9) — Spacing scale; do not write raw `rem` for padding/gap/margin
+- `--radius-*` — Border-radius scale
+- `--transition-*` / `--motion-*` — Timing & easing
+- `--font-*` / `--font-size-*` / `--line-height-*` / `--tracking-*` — Typography
+- `--focus-ring-*` — Used by global `:focus-visible` styling
 
-- Keep dark surfaces within the Catppuccin Macchiato ramp (`--bg-base` → `--bg-raised` → `--bg-elevated`)
-- Never use pure black `#000` or pure white `#fff` in feature styles; use semantic tokens (`--bg-*`, `--text-*`, `--overlay-*`)
-- Shadows need higher opacity (0.4-0.6) to be visible on dark backgrounds
-- Use `--shadow-sm`, `--shadow-md`, `--shadow-lg`, and `--shadow-accent` tokens
+### Dark-Surface Guidelines
+
+- Pure black canvas (`--bg-canvas` = `#000`) with a tight ramp up to `--bg-elevated` (`#1a1a1a`). Skip levels rather than stacking similar shades
+- Borders are felt, not seen — keep contrast low (`--border-subtle` / `--border-default`)
+- Avoid decorative gradients, glows, backdrop-filter blur, and accent-colour halos. The palette is intentionally flat
+- Functional overlays (transparent → dark fades for text legibility over images) are fine and use `color-mix(in srgb, var(--token), transparent)`
+
+### Enforcement (Stylelint)
+
+`stylelint.config.mjs` fails the lint step if any CSS file outside `globals.css` contains:
+
+- Hex literals (`#fff`, `#86efac`)
+- Named colours (`white`, `red`)
+- Raw colour functions (`rgb()`, `rgba()`, `hsl()`, `hsla()`)
+- Inline `style={{ color: '#fff' }}` in TSX is equally forbidden — wrap in a CSS module class
+
+Check locally with `bun run lint:css`. Runs automatically pre-commit via lint-staged and on every `bun run lint`.
 
 ### Iconography
 
@@ -260,11 +277,13 @@ Prefer avoiding circular feature dependencies. If two features need the same gen
 
 ## 🚨 Code Quality Rules
 
-### No Inline Colors
+### No Inline Colors (Stylelint-Enforced)
 
 - ❌ **Never** use inline hex/rgb/rgba values in feature code: `color: '#8aadf4'` or `style={{ color: '#fff' }}`
+- ❌ **Never** use named colours (`white`, `black`, `red`) — also stylelint-enforced
 - ❌ **Never** mix with raw `black`/`white` in component styles when `color-mix()` is used; mix semantic tokens instead
 - ✅ **Always** use CSS variables: `color: var(--accent-primary)` or `className={styles.text}`
+- 📖 **Always** consult [`src/presentation/styles/TOKENS.md`](src/presentation/styles/TOKENS.md) before introducing a new token — there's almost certainly already one for your use case
 
 ### Modular UI
 

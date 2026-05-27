@@ -19,24 +19,14 @@
   width: 100%;
   min-height: 100%;
   margin: 0;
-  background: color-mix(in srgb, var(--bg-elevated) 94%, var(--bg-raised));
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-md);
+  background: transparent;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  transition:
-    border-color var(--transition-fast),
-    background var(--transition-fast),
-    box-shadow var(--transition-fast);
+  transition: background var(--transition-fast);
 }
 
 .dropActive {
-  border-color: color-mix(in srgb, var(--accent-primary) 62%, var(--border-default));
-  box-shadow:
-    var(--shadow-md),
-    0 0 0 1px color-mix(in srgb, var(--accent-primary) 34%, transparent);
+  background: var(--accent-primary-muted);
 }
 
 .formBody {
@@ -45,18 +35,14 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-4) var(--space-3);
+  gap: var(--space-6);
+  padding: var(--space-2) 0 var(--space-3);
 }
 
 .formSection {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 90%, transparent);
-  background: color-mix(in srgb, var(--bg-base) 72%, var(--bg-raised));
+  gap: var(--space-3);
 }
 
 .formLabel {
@@ -209,7 +195,7 @@
   flex-direction: column;
   gap: var(--space-2);
   border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--bg-base) 82%, var(--bg-raised));
+  background: var(--bg-base);
   border: 1px solid var(--border-default);
   padding: 0.6rem 0.6rem 0.4rem;
 }
@@ -238,7 +224,7 @@
   height: 96px;
   border-radius: 16px;
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 84%, var(--bg-base));
+  background: var(--bg-elevated);
   color: var(--text-secondary);
   padding: 0;
   position: relative;
@@ -252,13 +238,11 @@
 }
 
 .compactMediaButtonFilled {
-  background: color-mix(in srgb, var(--bg-raised) 70%, var(--bg-base));
+  background: var(--bg-raised);
 }
 
 .compactMediaButtonActive {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 54%, transparent 46%);
-  transform: translateY(-1px);
+  border-color: var(--border-strong);
 }
 
 .compactMediaThumb {
@@ -352,7 +336,7 @@
   height: 88px;
   border-radius: 14px;
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 84%, var(--bg-base));
+  background: var(--bg-elevated);
   overflow: hidden;
   cursor: pointer;
   color: var(--text-secondary);
@@ -406,7 +390,7 @@
 .mediaAddCard,
 .mediaThumbnailCard {
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 88%, var(--bg-base));
+  background: var(--bg-elevated);
   color: var(--text-primary);
   transition:
     border-color var(--transition-fast),
@@ -435,14 +419,12 @@
 }
 
 .mediaCardFilled {
-  background: color-mix(in srgb, var(--bg-elevated) 78%, var(--bg-base));
+  background: var(--bg-elevated);
 }
 
 .mediaCardActive,
 .mediaThumbnailWrapActive .mediaThumbnailCard {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 55%, transparent 45%);
-  transform: translateY(-1px);
+  border-color: var(--border-strong);
 }
 
 .mediaCard:hover,
@@ -451,7 +433,7 @@
 .compactMediaButton:hover,
 .compactArrayThumbButton:hover,
 .compactArrayAddButton:hover {
-  border-color: color-mix(in srgb, var(--accent-primary) 36%, var(--border-default));
+  border-color: var(--border-strong);
 }
 
 .mediaCardAdd {
@@ -553,7 +535,7 @@
 .mediaToggle {
   display: inline-flex;
   width: 100%;
-  background: color-mix(in srgb, var(--bg-base) 78%, var(--bg-raised));
+  background: var(--bg-base);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: 0.2rem;
@@ -579,15 +561,15 @@
 }
 
 .mediaButtonActive {
-  border-color: color-mix(in srgb, var(--accent-primary) 48%, var(--border-default));
-  background: color-mix(in srgb, var(--accent-primary-muted) 80%, var(--bg-elevated));
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
   color: var(--text-primary);
 }
 
 .mediaButton:hover:not(:disabled) {
   color: var(--text-primary);
-  border-color: color-mix(in srgb, var(--accent-primary) 34%, var(--border-default));
-  background: color-mix(in srgb, var(--accent-primary-muted) 42%, var(--bg-elevated));
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
 }
 
 .mediaButton:disabled {
@@ -609,7 +591,7 @@
   appearance: none;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--bg-base));
+  background: var(--bg-elevated);
   color: var(--text-primary);
   padding: 0.72rem 2rem 0.72rem 0.75rem;
   font-size: 0.92rem;
@@ -623,8 +605,8 @@
 }
 
 .select:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--border-default));
-  background: color-mix(in srgb, var(--bg-elevated) 90%, var(--bg-base));
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
 }
 
 .selectWrap::after {
@@ -654,7 +636,7 @@
   align-self: flex-start;
   border: 1px solid var(--border-default);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-base) 76%, var(--bg-raised));
+  background: var(--bg-base);
   color: var(--text-secondary);
   padding: 0.38rem 0.75rem;
   font-size: 0.76rem;
@@ -669,7 +651,7 @@
 .advancedToggle:hover:not(:disabled) {
   color: var(--text-primary);
   border-color: var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary-muted) 50%, var(--bg-elevated));
+  background: var(--bg-elevated);
 }
 
 .advancedToggle:disabled {
@@ -683,7 +665,7 @@
   align-items: flex-start;
   gap: 0.45rem;
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--bg-base));
+  background: var(--bg-elevated);
   border-radius: var(--radius-md);
   padding: 0.55rem 0.65rem;
 }
@@ -720,7 +702,7 @@
   align-items: center;
   gap: 0.45rem;
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--bg-base));
+  background: var(--bg-elevated);
   border-radius: var(--radius-md);
   padding: 0.55rem 0.65rem;
   color: var(--text-secondary);
@@ -769,14 +751,14 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-base) 72%, var(--bg-raised));
+  padding: var(--space-4) 0 0;
+  border-top: 1px solid var(--border-subtle);
+  background: transparent;
 }
 
 .resetButton {
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-base) 84%, var(--bg-raised));
+  background: transparent;
   color: var(--text-primary);
   border-radius: var(--radius-md);
   padding: 0.55rem 0.95rem;
@@ -789,8 +771,8 @@
 }
 
 .resetButton:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent-primary) 32%, var(--border-default));
-  background: color-mix(in srgb, var(--accent-primary-muted) 34%, var(--bg-elevated));
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
 }
 
 .resetButton:disabled {
@@ -802,9 +784,9 @@
   min-width: 112px;
   height: 40px;
   border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 48%, var(--border-default));
-  background: linear-gradient(135deg, var(--accent-gradient-start), var(--accent-gradient-end));
-  color: var(--text-inverse);
+  border: 1px solid var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--accent-gradient-text);
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 1;
@@ -813,7 +795,7 @@
   align-items: center;
   justify-content: center;
   transition:
-    transform var(--transition-fast),
+    background var(--transition-fast),
     box-shadow var(--transition-fast),
     opacity var(--transition-fast);
 }
@@ -825,8 +807,8 @@
 }
 
 .generateButton:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-accent), var(--shadow-sm);
+  background: var(--accent-primary-hover);
+  box-shadow: var(--shadow-sm);
 }
 
 .mediaButton:focus-visible,
