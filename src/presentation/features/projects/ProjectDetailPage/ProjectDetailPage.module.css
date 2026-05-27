@@ -3,7 +3,7 @@
   grid-template-columns: 72px minmax(220px, 280px) minmax(0, 1fr) clamp(280px, 28vw, 420px);
   height: calc(100dvh - var(--workspace-viewport-offset, 57px));
   min-height: 0;
-  background: color-mix(in srgb, var(--bg-base) 88%, var(--bg-canvas));
+  background: var(--bg-base);
 }
 
 .containerCollections {
@@ -60,15 +60,15 @@
 }
 
 .navButton:hover {
-  background: color-mix(in srgb, var(--accent-primary-muted) 62%, transparent);
-  border-color: color-mix(in srgb, var(--accent-primary) 36%, var(--border-default));
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
   color: var(--text-primary);
   transform: translateY(-1px);
 }
 
 .navButton.active {
-  background: color-mix(in srgb, var(--accent-primary-muted) 78%, var(--bg-elevated));
-  border-color: color-mix(in srgb, var(--accent-primary) 52%, var(--border-default));
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
   color: var(--accent-primary);
 }
 
@@ -84,7 +84,7 @@
 
 /* List Panel */
 .listPanel {
-  background: color-mix(in srgb, var(--bg-base) 92%, var(--bg-raised));
+  background: var(--bg-base);
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
@@ -136,7 +136,7 @@
 }
 
 .selectedItem {
-  background: color-mix(in srgb, var(--accent-primary-muted) 68%, var(--bg-elevated));
+  background: var(--bg-elevated);
   color: var(--accent-primary);
 }
 
@@ -189,7 +189,7 @@
 
 /* Center Area */
 .centerArea {
-  background: color-mix(in srgb, var(--bg-base) 90%, var(--bg-raised));
+  background: var(--bg-base);
 }
 
 .collectionsDetailLayout {
@@ -222,7 +222,7 @@
 }
 
 .collectionsWorkspaceArea {
-  background: color-mix(in srgb, var(--bg-base) 95%, var(--bg-canvas));
+  background: var(--bg-base);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -244,7 +244,7 @@
 
 .pathBackButton {
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 92%, var(--bg-base));
+  background: var(--bg-elevated);
   color: var(--text-primary);
   border-radius: var(--radius-full);
   padding: var(--space-1) var(--space-3);
@@ -261,8 +261,8 @@
 }
 
 .pathBackButton:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent-primary-muted) 56%, var(--bg-elevated));
-  border-color: color-mix(in srgb, var(--accent-primary) 44%, var(--border-default));
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
   color: var(--accent-primary);
 }
 
@@ -303,7 +303,7 @@
 
 .pathCrumbButton:hover {
   color: var(--text-primary);
-  background: color-mix(in srgb, var(--bg-elevated) 86%, var(--bg-raised));
+  background: var(--bg-elevated);
   border-color: var(--border-subtle);
 }
 
@@ -317,8 +317,8 @@
   overflow: hidden;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 22%, var(--border-subtle));
-  background: color-mix(in srgb, var(--accent-primary-muted) 28%, transparent);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
 }
 
 .pathActions {
@@ -330,7 +330,7 @@
 
 .chatToggleButton {
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 92%, var(--bg-base));
+  background: var(--bg-elevated);
   color: var(--text-primary);
   width: 2rem;
   height: 2rem;
@@ -349,14 +349,14 @@
 
 .chatToggleButton:hover {
   color: var(--accent-primary);
-  border-color: color-mix(in srgb, var(--accent-primary) 50%, var(--border-default));
-  background: color-mix(in srgb, var(--accent-primary-muted) 48%, var(--bg-elevated));
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
   transform: translateY(-1px);
 }
 
 .pathAddButton {
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 92%, var(--bg-base));
+  background: var(--bg-elevated);
   color: var(--text-primary);
   width: 2rem;
   height: 2rem;
@@ -378,8 +378,8 @@
 
 .pathAddButton:hover:not(:disabled) {
   color: var(--accent-primary);
-  border-color: color-mix(in srgb, var(--accent-primary) 50%, var(--border-default));
-  background: color-mix(in srgb, var(--accent-primary-muted) 48%, var(--bg-elevated));
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
   transform: translateY(-1px);
 }
 
@@ -412,7 +412,7 @@
   grid-column: 2 / 5;
   height: 100%;
   overflow-y: auto;
-  background: color-mix(in srgb, var(--bg-base) 94%, var(--bg-raised));
+  background: var(--bg-base);
   border-left: 1px solid var(--border-subtle);
 }
 
@@ -465,7 +465,7 @@
 
 .shotsArea {
   grid-column: 2 / -1;
-  background: color-mix(in srgb, var(--bg-base) 94%, var(--bg-raised));
+  background: var(--bg-base);
   padding: var(--space-7);
   border-left: 1px solid var(--border-subtle);
   display: flex;
@@ -485,7 +485,7 @@
 
 /* Details Panel */
 .detailsPanel {
-  background: color-mix(in srgb, var(--bg-raised) 92%, var(--bg-base));
+  background: var(--bg-raised);
   border-left: 1px solid var(--border-subtle);
   overflow-y: auto;
   padding: var(--space-6);

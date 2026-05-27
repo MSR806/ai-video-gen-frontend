@@ -3,12 +3,7 @@
   isolation: isolate;
   min-height: 100dvh;
   padding: clamp(var(--space-5), 2vw, var(--space-8));
-  background: linear-gradient(
-    180deg,
-    var(--bg-canvas) 0%,
-    color-mix(in srgb, var(--bg-base) 96%, var(--bg-canvas)) 55%,
-    var(--bg-base) 100%
-  );
+  background: var(--bg-base);
 }
 
 .header {
@@ -27,12 +22,7 @@
   padding: clamp(var(--space-6), 3vw, var(--space-8));
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-default);
-  background: linear-gradient(
-    165deg,
-    color-mix(in srgb, var(--bg-elevated) 94%, var(--bg-raised)) 0%,
-    color-mix(in srgb, var(--bg-raised) 96%, var(--bg-base)) 56%,
-    var(--bg-base) 100%
-  );
+  background: var(--bg-raised);
   box-shadow: var(--shadow-md);
 }
 
@@ -41,11 +31,7 @@
   position: absolute;
   inset: 0 0 auto;
   height: 2px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--accent-primary) 70%, transparent),
-    color-mix(in srgb, var(--accent-primary) 20%, transparent)
-  );
+  background: var(--accent-primary);
 }
 
 .heroCopy {
@@ -121,13 +107,9 @@
   min-height: 15rem;
   padding: clamp(var(--space-6), 3vw, var(--space-8));
   border: 1px solid var(--border-default);
-  border-left: 3px solid color-mix(in srgb, var(--accent-primary) 66%, var(--border-default));
+  border-left: 3px solid var(--accent-primary);
   border-radius: var(--radius-xl);
-  background: linear-gradient(
-    175deg,
-    color-mix(in srgb, var(--bg-elevated) 95%, var(--bg-raised)) 0%,
-    color-mix(in srgb, var(--bg-raised) 94%, var(--bg-base)) 100%
-  );
+  background: var(--bg-elevated);
   box-shadow: var(--shadow-md);
 }
 

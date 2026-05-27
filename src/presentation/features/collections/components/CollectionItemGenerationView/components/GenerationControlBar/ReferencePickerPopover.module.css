@@ -7,14 +7,13 @@
   justify-content: center;
   padding: var(--space-4);
   background: var(--bg-overlay);
-  backdrop-filter: blur(4px);
 }
 
 .popover {
   position: relative;
   border: 1px solid var(--border-default);
   border-radius: 16px;
-  background: color-mix(in srgb, var(--bg-raised) 94%, var(--bg-base) 6%);
+  background: var(--bg-raised);
   box-shadow: var(--shadow-lg);
   padding: var(--space-3);
   display: flex;
@@ -179,7 +178,7 @@
   text-align: left;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bg-elevated) 84%, var(--bg-base) 16%);
+  background: var(--bg-elevated);
   padding: 0.55rem 0.6rem;
   display: block;
   cursor: pointer;
@@ -187,7 +186,7 @@
 
 .collectionButton:hover {
   border-color: var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary-muted) 70%, var(--bg-elevated) 30%);
+  background: var(--accent-primary-muted);
 }
 
 .collectionName {
@@ -235,7 +234,7 @@
 
 .assetButtonSelected {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 40%, transparent 60%);
+  box-shadow: var(--shadow-sm);
 }
 
 .assetFrame {

@@ -5,12 +5,12 @@
   min-height: 0;
   overflow: hidden;
   border-left: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--bg-base) 94%, var(--bg-raised));
+  background: var(--bg-base);
 }
 
 .sceneListPanel {
   border-right: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--bg-raised) 92%, var(--bg-base));
+  background: var(--bg-raised);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -65,8 +65,8 @@
 }
 
 .activeScene {
-  border-color: color-mix(in srgb, var(--accent-primary) 45%, var(--border-default));
-  background: color-mix(in srgb, var(--accent-primary-muted) 45%, var(--bg-elevated));
+  border-color: var(--border-strong);
+  background: var(--accent-primary-muted);
 }
 
 .sceneListTitle {
@@ -79,7 +79,7 @@
   align-self: flex-start;
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
-  border: 1px solid color-mix(in srgb, var(--status-warning) 42%, var(--border-default));
+  border: 1px solid var(--status-warning);
   color: var(--status-warning);
   font-size: var(--font-size-xs);
 }
@@ -161,7 +161,7 @@
   position: relative;
   min-height: 100%;
   padding: var(--space-6) clamp(var(--space-3), 4vw, var(--space-8)) calc(var(--space-6) + 24vh);
-  background: color-mix(in srgb, var(--bg-base) 92%, var(--bg-raised));
+  background: var(--bg-base);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -184,7 +184,7 @@
   min-height: 100%;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-raised) 70%, var(--bg-elevated));
+  background: var(--bg-raised);
   box-shadow: var(--shadow-md);
   padding: calc(var(--space-8) + var(--space-2)) clamp(var(--space-5), 4vw, var(--space-8))
     calc(var(--space-8) + 24vh);
@@ -327,7 +327,7 @@
 }
 
 .activeSuggestion {
-  background: color-mix(in srgb, var(--accent-primary-muted) 52%, var(--bg-elevated));
+  background: var(--accent-primary-muted);
   color: var(--text-primary);
 }
 

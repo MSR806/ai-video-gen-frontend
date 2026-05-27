@@ -38,9 +38,8 @@
 }
 
 .card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
-  border-color: color-mix(in srgb, var(--accent-primary) 26%, var(--border-default));
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-sm);
 }
 
 .card:disabled:hover {
@@ -78,25 +77,10 @@
   position: absolute;
   inset: 0;
   background: var(--bg-elevated);
-  overflow: hidden;
   z-index: 0;
   /* Keep behind the image */
   transition: opacity 0.4s ease-out;
-}
-
-.skeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background-image: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--bg-elevated) 100%, transparent) 0,
-    color-mix(in srgb, var(--bg-raised) 60%, var(--bg-elevated) 40%) 20%,
-    color-mix(in srgb, var(--bg-raised) 80%, var(--bg-elevated) 20%) 60%,
-    color-mix(in srgb, var(--bg-elevated) 100%, transparent) 100%
-  );
-  animation: shimmer 2s infinite;
+  animation: pulse 2s ease-in-out infinite;
 }
 
 .skeletonHidden {
@@ -104,9 +88,13 @@
   pointer-events: none;
 }
 
-@keyframes shimmer {
+@keyframes pulse {
+  0%,
   100% {
-    transform: translateX(100%);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
   }
 }
 
@@ -116,7 +104,7 @@
   display: flex;
   align-items: flex-end;
   padding: var(--space-3);
-  background: linear-gradient(165deg, var(--bg-elevated), var(--bg-base));
+  background: var(--bg-elevated);
 }
 
 .fallbackLabel {
@@ -241,26 +229,25 @@
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  backdrop-filter: blur(2px);
 }
 
 .statusBadgeGenerating {
   color: var(--text-primary);
-  border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-overlay) 86%, var(--bg-base) 14%);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
 }
 
 .statusBadgeFailed {
   color: var(--status-error);
-  border: 1px solid var(--status-error);
-  background: color-mix(in srgb, var(--status-error-muted) 88%, var(--bg-base) 12%);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
 }
 
 .statusSpinner {
   width: 10px;
   height: 10px;
   border-radius: var(--radius-full);
-  border: 2px solid color-mix(in srgb, var(--text-primary) 32%, transparent);
+  border: 2px solid var(--border-default);
   border-top-color: var(--text-primary);
   animation: spin 0.8s linear infinite;
 }
@@ -274,8 +261,8 @@
   font-size: 0.72rem;
   line-height: 1.35;
   color: var(--status-error);
-  background: color-mix(in srgb, var(--status-error-muted) 84%, transparent);
-  border: 1px solid color-mix(in srgb, var(--status-error) 78%, transparent);
+  background: var(--status-error-muted);
+  border: 1px solid var(--status-error);
   border-radius: var(--radius-md);
   padding: 6px var(--space-2);
 }
@@ -333,8 +320,8 @@
 .favoriteButton {
   width: 32px;
   height: 32px;
-  border: 1px solid color-mix(in srgb, var(--border-default) 84%, transparent);
-  background: color-mix(in srgb, var(--bg-overlay) 88%, var(--bg-elevated) 12%);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-overlay);
   color: var(--text-primary);
   border-radius: var(--radius-full);
   padding: 0;
@@ -365,8 +352,8 @@
 }
 
 .favoriteButton:hover {
-  background: color-mix(in srgb, var(--accent-primary-muted) 64%, var(--bg-overlay));
-  border-color: color-mix(in srgb, var(--accent-primary) 44%, var(--border-default));
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
 }
 
 .favoriteButton:focus-visible {
@@ -380,13 +367,13 @@
 }
 
 .favoriteButtonActive {
-  border-color: color-mix(in srgb, var(--status-error) 64%, var(--border-default));
-  background: color-mix(in srgb, var(--status-error-muted) 74%, var(--bg-overlay));
+  border-color: var(--status-error);
+  background: var(--status-error-muted);
   color: var(--text-primary);
 }
 
 .favoriteButtonActive:hover {
-  background: color-mix(in srgb, var(--status-error-muted) 86%, var(--bg-overlay));
+  background: var(--status-error-muted);
 }
 
 .menuContainer {
@@ -408,8 +395,8 @@
 .menuButton {
   width: 32px;
   height: 32px;
-  border: 1px solid color-mix(in srgb, var(--border-default) 84%, transparent);
-  background: color-mix(in srgb, var(--bg-overlay) 88%, var(--bg-elevated) 12%);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-overlay);
   color: var(--text-primary);
   border-radius: var(--radius-full);
   padding: 0;
@@ -428,12 +415,12 @@
 }
 
 .menuButton:hover {
-  background: color-mix(in srgb, var(--accent-primary-muted) 64%, var(--bg-overlay));
-  border-color: color-mix(in srgb, var(--accent-primary) 44%, var(--border-default));
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
 }
 
 .menuButton:focus-visible {
-  background: color-mix(in srgb, var(--accent-primary-muted) 64%, var(--bg-overlay));
+  background: var(--bg-elevated);
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }

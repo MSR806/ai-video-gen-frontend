@@ -24,7 +24,7 @@
 .textarea {
   width: 100%;
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 90%, var(--bg-base));
+  background: var(--bg-elevated);
   color: var(--text-primary);
   border-radius: var(--radius-md);
   padding: var(--space-3);
@@ -42,7 +42,7 @@
 
 .input:hover,
 .textarea:hover {
-  border-color: color-mix(in srgb, var(--accent-primary) 36%, var(--border-default));
+  border-color: var(--border-strong);
 }
 
 .input:focus-visible,
@@ -50,7 +50,7 @@
   outline: 2px solid var(--focus-ring-color);
   outline-offset: 2px;
   border-color: var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary-muted) 20%, var(--bg-elevated));
+  background: var(--accent-primary-muted);
   box-shadow: var(--focus-ring-shadow);
 }
 

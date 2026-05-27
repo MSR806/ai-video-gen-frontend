@@ -1,6 +1,6 @@
 .panel {
   border-right: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--bg-raised) 92%, var(--bg-base));
+  background: var(--bg-raised);
   min-height: 0;
   height: 100%;
   overflow: hidden;
@@ -39,7 +39,7 @@
 
 .collapseButton {
   border: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-elevated) 92%, var(--bg-base));
+  background: var(--bg-elevated);
   color: var(--text-primary);
   width: 2rem;
   height: 2rem;
@@ -104,9 +104,9 @@
 }
 
 .userMessageBubble {
-  background: color-mix(in srgb, var(--accent-primary-muted) 60%, var(--bg-elevated));
+  background: var(--accent-primary-muted);
   color: var(--text-primary);
-  border-color: color-mix(in srgb, var(--accent-primary) 22%, var(--border-subtle));
+  border-color: var(--accent-primary-muted);
 }
 
 .messageText {
@@ -126,15 +126,15 @@
 
 .transportToolActivityBlock {
   margin: var(--space-2) var(--space-3) 0;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
-  background: color-mix(in srgb, var(--bg-raised) 88%, var(--bg-base));
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-raised);
   border-radius: var(--radius-sm);
   padding: var(--space-1) var(--space-2);
 }
 
 .composer {
   border-top: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--bg-raised) 90%, var(--bg-base));
+  background: var(--bg-raised);
   padding: var(--space-3);
   display: flex;
   flex-direction: column;
@@ -165,9 +165,9 @@
   bottom: var(--space-3);
   width: 2rem;
   height: 2rem;
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 42%, var(--border-default));
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent-primary-muted) 50%, var(--bg-elevated));
+  background: var(--accent-primary-muted);
   color: var(--accent-primary);
   display: inline-flex;
   align-items: center;

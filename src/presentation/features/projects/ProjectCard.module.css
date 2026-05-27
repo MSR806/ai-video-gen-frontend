@@ -12,7 +12,6 @@
 .link:focus-visible .projectCard {
   border-color: var(--border-accent);
   box-shadow: var(--shadow-md), var(--focus-ring-shadow);
-  transform: translateY(-2px);
 }
 
 .projectCard {
@@ -23,25 +22,7 @@
   height: 100%;
   min-height: 16rem;
   border-color: var(--border-default);
-  background: linear-gradient(
-    175deg,
-    color-mix(in srgb, var(--bg-elevated) 95%, var(--bg-raised)) 0%,
-    color-mix(in srgb, var(--bg-raised) 96%, var(--bg-base)) 100%
-  );
-}
-
-.projectCard::after {
-  content: '';
-  position: absolute;
-  inset: auto var(--space-6) 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--accent-primary) 52%, transparent),
-    color-mix(in srgb, var(--accent-primary) 8%, transparent)
-  );
-  opacity: 0;
-  transition: opacity var(--transition-normal);
+  background: var(--bg-raised);
 }
 
 .content {
@@ -82,7 +63,7 @@
   align-items: center;
   justify-content: flex-end;
   padding-top: var(--space-3);
-  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 86%, transparent);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .date {
@@ -107,13 +88,8 @@
 
 @media (hover: hover) {
   .link:hover .projectCard {
-    border-color: color-mix(in srgb, var(--accent-primary) 30%, var(--border-default));
-    transform: translateY(-1px);
+    border-color: var(--border-default);
     box-shadow: var(--shadow-md);
-  }
-
-  .link:hover .projectCard::after {
-    opacity: 1;
   }
 
   .link:hover .cta {
